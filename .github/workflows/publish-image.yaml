@@ -1,14 +1,19 @@
-name: Publish processor image
+name: Publish Image
 
 on:
   push:
     tags:
-      - "v*"
+      - "v*" # Triggers on tags like v0.1.0, v1.0.0, etc.
+  # Manual re-publish of the current HEAD without burning a tag:
+  #   gh workflow run publish-image.yaml
   workflow_dispatch:
 
 jobs:
   publish:
+    # The caller caps the GITHUB_TOKEN the called workflow receives, and this
+    # repo's default is read-only — so packages: write must be granted here.
     permissions:
       contents: read
       packages: write
+    # The build+push logic lives once, in the infra repo.
     uses: bfeitknecht/infra/.github/workflows/publish-image.yaml@master

@@ -4,6 +4,13 @@ metadata:
   name: exhib
   labels:
     app.kubernetes.io/name: exhib
+  # Keel reads keel.sh/* from the workload's own metadata (never the pod template).
+  # Lets Keel roll the ":latest" tag forward when the GHCR digest changes.
+  # Drop these three annotations if the cluster does not run Keel.
+  annotations:
+    keel.sh/trigger: poll
+    keel.sh/policy: force
+    keel.sh/match-tag: "true"
 spec:
   replicas: 1
   strategy:
@@ -22,6 +29,8 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: prepare-site-volume
           image: busybox:1.37.0
@@ -95,6 +104,8 @@ spec:
             - name: site
               mountPath: /data
         # Stable processor/tooling image; new gallery uploads do not rebuild it.
+        # Not readOnlyRootFilesystem: the Hugo build writes .hugo_build.lock and
+        # resources/_gen next to the site source under /app.
         - name: processor
           image: ghcr.io/bfeitknecht/exhib:latest
           imagePullPolicy: Always

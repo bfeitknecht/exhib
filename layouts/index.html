@@ -9,10 +9,6 @@
 </header>
 <header class="site-header"><h1>exhib</h1><p class="site-tagline">{{ site.Params.description }}</p></header>
 <main class="timeline">
-  {{ $entries := where site.RegularPages "Section" "pieces" }}
-  {{ with site.GetPage "/collections" }}
-    {{ range .Sections }}{{ $entries = $entries | append . }}{{ end }}
-  {{ end }}
-  {{ range sort $entries "Date" "desc" }}{{ partial "item-card.html" . }}{{ end }}
+  {{ range partial "feed-entries.html" . }}{{ partial "item-card.html" . }}{{ end }}
 </main>
 {{ end }}

@@ -1,11 +1,5 @@
 {{ define "main" }}
 {{ $media := partial "sorted-media.html" . }}
-{{ $item := index $media 0 }}
-{{ $isVideo := eq $item.Params.kind "video" }}
-{{ $poster := false }}
-{{ if $isVideo }}{{ $poster = .Resources.GetMatch $item.Params.poster }}{{ end }}
-{{ $ratio := "1.7777778" }}
-{{ if not $isVideo }}{{ $ratio = partial "image-ratio.html" $item }}{{ end }}
 <main class="piece-page piece-viewer" id="piece-main">
   <a class="view-home" href="{{ "/" | relURL }}" aria-label="Back to top-level view">/..</a>
   <header class="page-intro">
@@ -13,35 +7,34 @@
     <time datetime="{{ .Date.Format "2006-01-02T15:04:05Z07:00" }}">{{ .Date.Format "2006-01-02" }}</time>
     {{ with .Description }}<p>{{ . }}</p>{{ end }}
   </header>
-  <a class="piece-open" href="#piece-detail" aria-label="Open {{ if $isVideo }}video{{ else }}image{{ end }} detail">
-    <div class="piece-stage">
-      {{ if $isVideo }}
-        {{ with $poster }}<img src="{{ .RelPermalink }}" alt="Video poster for {{ $item.Title }}">{{ else }}<span class="video-placeholder">VIDEO</span>{{ end }}
-        <span class="video-badge" aria-hidden="true">▶</span>
-      {{ else }}
-        <img src="{{ $item.RelPermalink }}" alt="{{ $item.Title }}">
-      {{ end }}
-    </div>
-  </a>
-  {{ if not $isVideo }}<div class="viewer-metadata">{{ partial "metadata-list.html" (dict "image" $item) }}</div>{{ end }}
-  <section class="photo-viewer" id="piece-detail" role="dialog" aria-modal="true" aria-label="{{ .Title }} detail">
-    <div class="view-chrome"><a class="close-detail" href="#piece-main" aria-label="Close detail">X</a></div>
-    <div class="viewer-scroll">
-      <div class="viewer-unit" style="--image-ratio: {{ $ratio }};">
+  {{ if $media }}
+    {{ $item := index $media 0 }}
+    {{ $isVideo := eq $item.Params.kind "video" }}
+    {{ $poster := false }}
+    {{ if $isVideo }}{{ $poster = .Resources.GetMatch $item.Params.poster }}{{ end }}
+    {{ $ratio := "1.7777778" }}
+    {{ if not $isVideo }}{{ $ratio = partial "image-ratio.html" $item }}{{ end }}
+    <a class="piece-open" href="#piece-detail" aria-label="Open {{ if $isVideo }}video{{ else }}image{{ end }} detail">
+      <div class="piece-stage">
         {{ if $isVideo }}
-          <div class="viewer-image">
-            <video controls preload="metadata" playsinline {{ with $poster }}poster="{{ .RelPermalink }}"{{ end }}>
-              <source src="{{ $item.RelPermalink }}" type="video/webm">
-              Your browser does not support HTML video.
-            </video>
-          </div>
-          <div class="viewer-metadata"><dl class="metadata-list"><div class="metadata-row"><dt>Video</dt><dd>{{ $item.Title }}</dd></div><div class="metadata-row"><dt>Format</dt><dd>WebM · lossless VP9 / lossy Opus</dd></div></dl></div>
+          {{ with $poster }}<img src="{{ .RelPermalink }}" alt="Video poster for {{ $item.Title }}">{{ else }}<span class="video-placeholder">VIDEO</span>{{ end }}
+          <span class="video-badge" aria-hidden="true">▶</span>
         {{ else }}
-          <div class="viewer-image"><img src="{{ $item.RelPermalink }}" alt="{{ $item.Title }}"></div>
-          <div class="viewer-metadata">{{ partial "metadata-list.html" (dict "image" $item) }}</div>
+          <img src="{{ $item.RelPermalink }}" alt="{{ $item.Title }}">
         {{ end }}
       </div>
-    </div>
-  </section>
+    </a>
+    {{ if not $isVideo }}<div class="viewer-metadata">{{ partial "metadata-list.html" (dict "image" $item) }}</div>{{ end }}
+    <section class="photo-viewer" id="piece-detail" role="dialog" aria-modal="true" aria-label="{{ .Title }} detail">
+      <div class="view-chrome"><a class="close-detail" href="#piece-main" aria-label="Close detail">X</a></div>
+      <div class="viewer-scroll">
+        <div class="viewer-unit" style="--image-ratio: {{ $ratio }};">
+          {{ partial "media-detail.html" (dict "item" $item "poster" $poster) }}
+        </div>
+      </div>
+    </section>
+  {{ else }}
+    <p class="empty-state">This piece has no media yet.</p>
+  {{ end }}
 </main>
 {{ end }}

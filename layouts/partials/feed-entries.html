@@ -1,0 +1,7 @@
+{{/* Returns all pieces and collections sorted newest first. Shared by the
+     home page and the RSS/Atom feeds so the three never drift apart. */}}
+{{- $entries := where site.RegularPages "Section" "pieces" -}}
+{{- with site.GetPage "/collections" -}}
+  {{- range .Sections -}}{{- $entries = $entries | append . -}}{{- end -}}
+{{- end -}}
+{{- return sort $entries "Date" "desc" -}}

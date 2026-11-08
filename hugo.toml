@@ -4,7 +4,9 @@ defaultContentLanguage = "en"
 
 locale = "en"
 disableKinds = ["taxonomy", "term"]
+enableRobotsTXT = true
 
+# Keep the default RSS media type but pin baseName so the feed stays at /rss.xml.
 [outputFormats.RSS]
   mediaType = "application/rss+xml"
   baseName = "rss"
@@ -22,6 +24,8 @@ disableKinds = ["taxonomy", "term"]
 
 [outputs]
   home = ["HTML", "RSS", "Atom"]
+  section = ["HTML"]
+  page = ["HTML"]
 
 [params]
   description = "A collection of photographs and visual work."

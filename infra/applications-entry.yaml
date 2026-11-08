@@ -19,3 +19,12 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+  # Keel rolls the exhib Deployment's processor image digest (containers[2],
+  # ghcr.io/bfeitknecht/exhib:latest); tell Flux not to revert that drift.
+  # Drop this block if the cluster does not run Keel.
+  ignore:
+    - paths:
+        - /spec/template/spec/containers/2/image
+      target:
+        kind: Deployment
+        name: exhib

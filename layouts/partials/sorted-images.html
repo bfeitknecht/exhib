@@ -1,16 +1,21 @@
+{{/* Gallery images for a bundle, excluding generated video posters.
+     Images with an EXIF capture date come first, oldest first; the rest follow
+     in front-matter `weight` order. Returns a slice of image resources. */}}
 {{- $images := .Resources.ByType "image" -}}
 {{- $dated := slice -}}
 {{- $undated := slice -}}
 {{- range $images -}}
-  {{- $hasCaptureDate := false -}}
-  {{- if reflect.IsImageResourceWithMeta . -}}
-    {{- $captureDate := .Meta.Date -}}
-    {{- if gt $captureDate.Year 1 -}}
-      {{- $dated = append (dict "date" $captureDate "image" .) $dated -}}
-      {{- $hasCaptureDate = true -}}
+  {{- if ne .Params.role "poster" -}}
+    {{- $hasCaptureDate := false -}}
+    {{- if reflect.IsImageResourceWithMeta . -}}
+      {{- $captureDate := .Meta.Date -}}
+      {{- if gt $captureDate.Year 1 -}}
+        {{- $dated = append (dict "date" $captureDate "image" .) $dated -}}
+        {{- $hasCaptureDate = true -}}
+      {{- end -}}
     {{- end -}}
+    {{- if not $hasCaptureDate -}}{{- $undated = append . $undated -}}{{- end -}}
   {{- end -}}
-  {{- if not $hasCaptureDate -}}{{- $undated = append . $undated -}}{{- end -}}
 {{- end -}}
 {{- $sorted := slice -}}
 {{- if gt (len $dated) 0 -}}

@@ -2,6 +2,8 @@
 
 A chronological Hugo gallery for standalone pieces and collections. It is a static site with custom templates and CSS-only viewers: no JavaScript, no theme dependency, no gallery admin, and no remote image service. Hugo configuration is `hugo.toml`; content front matter is TOML (`+++`) throughout.
 
+The design language matches [blog.0xbf.ch](https://blog.0xbf.ch): STIX Two Text for prose and headings, Commit Mono for navigation, dates and metadata, warm paper background (`#f4f3ef`) with a near-black ink foreground, switching to a dark scheme via `prefers-color-scheme`.
+
 ## Quick orientation
 
 | View | Route / action | Main template | What it controls |
@@ -11,16 +13,16 @@ A chronological Hugo gallery for standalone pieces and collections. It is a stat
 | Collection | `/collections/<slug>/` | `layouts/collections/section.html` | Title/date/description, square image/video grid, CSS `:target` details with close and `<< n/m >>` navigation |
 | Standalone piece | `/pieces/<slug>/` | `layouts/pieces/single.html` | Title/date/description and first media item; clicking it opens a fullscreen detail with no prev/next |
 
-The shared document shell and feed discovery links are in `layouts/_default/baseof.html`. The home-page card markup is `layouts/partials/item-card.html`; collection image ordering is in `layouts/partials/sorted-images.html`; automatic image metadata is formatted in `layouts/partials/metadata-list.html`. `static/css/site.css` controls fonts, colors, spacing, responsive layout, preview sizes, and viewer sizing.
+The shared document shell and feed discovery links are in `layouts/_default/baseof.html`. The home-page card markup is `layouts/partials/item-card.html`; collection image ordering is in `layouts/partials/sorted-images.html` (date-stamped images first, then `weight` order; generated video posters are excluded); combined image/video ordering is in `layouts/partials/sorted-media.html`; the fullscreen detail body is `layouts/partials/media-detail.html`; the home/feed entry list is `layouts/partials/feed-entries.html`; automatic image metadata is formatted in `layouts/partials/metadata-list.html`. `assets/css/site.css` controls fonts, colors, spacing, responsive layout, preview sizes, and viewer sizing; it is minified and content-hashed by Hugo (with an SRI `integrity` attribute), so it can be cached immutably — there is no manual `?v=` to bump.
 
 ### Styling knobs
 
-- **System light/dark colors:** CSS variables `--bg`, `--fg`, and `--muted` near the top of `static/css/site.css`, with `prefers-color-scheme` handling.
+- **System light/dark colors:** CSS variables `--bg`, `--fg`, and `--muted` near the top of `assets/css/site.css`, with `prefers-color-scheme` handling.
+- **Typography:** CSS variables `--serif` (STIX Two Text, Georgia fallback) for prose/headings and `--mono` (Commit Mono) for navigation, dates and metadata. Both are self-hosted from `static/fonts/`; licenses and checksums live beside them (`OFL-STIXTwo.txt`, `OFL-CommitMono.txt`, `SHA256SUMS`).
 - **Top-level card density:** `.timeline`, `.item-card`, and `.item-preview`. The responsive timeline columns and maximum card width affect how many collections/pieces fit per screen.
 - **Preview artwork:** `.item-preview`, `.preview-grid`, and `.preview-grid span`. A selected collection thumbnail uses the single-image route; otherwise the template lays up to nine actual resource images into a landscape mosaic. Empty areas use the site background, with no placeholder cells.
 - **Collection page grid:** `.collection-grid` and `.collection-photo`.
 - **Fullscreen details:** `.photo-viewer`, `.viewer-unit`, `.viewer-image`, `.viewer-nav`, `.close-detail`, and `.metadata-list`. Image dimensions are derived from the resource itself (bitmap dimensions or an SVG `viewBox`) so the whole image can scale to the available viewport without manually duplicating dimensions in TOML.
-- **Fonts:** Helvetica with system fallbacks for sans; Commit Mono for navigation and metadata. The Commit Mono license is in `static/fonts/LICENSE.txt`.
 
 ## Content model and TOML examples
 
@@ -28,7 +30,7 @@ Use Hugo page bundles so each page and its local artwork stay together. New coll
 
 ### Standalone piece
 
-Create `content/pieces/<slug>/index.md` plus the image file beside it. The current template uses the first image resource as the artwork.
+Create `content/pieces/<slug>/index.md` plus the media file beside it. The template uses the first ordered media item (image or video) as the artwork; video pieces show their poster.
 
 ```toml
 +++
@@ -69,7 +71,7 @@ weight = 2
 +++
 ```
 
-`thumbnail` is only a presentation choice. The selected image remains in the collection grid. When embedded capture dates exist, image order is taken from the image metadata; images with no capture date follow in `weight` order. `title` is the human caption/alt text; it is not a substitute for EXIF.
+`thumbnail` is only a presentation choice. The selected image remains in the collection grid. When embedded capture dates exist, image order is taken from the image metadata; images with no capture date follow in `weight` order; videos follow in `weight` order after the images. Videos use their generated poster as the grid tile and detail poster; the poster itself is not listed as a gallery item. `title` is the human caption/alt text; it is not a substitute for EXIF.
 
 ### Resource metadata is automatic
 
@@ -113,19 +115,36 @@ hugo --minify
 hugo server --bind 0.0.0.0 --port 4173
 ```
 
-Hugo writes static output to `public/`. The home page links to Apex (`https://0xbf.ch/`), `/sitemap.xml`, `/rss.xml`, and `/atom.xml`; the two feeds are generated by `layouts/index.rss.xml` and `layouts/index.atom.xml`.
+Hugo writes static output to `public/`. The home page links to Apex (`https://0xbf.ch/`), `/sitemap.xml`, `/rss.xml`, and `/atom.xml`; the two feeds are generated by `layouts/index.rss.xml` and `layouts/index.atom.xml` from the shared `layouts/partials/feed-entries.html` list. Section/page RSS output is disabled; only the home page publishes feeds. `hugo.toml` also enables `/robots.txt` (`User-agent: *`).
 
 ## Self-hosting: SWS + media processor on Talos
 
 The public site is served by **Static Web Server (SWS)**, not Caddy. The exhib pod now has three containers sharing one PVC:
 
-- **SWS** serves `/data/public` and mounts the PVC read-only.
+- **SWS** serves `/data/public` and mounts the PVC read-only. Cache headers come from `infra/exhib/sws.toml`: `no-cache` everywhere (revalidation via Last-Modified → 304), `public, max-age=31536000, immutable` for the content-hashed `css/**` and the self-hosted `fonts/**`.
 - **Uploader** is a quiet BusyBox container with no listener and no SSH. Uploads are sent through the Kubernetes API (`kubectl exec`), not through a public admin endpoint.
 - **Processor** watches `/data/incoming`, converts media, writes Hugo page bundles into `/data/content`, preserves uploaded originals privately in `/data/originals`, and rebuilds the public output. It contains Hugo, FFmpeg and metadata tools. Its image is built when the site/processor code changes; new gallery items do not require an image rebuild or push.
 
 The PVC request is 50 GiB to allow room for both retained originals and generated output. It omits `storageClassName` and therefore uses the cluster default; set it explicitly in `infra/exhib/pvc.yaml` if required. Adjust capacity for your library and Talos storage setup.
 
-`infra/exhib/` contains the app manifests and SWS TOML config, following the `glob/infra` layout. Copy that directory to `kubernetes/applications/exhib/` in `bfeitknecht/infra`, then append `infra/applications-entry.yaml` to `kubernetes/cluster/applications.yaml`. The route is `gallery.0xbf.ch`, matching `baseURL` in `hugo.toml`. The reusable GitHub workflow builds the root `Dockerfile` to `ghcr.io/bfeitknecht/exhib`; make the GHCR package public or configure an image pull secret before deploying.
+`infra/exhib/` contains the app manifests and SWS TOML config, following the `glob/infra` layout. Copy that directory to `kubernetes/applications/exhib/` in `bfeitknecht/infra`, then append `infra/applications-entry.yaml` to `kubernetes/cluster/applications.yaml`. The route is `gallery.0xbf.ch`, matching `baseURL` in `hugo.toml`. The reusable GitHub workflow (`.github/workflows/publish-image.yaml`, calling `bfeitknecht/infra/.github/workflows/publish-image.yaml@master`) builds the root `Dockerfile` to `ghcr.io/bfeitknecht/exhib` on `v*` tags; make the GHCR package public or configure an image pull secret before deploying.
+
+### Shortlist: going live on `bfeitknecht/infra`
+
+One-time steps to gallery.0xbf.ch, mirroring the glob/blog rollout:
+
+1. **Tag and publish the image** — `git tag -a v0.1.0 -m "exhib v0.1.0" && git push origin v0.1.0`. The reusable workflow builds `ghcr.io/bfeitknecht/exhib` (multi-arch). Watch it with `gh run watch` or on the Actions tab.
+2. **Registry visibility** — either make the `exhib` GHCR package public (org/user → Packages → exhib → Package settings → Change visibility), **or** mirror the blog's private pull: create `kubernetes/applications/exhib/ghcr.sops.yaml` from apex's (`sops -d kubernetes/applications/apex/ghcr.sops.yaml | sed 's/namespace: apex/namespace: exhib/' | sops -e > kubernetes/applications/exhib/ghcr.sops.yaml`), add it to `infra/exhib/kustomization.yaml`, and add a `serviceaccount.yaml` (default SA with `imagePullSecrets: [{name: dockerconfigjson}]`, like `infra/glob/serviceaccount.yaml`). As shipped, the deployment pulls `:latest` anonymously and expects a public package.
+3. **Copy the manifests** — `cp -r infra/exhib <infra-clone>/kubernetes/applications/exhib`.
+4. **Append the Flux entry** — append `infra/applications-entry.yaml` to `kubernetes/cluster/applications.yaml` (declares the `exhib` Kustomization: dependsOn `traefik`, sops decryption, and the Keel `ignore:` on the processor image path `/spec/template/spec/containers/2/image`).
+5. **Storage class** — confirm the Talos cluster's default StorageClass suits the 50 GiB PVC in `infra/exhib/pvc.yaml`; set `storageClassName` explicitly if not. Wildcard DNS/TLS for `*.0xbf.ch` already covers `gallery.0xbf.ch` (same as glob/blog).
+6. **Push and watch Flux** — in `bfeitknecht/infra`: commit, push; then `flux reconcile kustomization exhib` (optional) and `flux get kustomizations -n flux-system exhib`; `kubectl -n exhib get pods,pvc`.
+7. **Check the first boot** — `kubectl -n exhib logs -f deploy/exhib -c processor`. On an empty PVC it seeds the repo's demo gallery into `/data/content` and builds `/data/public`; then it idles, polling `/data/incoming` every 3 s (`EXHIB_POLL_SECONDS` overrides).
+8. **Verify the site** — `curl -I https://gallery.0xbf.ch/` (200), probes on `/health`, `/rss.xml` + `/atom.xml` + `/sitemap.xml`, dark/light rendering, and one fullscreen detail overlay.
+9. **Upload something real** — `./scripts/upload-item.sh /path/to/package`; watch the processor log; confirm the bundle in `/data/content/`, originals in `/data/originals/`, and new card on the home page.
+10. **Privacy pass first** — for camera files with GPS, strip before upload (`exiftool -GPS:all= ...`). The lossless-WebP derivative carries source metadata by design; there is no publish-time scrubbing step.
+11. **Housekeeping** — replace or remove the demo collections (`content/collections/2026-10`, `content/collections/placeholders`) and the placeholder piece once real content exists. Note the seed only applies to an empty `/data/content`; deleting bundles later means removing them on the PVC (or `kubectl -n exhib exec deploy/exhib -c processor -- rm -rf /data/content/pieces/placeholder-study` followed by a processor restart).
+12. **Keel caveat** — the `keel.sh/*` annotations on the Deployment and the `ignore:` block in the applications entry only matter if the cluster runs Keel; delete both otherwise. Either way, `kubectl -n exhib rollout restart deploy/exhib` re-pulls `:latest`.
 
 ### Upload a piece or collection
 
