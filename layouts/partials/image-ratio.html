@@ -1,0 +1,8 @@
+{{- $dimensions := partial "image-dimensions.html" . -}}
+{{- $width := index $dimensions "width" -}}
+{{- $height := index $dimensions "height" -}}
+{{- $ratio := 1.0 -}}
+{{- if and (gt $width 0) (gt $height 0) -}}
+  {{- $ratio = div (float $width) (float $height) -}}
+{{- end -}}
+{{- return $ratio -}}

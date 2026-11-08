@@ -1,0 +1,34 @@
+{
+  "htmlElements": {
+    "tags": [
+      "a",
+      "article",
+      "body",
+      "div",
+      "h1",
+      "h2",
+      "head",
+      "header",
+      "html",
+      "img",
+      "link",
+      "main",
+      "meta",
+      "p",
+      "span",
+      "time",
+      "title"
+    ],
+    "classes": [
+      "archive",
+      "back-home",
+      "item-card",
+      "item-copy",
+      "item-preview",
+      "preview-grid",
+      "site-header",
+      "timeline"
+    ],
+    "ids": null
+  }
+}

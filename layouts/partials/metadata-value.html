@@ -1,0 +1,14 @@
+{{- $key := .key -}}
+{{- $value := .value -}}
+{{- if and (reflect.IsSlice $value) (eq (len $value) 2) -}}
+  {{- $numerator := float (index $value 0) -}}
+  {{- $denominator := float (index $value 1) -}}
+  {{- if gt $denominator 0 -}}
+    {{- $number := div $numerator $denominator -}}
+    {{- if eq $key "FNumber" -}}f/{{ printf "%g" $number }}
+    {{- else if eq $key "ExposureTime" -}}
+      {{- if ge $number 1 -}}{{ printf "%g s" $number }}{{- else -}}{{ printf "%g/%g s" $numerator $denominator }}{{- end -}}
+    {{- else if eq $key "FocalLength" -}}{{ printf "%g mm" $number }}
+    {{- else -}}{{ $value }}{{- end -}}
+  {{- else -}}{{ $value }}{{- end -}}
+{{- else -}}{{ $value }}{{- end -}}

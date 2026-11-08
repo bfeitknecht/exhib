@@ -1,0 +1,8 @@
+{{- $images := partial "sorted-images.html" . -}}
+{{- $videos := sort (.Resources.ByType "video") "Params.weight" "asc" -}}
+{{- $media := slice -}}
+{{- range $images -}}
+  {{- if ne .Params.role "poster" -}}{{- $media = append . $media -}}{{- end -}}
+{{- end -}}
+{{- range $videos -}}{{- $media = append . $media -}}{{- end -}}
+{{- return $media -}}

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: exhib
+  labels:
+    app.kubernetes.io/name: exhib
+spec:
+  selector:
+    app.kubernetes.io/name: exhib
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

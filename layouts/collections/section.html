@@ -1,0 +1,70 @@
+{{ define "main" }}
+{{ if .Parent.IsHome }}
+  <main class="archive">
+    <a class="back-home" href="{{ "/" | relURL }}">/..</a>
+    <h1>{{ .Title }}</h1>
+    <div class="timeline">
+      {{ range sort .Sections "Date" "desc" }}{{ partial "item-card.html" . }}{{ end }}
+    </div>
+  </main>
+{{ else }}
+  {{ $media := partial "sorted-media.html" . }}
+  <main class="collection-page" id="collection">
+    <a class="view-home" href="{{ "/" | relURL }}" aria-label="Back to top-level view">/..</a>
+    <header class="page-intro">
+      <h1>{{ .Title }}</h1>
+      <time datetime="{{ .Date.Format "2006-01-02T15:04:05Z07:00" }}">{{ .Date.Format "2006-01-02" }}</time>
+      {{ with .Description }}<p>{{ . }}</p>{{ end }}
+    </header>
+    <section class="collection-grid" id="gallery" aria-label="Collection media">
+      {{ range $index, $item := $media }}
+        {{ $id := printf "photo-%02d" (add $index 1) }}
+        {{ if eq $item.Params.kind "video" }}
+          {{ $poster := $.Resources.GetMatch $item.Params.poster }}
+          <a class="collection-photo" href="#{{ $id }}" aria-label="Play {{ $item.Title }}">
+            {{ with $poster }}<img src="{{ .RelPermalink }}" alt="" loading="lazy">{{ else }}<span class="video-placeholder">VIDEO</span>{{ end }}
+            <span class="video-badge" aria-hidden="true">▶</span>
+          </a>
+        {{ else }}
+          <a class="collection-photo" href="#{{ $id }}" aria-label="View {{ $item.Title }}">
+            <img src="{{ $item.RelPermalink }}" alt="{{ $item.Title }}" loading="lazy">
+          </a>
+        {{ end }}
+      {{ end }}
+    </section>
+    {{ range $index, $item := $media }}
+      {{ $id := printf "photo-%02d" (add $index 1) }}
+      {{ $count := len $media }}
+      {{ $ratio := "1.7777778" }}
+      {{ if ne $item.Params.kind "video" }}{{ $ratio = partial "image-ratio.html" $item }}{{ end }}
+      <section class="photo-viewer" id="{{ $id }}" role="dialog" aria-modal="true" aria-label="Media {{ add $index 1 }} of {{ $count }}">
+        <div class="view-chrome">
+          <a class="close-detail" href="#gallery" aria-label="Close media detail">X</a>
+        </div>
+        <nav class="viewer-nav" aria-label="Media navigation">
+          {{ if gt $index 0 }}{{ $previous := printf "photo-%02d" $index }}<a href="#{{ $previous }}" aria-label="Previous item">&lt;&lt;</a>{{ else }}<span class="disabled">&lt;&lt;</span>{{ end }}
+          <span>{{ printf "%02d/%02d" (add $index 1) $count }}</span>
+          {{ if lt (add $index 1) $count }}{{ $next := printf "photo-%02d" (add $index 2) }}<a href="#{{ $next }}" aria-label="Next item">&gt;&gt;</a>{{ else }}<span class="disabled">&gt;&gt;</span>{{ end }}
+        </nav>
+        <div class="viewer-scroll">
+          <div class="viewer-unit" style="--image-ratio: {{ $ratio }};">
+            {{ if eq $item.Params.kind "video" }}
+              {{ $poster := $.Resources.GetMatch $item.Params.poster }}
+              <div class="viewer-image">
+                <video controls preload="metadata" playsinline {{ with $poster }}poster="{{ .RelPermalink }}"{{ end }}>
+                  <source src="{{ $item.RelPermalink }}" type="video/webm">
+                  Your browser does not support HTML video.
+                </video>
+              </div>
+              <div class="viewer-metadata"><dl class="metadata-list"><div class="metadata-row"><dt>Video</dt><dd>{{ $item.Title }}</dd></div><div class="metadata-row"><dt>Format</dt><dd>WebM · lossless VP9 / lossy Opus</dd></div></dl></div>
+            {{ else }}
+              <div class="viewer-image"><img src="{{ $item.RelPermalink }}" alt="{{ $item.Title }}"></div>
+              <div class="viewer-metadata">{{ partial "metadata-list.html" (dict "image" $item) }}</div>
+            {{ end }}
+          </div>
+        </div>
+      </section>
+    {{ end }}
+  </main>
+{{ end }}
+{{ end }}

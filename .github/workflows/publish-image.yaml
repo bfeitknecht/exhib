@@ -1,0 +1,14 @@
+name: Publish processor image
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    permissions:
+      contents: read
+      packages: write
+    uses: bfeitknecht/infra/.github/workflows/publish-image.yaml@master

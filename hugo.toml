@@ -1,0 +1,42 @@
+baseURL = "https://gallery.0xbf.ch/"
+title = "exhib"
+defaultContentLanguage = "en"
+
+locale = "en"
+disableKinds = ["taxonomy", "term"]
+
+[outputFormats.RSS]
+  mediaType = "application/rss+xml"
+  baseName = "rss"
+  isPlainText = true
+  rel = "alternate"
+
+[mediaTypes."application/atom+xml"]
+  suffixes = ["xml"]
+
+[outputFormats.Atom]
+  mediaType = "application/atom+xml"
+  baseName = "atom"
+  isPlainText = true
+  rel = "alternate"
+
+[outputs]
+  home = ["HTML", "RSS", "Atom"]
+
+[params]
+  description = "A collection of photographs and visual work."
+
+[markup.goldmark.renderer]
+  unsafe = false
+
+[imaging]
+  resampleFilter = "Lanczos"
+
+[imaging.jpeg]
+  quality = 88
+[imaging.webp]
+  quality = 88
+
+[imaging.meta]
+  fields = ["**"]
+  sources = ["exif", "iptc", "xmp"]

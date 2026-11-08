@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: exhib-site
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  # Uses the cluster's default StorageClass. Set storageClassName explicitly
+  # here if bfeitknecht/infra uses a non-default Talos storage class.

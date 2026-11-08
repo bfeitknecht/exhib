@@ -1,0 +1,20 @@
+{{- $images := .Resources.ByType "image" -}}
+{{- $dated := slice -}}
+{{- $undated := slice -}}
+{{- range $images -}}
+  {{- $hasCaptureDate := false -}}
+  {{- if reflect.IsImageResourceWithMeta . -}}
+    {{- $captureDate := .Meta.Date -}}
+    {{- if gt $captureDate.Year 1 -}}
+      {{- $dated = append (dict "date" $captureDate "image" .) $dated -}}
+      {{- $hasCaptureDate = true -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if not $hasCaptureDate -}}{{- $undated = append . $undated -}}{{- end -}}
+{{- end -}}
+{{- $sorted := slice -}}
+{{- if gt (len $dated) 0 -}}
+  {{- range sort $dated "date" "asc" -}}{{- $sorted = append .image $sorted -}}{{- end -}}
+{{- end -}}
+{{- range sort $undated "Params.weight" "asc" -}}{{- $sorted = append . $sorted -}}{{- end -}}
+{{- return $sorted -}}

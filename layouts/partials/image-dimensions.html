@@ -1,0 +1,18 @@
+{{- $image := . -}}
+{{- $width := 0 -}}
+{{- $height := 0 -}}
+{{- if reflect.IsImageResourceProcessable $image -}}
+  {{- $width = $image.Width -}}
+  {{- $height = $image.Height -}}
+{{- else -}}
+  {{- $matches := findRE `viewBox\s*=\s*["'][^"']+["']` $image.Content 1 -}}
+  {{- with index $matches 0 -}}
+    {{- $box := replaceRE `^viewBox\s*=\s*["']([^"']+)["']$` "$1" . -}}
+    {{- $parts := split (replaceRE `,` " " $box) " " -}}
+    {{- if ge (len $parts) 4 -}}
+      {{- $width = float (index $parts 2) -}}
+      {{- $height = float (index $parts 3) -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- return (dict "width" $width "height" $height) -}}
