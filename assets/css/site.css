@@ -32,6 +32,9 @@
 html { background: var(--bg); scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .item-preview img, .preview-grid img, .collection-photo img,
+  .global-header a, .view-home, .back-home, .close-detail, .viewer-nav a, .item-copy h2 a { transition: none; }
+  .photo-viewer:target, .photo-viewer:target .viewer-unit { animation: none; }
 }
 body { min-height: 100vh; margin: 0; padding: var(--gutter); background: var(--bg); color: var(--fg); font: 400 1rem/1.5 var(--sans); }
 a { color: inherit; }
@@ -107,3 +110,16 @@ img { display: block; max-width: 100%; }
   .piece-flow img { max-height: 72svh; }
 }
 a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+/* Subtle motion: gentle zoom on cropped grid tiles, quick colour fades on the
+   chrome, and a short fade/rise when the fullscreen :target viewer opens.
+   No loops, no scroll effects; disabled via prefers-reduced-motion above. */
+.item-preview img, .preview-grid img, .collection-photo img { transition: transform .7s cubic-bezier(.2, .6, .2, 1); }
+.item-preview:hover img, .item-preview:focus-visible img,
+.item-preview:hover .preview-grid img, .item-preview:focus-visible .preview-grid img,
+.collection-photo:hover img, .collection-photo:focus-visible img { transform: scale(1.03); }
+.global-header a, .view-home, .back-home, .close-detail, .viewer-nav a, .item-copy h2 a { transition: color .25s ease; }
+.piece-open, .collection-photo { cursor: zoom-in; }
+@keyframes viewer-fade { from { opacity: 0; } }
+@keyframes unit-rise { from { opacity: 0; transform: translateY(10px) scale(.985); } }
+.photo-viewer:target { animation: viewer-fade .3s ease both; }
+.photo-viewer:target .viewer-unit { animation: unit-rise .45s cubic-bezier(.2, .7, .2, 1) .05s both; }
