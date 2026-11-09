@@ -2,7 +2,7 @@
 
 A chronological Hugo gallery for standalone pieces and collections. It is a static site with custom templates and CSS-only viewers (`:target` overlays); the only JavaScript is a ~20-line keyboard-navigation script on collection pages (←/→ to move between items, Esc to close). No theme dependency, no gallery admin, and no remote image service. Hugo configuration is `hugo.toml`; content front matter is TOML (`+++`) throughout.
 
-The design language is the site's original one, kept intact: Helvetica Neue (system stack) for prose and UI, Commit Mono (self-hosted) for navigation, dates and metadata, system light/dark scheme. Colors are strictly monochrome — no hues; light and dark schemes switched via `prefers-color-scheme`.
+The design language is the site's original one, kept intact: Helvetica Neue (system stack) for prose and UI, Commit Mono (self-hosted) for navigation, dates and metadata, system light/dark scheme. Colors are authored in OKLCH with zero chroma (strictly neutral, no hues); light and dark schemes switched via `prefers-color-scheme`.
 
 ## Quick orientation
 
@@ -19,7 +19,7 @@ The shared document shell and feed discovery links are in `layouts/_default/base
 
 - **System light/dark colors:** CSS variables `--bg`, `--fg`, and `--muted` near the top of `assets/css/site.css`, with `prefers-color-scheme` handling.
 - **Typography:** `--sans` is "Helvetica Neue", Helvetica, Arial, system-ui for prose and UI; `--mono` is Commit Mono (self-hosted from `static/fonts/`, license in `OFL-CommitMono.txt`, checksums in `SHA256SUMS`) for navigation, dates and metadata — mirroring the original design.
-- **Monochrome:** `--bg`/`--fg`/`--muted` are strict neutrals (R=G=B) in both schemes. Keep hues out; emphasis comes from weight, size and letter-spacing, not color.
+- **OKLCH neutrals:** `--bg`/`--fg`/`--muted` are authored in `oklch()` with chroma 0 — light: `oklch(96% 0 0)` paper (≈`#f2f2f2`), `oklch(21% 0 0)` ink (≈`#181818`), `oklch(47% 0 0)` muted (≈`#5b5b5b`); dark: `oklch(17% 0 0)` (≈`#0f0f0f`), `oklch(95% 0 0)` (≈`#eeeeee`), `oklch(70% 0 0)` (≈`#9e9e9e`) — the palette converged on in the thyme session. Keep chroma at 0; emphasis comes from weight, size and letter-spacing, not color. `theme-color` metas and the favicon use the hex approximations.
 - **Top-level card density:** `.timeline`, `.item-card`, and `.item-preview`. The responsive timeline columns and maximum card width affect how many collections/pieces fit per screen.
 - **Preview artwork:** `.item-preview`, `.preview-grid`, and `.preview-grid a`. A selected collection thumbnail uses the single-image route; otherwise the template lays up to nine actual resource images into a landscape mosaic. Each mosaic cell is its own link straight into the collection's fullscreen overlay for that exact image (`#photo-NN` — images occupy photo-01..photo-N since videos follow them), so clicking a tile deep-links into the viewer. Empty areas use the site background, with no placeholder cells.
 - **Collection page grid:** `.collection-grid` and `.collection-photo`. Tiles use the site-wide 1:√2 (`1.41421356 / 1`) aspect ratio — no 1:1 squares anywhere.
