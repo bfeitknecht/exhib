@@ -14,9 +14,9 @@
 }
 :root {
   color-scheme: light dark;
-  --bg: #f4f3ef;
-  --fg: #1d1d1b;
-  --muted: #6d6b66;
+  --bg: #f3f3f3;
+  --fg: #1d1d1d;
+  --muted: #6b6b6b;
   --sans: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
   --mono: "Commit Mono", monospace;
   --gutter: clamp(1rem, 3vw, 2.75rem);
@@ -24,8 +24,8 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #111;
-    --fg: #f0efeb;
-    --muted: #96948f;
+    --fg: #f0f0f0;
+    --muted: #959595;
   }
 }
 * { box-sizing: border-box; }

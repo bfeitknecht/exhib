@@ -2,7 +2,7 @@
 
 A chronological Hugo gallery for standalone pieces and collections. It is a static site with custom templates and CSS-only viewers (`:target` overlays); the only JavaScript is a ~20-line keyboard-navigation script on collection pages (←/→ to move between items, Esc to close). No theme dependency, no gallery admin, and no remote image service. Hugo configuration is `hugo.toml`; content front matter is TOML (`+++`) throughout.
 
-The design language is the site's original one, kept intact: Helvetica Neue (system stack) for prose and UI, Commit Mono (self-hosted) for navigation, dates and metadata, system light/dark scheme. Colors are the blog's warm, low-chroma off-monochrome (paper `#f4f3ef` / ink `#1d1d1b` / muted `#6d6b66`, dark scheme `#111` / `#f0efeb` / `#96948f`), matching the glob/blog look.
+The design language is the site's original one, kept intact: Helvetica Neue (system stack) for prose and UI, Commit Mono (self-hosted) for navigation, dates and metadata, system light/dark scheme. Colors are strictly monochrome — no hues; light and dark schemes switched via `prefers-color-scheme`.
 
 ## Quick orientation
 
@@ -19,7 +19,7 @@ The shared document shell and feed discovery links are in `layouts/_default/base
 
 - **System light/dark colors:** CSS variables `--bg`, `--fg`, and `--muted` near the top of `assets/css/site.css`, with `prefers-color-scheme` handling.
 - **Typography:** `--sans` is "Helvetica Neue", Helvetica, Arial, system-ui for prose and UI; `--mono` is Commit Mono (self-hosted from `static/fonts/`, license in `OFL-CommitMono.txt`, checksums in `SHA256SUMS`) for navigation, dates and metadata — mirroring the original design.
-- **Warm off-monochrome:** `--bg`/`--fg`/`--muted` follow the blog's paper theme (light `#f4f3ef`/`#1d1d1b`/`#6d6b66`; dark `#111`/`#f0efeb`/`#96948f`, hue ~40°). Emphasis comes from weight, size and letter-spacing, not color.
+- **Monochrome:** `--bg`/`--fg`/`--muted` are strict neutrals (R=G=B) in both schemes. Keep hues out; emphasis comes from weight, size and letter-spacing, not color.
 - **Top-level card density:** `.timeline`, `.item-card`, and `.item-preview`. The responsive timeline columns and maximum card width affect how many collections/pieces fit per screen.
 - **Preview artwork:** `.item-preview`, `.preview-grid`, and `.preview-grid span`. A selected collection thumbnail uses the single-image route; otherwise the template lays up to nine actual resource images into a landscape mosaic. Empty areas use the site background, with no placeholder cells.
 - **Collection page grid:** `.collection-grid` and `.collection-photo`. Tiles use the site-wide 1:√2 (`1.41421356 / 1`) aspect ratio — no 1:1 squares anywhere.
