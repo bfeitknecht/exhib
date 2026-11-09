@@ -2,7 +2,7 @@
 
 A chronological Hugo gallery for standalone pieces and collections. It is a static site with custom templates and CSS-only viewers: no JavaScript, no theme dependency, no gallery admin, and no remote image service. Hugo configuration is `hugo.toml`; content front matter is TOML (`+++`) throughout.
 
-The design language matches [blog.0xbf.ch](https://blog.0xbf.ch): STIX Two Text for prose and headings, Commit Mono for navigation, dates and metadata, warm paper background (`#f4f3ef`) with a near-black ink foreground, switching to a dark scheme via `prefers-color-scheme`.
+The design language is monochrome — no hues: Helvetica Neue (system font stack) for everything, neutral grays in light and dark schemes via `prefers-color-scheme`. (The blog's theme is a warm, off-monochrome; exhib deliberately goes fully neutral. No web fonts are bundled.)
 
 ## Quick orientation
 
@@ -18,7 +18,8 @@ The shared document shell and feed discovery links are in `layouts/_default/base
 ### Styling knobs
 
 - **System light/dark colors:** CSS variables `--bg`, `--fg`, and `--muted` near the top of `assets/css/site.css`, with `prefers-color-scheme` handling.
-- **Typography:** CSS variables `--serif` (STIX Two Text, Georgia fallback) for prose/headings and `--mono` (Commit Mono) for navigation, dates and metadata. Both are self-hosted from `static/fonts/`; licenses and checksums live beside them (`OFL-STIXTwo.txt`, `OFL-CommitMono.txt`, `SHA256SUMS`).
+- **Typography:** one system stack everywhere — Helvetica Neue, Helvetica, Arial, system-ui (`--sans`). No web fonts are bundled; nothing to license or preload.
+- **Monochrome:** `--bg`/`--fg`/`--muted` are strict neutrals (R=G=B) in both schemes. Keep hues out; accent emphasis comes from weight, size and letter-spacing, not color.
 - **Top-level card density:** `.timeline`, `.item-card`, and `.item-preview`. The responsive timeline columns and maximum card width affect how many collections/pieces fit per screen.
 - **Preview artwork:** `.item-preview`, `.preview-grid`, and `.preview-grid span`. A selected collection thumbnail uses the single-image route; otherwise the template lays up to nine actual resource images into a landscape mosaic. Empty areas use the site background, with no placeholder cells.
 - **Collection page grid:** `.collection-grid` and `.collection-photo`.
@@ -121,30 +122,23 @@ Hugo writes static output to `public/`. The home page links to Apex (`https://0x
 
 The public site is served by **Static Web Server (SWS)**, not Caddy. The exhib pod now has three containers sharing one PVC:
 
-- **SWS** serves `/data/public` and mounts the PVC read-only. Cache headers come from `infra/exhib/sws.toml`: `no-cache` everywhere (revalidation via Last-Modified → 304), `public, max-age=31536000, immutable` for the content-hashed `css/**` and the self-hosted `fonts/**`.
+- **SWS** serves `/data/public` and mounts the PVC read-only. Cache headers come from `infra/kubernetes/applications/exhib/sws.toml`: `no-cache` everywhere (revalidation via Last-Modified → 304), `public, max-age=31536000, immutable` for the content-hashed `css/**`.
 - **Uploader** is a quiet BusyBox container with no listener and no SSH. Uploads are sent through the Kubernetes API (`kubectl exec`), not through a public admin endpoint.
 - **Processor** watches `/data/incoming`, converts media, writes Hugo page bundles into `/data/content`, preserves uploaded originals privately in `/data/originals`, and rebuilds the public output. It contains Hugo, FFmpeg and metadata tools. Its image is built when the site/processor code changes; new gallery items do not require an image rebuild or push.
 
-The PVC request is 50 GiB to allow room for both retained originals and generated output. It omits `storageClassName` and therefore uses the cluster default; set it explicitly in `infra/exhib/pvc.yaml` if required. Adjust capacity for your library and Talos storage setup.
+The PVC request is 50 GiB to allow room for both retained originals and generated output, pinned to the cluster's `local-path` StorageClass (like the other app PVCs). Adjust capacity for your library. `/data/originals` holds the only copies of uploaded originals — tier-2 apps carry no k8up schedule; whether to add one for exhib is an open decision flagged in `infra/README.md`.
 
-`infra/exhib/` contains the app manifests and SWS TOML config, following the `glob/infra` layout. Copy that directory to `kubernetes/applications/exhib/` in `bfeitknecht/infra`, then append `infra/applications-entry.yaml` to `kubernetes/cluster/applications.yaml`. The route is `gallery.0xbf.ch`, matching `baseURL` in `hugo.toml`. The reusable GitHub workflow (`.github/workflows/publish-image.yaml`, calling `bfeitknecht/infra/.github/workflows/publish-image.yaml@master`) builds the root `Dockerfile` to `ghcr.io/bfeitknecht/exhib` on `v*` tags; make the GHCR package public or configure an image pull secret before deploying.
+`infra/` is a **staging area for the go-live**, not part of the site build. It mirrors `bfeitknecht/infra` exactly: `infra/kubernetes/applications/exhib/` holds the app manifests and SWS TOML (the tier-2 layout used by apex and glob, per that repo's `AGENTS.md`), and `infra/kubernetes/cluster/applications.yaml` is `bfeitknecht/infra` master verbatim with the `exhib` Flux Kustomization appended. `infra/README.md` documents the integration steps, the owner-only SOPS step for the GHCR pull secret, the Keel wiring, and the exact deletion of `infra/` once the go-live lands. The route is `gallery.0xbf.ch`, matching `baseURL` in `hugo.toml`; the reusable GitHub workflow builds the root `Dockerfile` to `ghcr.io/bfeitknecht/exhib` on `v*` tags.
 
 ### Shortlist: going live on `bfeitknecht/infra`
 
-One-time steps to gallery.0xbf.ch, mirroring the glob/blog rollout:
+The full checklist for the agent or owner doing the go-live is **`infra/README.md`** (it is kept with the staged files and deleted with them). Condensed:
 
-1. **Tag and publish the image** — `git tag -a v0.1.0 -m "exhib v0.1.0" && git push origin v0.1.0`. The reusable workflow builds `ghcr.io/bfeitknecht/exhib` (multi-arch). Watch it with `gh run watch` or on the Actions tab.
-2. **Registry visibility** — either make the `exhib` GHCR package public (org/user → Packages → exhib → Package settings → Change visibility), **or** mirror the blog's private pull: create `kubernetes/applications/exhib/ghcr.sops.yaml` from apex's (`sops -d kubernetes/applications/apex/ghcr.sops.yaml | sed 's/namespace: apex/namespace: exhib/' | sops -e > kubernetes/applications/exhib/ghcr.sops.yaml`), add it to `infra/exhib/kustomization.yaml`, and add a `serviceaccount.yaml` (default SA with `imagePullSecrets: [{name: dockerconfigjson}]`, like `infra/glob/serviceaccount.yaml`). As shipped, the deployment pulls `:latest` anonymously and expects a public package.
-3. **Copy the manifests** — `cp -r infra/exhib <infra-clone>/kubernetes/applications/exhib`.
-4. **Append the Flux entry** — append `infra/applications-entry.yaml` to `kubernetes/cluster/applications.yaml` (declares the `exhib` Kustomization: dependsOn `traefik`, sops decryption, and the Keel `ignore:` on the processor image path `/spec/template/spec/containers/2/image`).
-5. **Storage class** — confirm the Talos cluster's default StorageClass suits the 50 GiB PVC in `infra/exhib/pvc.yaml`; set `storageClassName` explicitly if not. Wildcard DNS/TLS for `*.0xbf.ch` already covers `gallery.0xbf.ch` (same as glob/blog).
-6. **Push and watch Flux** — in `bfeitknecht/infra`: commit, push; then `flux reconcile kustomization exhib` (optional) and `flux get kustomizations -n flux-system exhib`; `kubectl -n exhib get pods,pvc`.
-7. **Check the first boot** — `kubectl -n exhib logs -f deploy/exhib -c processor`. On an empty PVC it seeds the repo's demo gallery into `/data/content` and builds `/data/public`; then it idles, polling `/data/incoming` every 3 s (`EXHIB_POLL_SECONDS` overrides).
-8. **Verify the site** — `curl -I https://gallery.0xbf.ch/` (200), probes on `/health`, `/rss.xml` + `/atom.xml` + `/sitemap.xml`, dark/light rendering, and one fullscreen detail overlay.
-9. **Upload something real** — `./scripts/upload-item.sh /path/to/package`; watch the processor log; confirm the bundle in `/data/content/`, originals in `/data/originals/`, and new card on the home page.
-10. **Privacy pass first** — for camera files with GPS, strip before upload (`exiftool -GPS:all= ...`). The lossless-WebP derivative carries source metadata by design; there is no publish-time scrubbing step.
-11. **Housekeeping** — replace or remove the demo collections (`content/collections/2026-10`, `content/collections/placeholders`) and the placeholder piece once real content exists. Note the seed only applies to an empty `/data/content`; deleting bundles later means removing them on the PVC (or `kubectl -n exhib exec deploy/exhib -c processor -- rm -rf /data/content/pieces/placeholder-study` followed by a processor restart).
-12. **Keel caveat** — the `keel.sh/*` annotations on the Deployment and the `ignore:` block in the applications entry only matter if the cluster runs Keel; delete both otherwise. Either way, `kubectl -n exhib rollout restart deploy/exhib` re-pulls `:latest`.
+1. Tag `v0.1.0` on this repo → the `Publish Image` workflow publishes `ghcr.io/bfeitknecht/exhib`.
+2. Owner creates `kubernetes/applications/exhib/ghcr.sops.yaml` (namespace-swapped copy of glob's `ghcr.sops.yaml` pull-secret file — exact `sops` commands in `infra/README.md`), or makes the GHCR package public and drops the secret references (also documented).
+3. Copy `infra/kubernetes/applications/exhib/` into `bfeitknecht/infra` and take its `kubernetes/cluster/applications.yaml` verbatim (it already contains the `exhib` entry — do not hand-edit unless master moved; see `infra/README.md`).
+4. Validate with `kubectl kustomize kubernetes/applications/exhib`, tag `vX.Y.Z` on `bfeitknecht/infra`, let Flux reconcile; verify with `flux get kustomizations -n flux-system exhib` and `curl https://gallery.0xbf.ch/`.
+5. Upload something real with `./scripts/upload-item.sh` (privacy pass first), then `git rm -r infra` as the final go-live step.
 
 ### Upload a piece or collection
 
