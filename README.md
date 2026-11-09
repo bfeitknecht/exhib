@@ -2,7 +2,7 @@
 
 A chronological Hugo gallery for standalone pieces and collections. It is a static site with custom templates and CSS-only viewers: no JavaScript, no theme dependency, no gallery admin, and no remote image service. Hugo configuration is `hugo.toml`; content front matter is TOML (`+++`) throughout.
 
-The design language is monochrome — no hues: Helvetica Neue (system font stack) for everything, neutral grays in light and dark schemes via `prefers-color-scheme`. (The blog's theme is a warm, off-monochrome; exhib deliberately goes fully neutral. No web fonts are bundled.)
+The design language is the site's original one, kept intact: Helvetica Neue (system stack) for prose and UI, Commit Mono (self-hosted) for navigation, dates and metadata, system light/dark scheme. Colors are strictly monochrome — no hues; light and dark schemes switched via `prefers-color-scheme`.
 
 ## Quick orientation
 
@@ -18,8 +18,8 @@ The shared document shell and feed discovery links are in `layouts/_default/base
 ### Styling knobs
 
 - **System light/dark colors:** CSS variables `--bg`, `--fg`, and `--muted` near the top of `assets/css/site.css`, with `prefers-color-scheme` handling.
-- **Typography:** one system stack everywhere — Helvetica Neue, Helvetica, Arial, system-ui (`--sans`). No web fonts are bundled; nothing to license or preload.
-- **Monochrome:** `--bg`/`--fg`/`--muted` are strict neutrals (R=G=B) in both schemes. Keep hues out; accent emphasis comes from weight, size and letter-spacing, not color.
+- **Typography:** `--sans` is "Helvetica Neue", Helvetica, Arial, system-ui for prose and UI; `--mono` is Commit Mono (self-hosted from `static/fonts/`, license in `OFL-CommitMono.txt`, checksums in `SHA256SUMS`) for navigation, dates and metadata — mirroring the original design.
+- **Monochrome:** `--bg`/`--fg`/`--muted` are strict neutrals (R=G=B) in both schemes. Keep hues out; emphasis comes from weight, size and letter-spacing, not color.
 - **Top-level card density:** `.timeline`, `.item-card`, and `.item-preview`. The responsive timeline columns and maximum card width affect how many collections/pieces fit per screen.
 - **Preview artwork:** `.item-preview`, `.preview-grid`, and `.preview-grid span`. A selected collection thumbnail uses the single-image route; otherwise the template lays up to nine actual resource images into a landscape mosaic. Empty areas use the site background, with no placeholder cells.
 - **Collection page grid:** `.collection-grid` and `.collection-photo`.
