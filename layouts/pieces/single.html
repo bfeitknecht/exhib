@@ -23,7 +23,6 @@
           <img src="{{ $item.RelPermalink }}" alt="{{ $item.Title }}">
         {{ end }}
       </a>
-      {{ if not $isVideo }}<div class="viewer-metadata">{{ partial "metadata-list.html" (dict "image" $item) }}</div>{{ end }}
     </div>
     <section class="photo-viewer" id="piece-detail" role="dialog" aria-modal="true" aria-label="{{ .Title }} detail">
       <div class="view-chrome"><a class="close-detail" href="#piece-main" aria-label="Close detail">X</a></div>
