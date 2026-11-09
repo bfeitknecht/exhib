@@ -1,8 +1,8 @@
 # exhib
 
-A chronological Hugo gallery for standalone pieces and collections. It is a static site with custom templates and CSS-only viewers: no JavaScript, no theme dependency, no gallery admin, and no remote image service. Hugo configuration is `hugo.toml`; content front matter is TOML (`+++`) throughout.
+A chronological Hugo gallery for standalone pieces and collections. It is a static site with custom templates and CSS-only viewers (`:target` overlays); the only JavaScript is a ~20-line keyboard-navigation script on collection pages (←/→ to move between items, Esc to close). No theme dependency, no gallery admin, and no remote image service. Hugo configuration is `hugo.toml`; content front matter is TOML (`+++`) throughout.
 
-The design language is the site's original one, kept intact: Helvetica Neue (system stack) for prose and UI, Commit Mono (self-hosted) for navigation, dates and metadata, system light/dark scheme. Colors are strictly monochrome — no hues; light and dark schemes switched via `prefers-color-scheme`.
+The design language is the site's original one, kept intact: Helvetica Neue (system stack) for prose and UI, Commit Mono (self-hosted) for navigation, dates and metadata, system light/dark scheme. Colors are the blog's warm, low-chroma off-monochrome (paper `#f4f3ef` / ink `#1d1d1b` / muted `#6d6b66`, dark scheme `#111` / `#f0efeb` / `#96948f`), matching the glob/blog look.
 
 ## Quick orientation
 
@@ -10,8 +10,8 @@ The design language is the site's original one, kept intact: Helvetica Neue (sys
 |---|---|---|---|
 | Home / top level | `/` | `layouts/index.html` | Intro/tagline, Apex/sitemap/feed links, newest-first feed of collection and standalone cards |
 | Collections index | `/collections/` | `layouts/collections/section.html` | Collection archive/list |
-| Collection | `/collections/<slug>/` | `layouts/collections/section.html` | Title/date/description, square image/video grid, CSS `:target` details with close and `<< n/m >>` navigation |
-| Standalone piece | `/pieces/<slug>/` | `layouts/pieces/single.html` | Title/date/description and first media item; clicking it opens a fullscreen detail with no prev/next |
+| Collection | `/collections/<slug>/` | `layouts/collections/section.html` | Title/date/description, 1:√2 image/video grid, CSS `:target` details with close and `<< n/m >>` (and ←/→/Esc) navigation |
+| Standalone piece | `/pieces/<slug>/` | `layouts/pieces/single.html` | Title/date/description and first media item filling the stage (ratio-driven, `.piece-flow`); metadata flush with the artwork's left edge; clicking it opens a fullscreen detail with no prev/next |
 
 The shared document shell and feed discovery links are in `layouts/_default/baseof.html`. The home-page card markup is `layouts/partials/item-card.html`; collection image ordering is in `layouts/partials/sorted-images.html` (date-stamped images first, then `weight` order; generated video posters are excluded); combined image/video ordering is in `layouts/partials/sorted-media.html`; the fullscreen detail body is `layouts/partials/media-detail.html`; the home/feed entry list is `layouts/partials/feed-entries.html`; automatic image metadata is formatted in `layouts/partials/metadata-list.html`. `assets/css/site.css` controls fonts, colors, spacing, responsive layout, preview sizes, and viewer sizing; it is minified and content-hashed by Hugo (with an SRI `integrity` attribute), so it can be cached immutably — there is no manual `?v=` to bump.
 
@@ -19,11 +19,12 @@ The shared document shell and feed discovery links are in `layouts/_default/base
 
 - **System light/dark colors:** CSS variables `--bg`, `--fg`, and `--muted` near the top of `assets/css/site.css`, with `prefers-color-scheme` handling.
 - **Typography:** `--sans` is "Helvetica Neue", Helvetica, Arial, system-ui for prose and UI; `--mono` is Commit Mono (self-hosted from `static/fonts/`, license in `OFL-CommitMono.txt`, checksums in `SHA256SUMS`) for navigation, dates and metadata — mirroring the original design.
-- **Monochrome:** `--bg`/`--fg`/`--muted` are strict neutrals (R=G=B) in both schemes. Keep hues out; emphasis comes from weight, size and letter-spacing, not color.
+- **Warm off-monochrome:** `--bg`/`--fg`/`--muted` follow the blog's paper theme (light `#f4f3ef`/`#1d1d1b`/`#6d6b66`; dark `#111`/`#f0efeb`/`#96948f`, hue ~40°). Emphasis comes from weight, size and letter-spacing, not color.
 - **Top-level card density:** `.timeline`, `.item-card`, and `.item-preview`. The responsive timeline columns and maximum card width affect how many collections/pieces fit per screen.
 - **Preview artwork:** `.item-preview`, `.preview-grid`, and `.preview-grid span`. A selected collection thumbnail uses the single-image route; otherwise the template lays up to nine actual resource images into a landscape mosaic. Empty areas use the site background, with no placeholder cells.
-- **Collection page grid:** `.collection-grid` and `.collection-photo`.
+- **Collection page grid:** `.collection-grid` and `.collection-photo`. Tiles use the site-wide 1:√2 (`1.41421356 / 1`) aspect ratio — no 1:1 squares anywhere.
 - **Fullscreen details:** `.photo-viewer`, `.viewer-unit`, `.viewer-image`, `.viewer-nav`, `.close-detail`, and `.metadata-list`. Image dimensions are derived from the resource itself (bitmap dimensions or an SVG `viewBox`) so the whole image can scale to the available viewport without manually duplicating dimensions in TOML.
+- **Keyboard navigation:** `static/js/viewer-keys.js` (~20 lines, served `no-cache`) adds ←/→ to move between open overlays and Esc to close back to the grid on collection pages. It only acts while a `#photo-*` overlay is open and clamps at the ends to match the disabled `<<`/`>>` chrome. The only JavaScript on the site.
 
 ## Content model and TOML examples
 
