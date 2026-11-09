@@ -215,6 +215,7 @@ metadata:
   namespace: flux-system
 spec:
   dependsOn:
+    - name: storage
     - name: traefik
   interval: 10m0s
   path: ./kubernetes/applications/exhib
