@@ -1,7 +1,7 @@
 +++
 title = "Placeholders"
 date = 2026-10-29T00:00:00Z
-description = "Assistant-created SVG placeholders for collection previews and standalone-piece layouts."
+description = "All assistant-created placeholder artwork: cover, studies, standalone-piece and card-thumbnail previews."
 thumbnail = "cover.svg"
 
 [[resources]]
@@ -28,3 +28,57 @@ title = "Standalone architectural placeholder"
 [resources.params]
 weight = 4
 +++
+
+[[resources]]
+src = "01-paper-light.svg"
+title = "Late afternoon on the studio table"
+[resources.params]
+weight = 5
+
+[[resources]]
+src = "02-stairwell.svg"
+title = "Stairwell"
+[resources.params]
+weight = 6
+
+[[resources]]
+src = "03-window-study.svg"
+title = "Glass and reflected sky"
+[resources.params]
+weight = 7
+
+[[resources]]
+src = "04-glass-roof.svg"
+title = "Glass roof"
+[resources.params]
+weight = 8
+
+[[resources]]
+src = "05-shadow-line.svg"
+title = "A line across the pavement"
+[resources.params]
+weight = 9
+
+[[resources]]
+src = "06-studio-cutting-mat.svg"
+title = "Studio cutting mat"
+[resources.params]
+weight = 10
+
+[[resources]]
+src = "07-blue-hour.svg"
+title = "Blue hour, on the way home"
+[resources.params]
+weight = 11
+
+[[resources]]
+src = "08-last-light.svg"
+title = "Last light"
+[resources.params]
+weight = 12
+
+[[resources]]
+src = "placeholder.svg"
+title = "Abstract architectural study"
+[resources.params]
+weight = 13
