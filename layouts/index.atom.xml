@@ -1,8 +1,4 @@
-{{- $entries := where site.RegularPages "Section" "pieces" -}}
-{{- with site.GetPage "/collections" -}}
-  {{- range .Sections -}}{{- $entries = $entries | append . -}}{{- end -}}
-{{- end -}}
-{{- $entries = sort $entries "Date" "desc" -}}
+{{- $entries := partial "feed-entries.html" . -}}
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <id>{{ site.BaseURL }}</id>

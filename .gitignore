@@ -1,6 +1,7 @@
 /public/
 /resources/_gen/
 .hugo_build.lock
-.DS_Store
-
+hugo_stats.json
 __pycache__/
+*.pyc
+.DS_Store

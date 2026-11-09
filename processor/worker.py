@@ -19,7 +19,7 @@ INCOMING = DATA / "incoming"
 CONTENT = DATA / "content"
 ORIGINALS = DATA / "originals"
 PUBLIC = DATA / "public"
-POLL_SECONDS = 3
+POLL_SECONDS = int(os.environ.get("EXHIB_POLL_SECONDS", "3"))
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".avif", ".tif", ".tiff", ".heic", ".heif"}
 VIDEO_EXTS = {".mov", ".mp4", ".m4v", ".3gp", ".mkv", ".webm"}
 
@@ -47,7 +47,7 @@ def copy_metadata(source: Path, output: Path) -> None:
     run(["exiftool", "-overwrite_original", "-TagsFromFile", str(source), "-all:all", str(output)])
 
 
-def convert_image(source: Path, destination: Path) -> tuple[Path, str]:
+def convert_image(source: Path, destination: Path) -> Path:
     # Encode lossless WebP; copy full source metadata back so Hugo can extract it.
     ext = source.suffix.lower()
     decoded = destination / (source.stem + ".decoded.png")
@@ -63,7 +63,7 @@ def convert_image(source: Path, destination: Path) -> tuple[Path, str]:
         run(["cwebp", "-quiet", "-lossless", "-exact", "-m", "6", str(decoded), "-o", str(output)])
         decoded.unlink(missing_ok=True)
     copy_metadata(source, output)
-    return output, output.name
+    return output
 
 
 def convert_video(source: Path, destination: Path) -> tuple[Path, Path]:
@@ -153,6 +153,10 @@ def publish_bundle(package: Path) -> None:
     if original_pending.exists():
         raise ValueError(f"a previous processing attempt left a pending original for {slug}")
     bundle_dir = CONTENT / ("pieces" if kind == "piece" else "collections") / slug
+    if bundle_dir.exists():
+        # A previous attempt died before cleaning up; the bundle is generated
+        # output, so it is safe to discard before re-processing.
+        shutil.rmtree(bundle_dir)
     bundle_dir.mkdir(parents=True, exist_ok=False)
     converted = bundle_dir / ".converted"
     converted.mkdir()
@@ -168,7 +172,7 @@ def publish_bundle(package: Path) -> None:
             title = str(entry.get("title") or source.stem)
             weight = int(entry.get("weight", index))
             if ext in IMAGE_EXTS:
-                output, filename = convert_image(source, converted)
+                filename = convert_image(source, converted).name
                 row = {"file": filename, "title": title, "weight": weight, "kind": "image"}
                 rows.append(row)
                 source_to_output[Path(str(entry["file"])).name] = filename

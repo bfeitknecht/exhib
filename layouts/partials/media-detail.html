@@ -1,0 +1,18 @@
+{{/* Renders the inner body of a fullscreen media viewer (image or video),
+     including its metadata block. Expects a dict with:
+       item   - the media resource (image or video)
+       poster - the poster resource for videos, or false for images
+     Used by the collection grid overlays and the standalone piece overlay. */}}
+{{- $item := .item -}}
+{{- if eq $item.Params.kind "video" -}}
+  <div class="viewer-image">
+    <video controls preload="metadata" playsinline {{ with .poster }}poster="{{ .RelPermalink }}"{{ end }}>
+      <source src="{{ $item.RelPermalink }}" type="video/webm">
+      Your browser does not support HTML video.
+    </video>
+  </div>
+  <div class="viewer-metadata"><dl class="metadata-list"><div class="metadata-row"><dt>Video</dt><dd>{{ $item.Title }}</dd></div><div class="metadata-row"><dt>Format</dt><dd>WebM · lossless VP9 / lossy Opus</dd></div></dl></div>
+{{- else -}}
+  <div class="viewer-image"><img src="{{ $item.RelPermalink }}" alt="{{ $item.Title }}"></div>
+  <div class="viewer-metadata">{{ partial "metadata-list.html" (dict "image" $item) }}</div>
+{{- end -}}

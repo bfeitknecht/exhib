@@ -2,8 +2,14 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: exhib
+  namespace: exhib
   labels:
     app.kubernetes.io/name: exhib
+  # Keel reads keel.sh/* from the workload's own metadata (never pod template).
+  annotations:
+    keel.sh/trigger: poll
+    keel.sh/policy: force
+    keel.sh/match-tag: "true"
 spec:
   replicas: 1
   strategy:
@@ -16,12 +22,17 @@ spec:
       labels:
         app.kubernetes.io/name: exhib
     spec:
+      # Keel resolves GHCR credentials from the pod template's imagePullSecrets.
+      imagePullSecrets:
+        - name: dockerconfigjson
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: prepare-site-volume
           image: busybox:1.37.0
@@ -75,7 +86,7 @@ spec:
             - name: sws-config
               mountPath: /etc/sws
               readOnly: true
-        # No listener or SSH: the upload client uses the Kubernetes API.
+        # No listener or SSH on this one; uploads go through the Kubernetes API.
         - name: uploader
           image: busybox:1.37.0
           imagePullPolicy: IfNotPresent
@@ -94,7 +105,7 @@ spec:
           volumeMounts:
             - name: site
               mountPath: /data
-        # Stable processor/tooling image; new gallery uploads do not rebuild it.
+        # Hardcoded :latest on purpose — Keel follows the digest.
         - name: processor
           image: ghcr.io/bfeitknecht/exhib:latest
           imagePullPolicy: Always

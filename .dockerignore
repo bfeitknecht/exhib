@@ -1,6 +1,11 @@
-.git/
-.github/
-public/
-resources/_gen/
+/public/
+/resources/_gen/
 .hugo_build.lock
 .DS_Store
+.git/
+.github/
+infra/
+examples/
+scripts/
+README.md
+__pycache__/

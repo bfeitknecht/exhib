@@ -1,8 +1,8 @@
-{{- $images := partial "sorted-images.html" . -}}
-{{- $videos := sort (.Resources.ByType "video") "Params.weight" "asc" -}}
-{{- $media := slice -}}
-{{- range $images -}}
-  {{- if ne .Params.role "poster" -}}{{- $media = append . $media -}}{{- end -}}
+{{/* All gallery media for a bundle: poster-free images (metadata-date order,
+     then weight) followed by videos in weight order.
+     Returns a slice of resources with a `kind` param ("image" or "video"). */}}
+{{- $media := partial "sorted-images.html" . -}}
+{{- range sort (.Resources.ByType "video") "Params.weight" "asc" -}}
+  {{- $media = append . $media -}}
 {{- end -}}
-{{- range $videos -}}{{- $media = append . $media -}}{{- end -}}
 {{- return $media -}}
