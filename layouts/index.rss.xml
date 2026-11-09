@@ -2,18 +2,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>{{ site.Title }}</title>
+    <title>{{ site.Title | htmlEscape }}</title>
     <link>{{ site.BaseURL }}</link>
-    <description>{{ site.Params.description }}</description>
+    <description>{{ site.Params.description | htmlEscape }}</description>
     <language>en</language>
     <atom:link href="{{ "rss.xml" | absURL }}" rel="self" type="application/rss+xml" />
     {{ range $entries }}
     <item>
-      <title>{{ .Title }}</title>
+      <title>{{ .Title | htmlEscape }}</title>
       <link>{{ .Permalink }}</link>
       <guid isPermaLink="true">{{ .Permalink }}</guid>
       <pubDate>{{ .Date.Format "Mon, 02 Jan 2006 15:04:05 -0700" }}</pubDate>
-      <description>{{ .Description }}</description>
+      <description>{{ .Description | htmlEscape }}</description>
     </item>
     {{ end }}
   </channel>
