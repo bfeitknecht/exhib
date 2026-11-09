@@ -124,23 +124,13 @@ Hugo writes static output to `public/`. The home page links to Apex (`https://0x
 
 The public site is served by **Static Web Server (SWS)**, not Caddy. The exhib pod now has three containers sharing one PVC:
 
-- **SWS** serves `/data/public` and mounts the PVC read-only. Cache headers come from `infra/kubernetes/applications/exhib/sws.toml`: `no-cache` everywhere (revalidation via Last-Modified → 304), `public, max-age=31536000, immutable` for the content-hashed `css/**`.
+- **SWS** serves `/data/public` and mounts the PVC read-only. Cache headers come from `sws.toml` in the infra repo's `kubernetes/applications/exhib/`: `no-cache` everywhere (revalidation via Last-Modified → 304), `public, max-age=31536000, immutable` for the content-hashed `css/**`.
 - **Uploader** is a quiet BusyBox container with no listener and no SSH. Uploads are sent through the Kubernetes API (`kubectl exec`), not through a public admin endpoint.
 - **Processor** watches `/data/incoming`, converts media, writes Hugo page bundles into `/data/content`, preserves uploaded originals privately in `/data/originals`, and rebuilds the public output. It contains Hugo, FFmpeg and metadata tools. Its image is built when the site/processor code changes; new gallery items do not require an image rebuild or push.
 
-The PVC request is 50 GiB to allow room for both retained originals and generated output, pinned to the cluster's `local-path` StorageClass (like the other app PVCs). Adjust capacity for your library. `/data/originals` holds the only copies of uploaded originals — tier-2 apps carry no k8up schedule; whether to add one for exhib is an open decision flagged in `infra/README.md`.
+The PVC request is 50 GiB to allow room for both retained originals and generated output, pinned to the cluster's `local-path` StorageClass (like the other app PVCs). Adjust capacity for your library. `/data/originals` holds the only copies of uploaded originals — tier-2 apps carry no k8up schedule, and whether exhib warrants one is an open decision; treat the PVC as the only backup until it is resolved.
 
-`infra/` is a **staging area for the go-live**, not part of the site build. It mirrors `bfeitknecht/infra` exactly: `infra/kubernetes/applications/exhib/` holds the app manifests and SWS TOML (the tier-2 layout used by apex and glob, per that repo's `AGENTS.md`), and `infra/kubernetes/cluster/applications.yaml` is `bfeitknecht/infra` master verbatim with the `exhib` Flux Kustomization appended. `infra/README.md` documents the integration steps, the owner-only SOPS step for the GHCR pull secret, the Keel wiring, and the exact deletion of `infra/` once the go-live lands. The route is `gallery.0xbf.ch`, matching `baseURL` in `hugo.toml`; the reusable GitHub workflow builds the root `Dockerfile` to `ghcr.io/bfeitknecht/exhib` on `v*` tags.
-
-### Shortlist: going live on `bfeitknecht/infra`
-
-The full checklist for the agent or owner doing the go-live is **`infra/README.md`** (it is kept with the staged files and deleted with them). Condensed:
-
-1. Tag `v0.1.0` on this repo → the `Publish Image` workflow publishes `ghcr.io/bfeitknecht/exhib`.
-2. Owner creates `kubernetes/applications/exhib/ghcr.sops.yaml` (namespace-swapped copy of glob's `ghcr.sops.yaml` pull-secret file — exact `sops` commands in `infra/README.md`), or makes the GHCR package public and drops the secret references (also documented).
-3. Copy `infra/kubernetes/applications/exhib/` into `bfeitknecht/infra` and take its `kubernetes/cluster/applications.yaml` verbatim (it already contains the `exhib` entry — do not hand-edit unless master moved; see `infra/README.md`).
-4. Validate with `kubectl kustomize kubernetes/applications/exhib`, tag `vX.Y.Z` on `bfeitknecht/infra`, let Flux reconcile; verify with `flux get kustomizations -n flux-system exhib` and `curl https://gallery.0xbf.ch/`.
-5. Upload something real with `./scripts/upload-item.sh` (privacy pass first), then `git rm -r infra` as the final go-live step.
+The manifests live in `bfeitknecht/infra` under `kubernetes/applications/exhib/` (the tier-2 layout used by apex and glob): namespace, PVC (`local-path`), the 3-container Deployment (SWS + uploader + processor), Service and HTTPRoute for `gallery.0xbf.ch` (matching `baseURL` here), and the owner-created `ghcr.sops.yaml` GHCR pull secret referenced by the Kustomization. The Flux Kustomization lives in that repo's `kubernetes/cluster/applications.yaml` (`dependsOn: storage, traefik`, Keel `ignore` on the processor image, sops decryption). Keel keeps the `:latest` processor digest in motion. A staging copy in this repo was used for the go-live and removed afterwards; the infra repo is the single source of truth. The reusable GitHub workflow builds the root `Dockerfile` and publishes `ghcr.io/bfeitknecht/exhib` (`:latest` + `:<tag>`) on `v*` tags and manual dispatch. Content uploads never require an image build — only template/processor changes do (re-tag this repo).
 
 ### Upload a piece or collection
 
