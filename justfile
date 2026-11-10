@@ -1,8 +1,6 @@
-# exhib — common tasks. `just` (https://just.systems) with no arguments lists recipes.
+# exhib — common tasks. Run `just --list` to see the recipes.
 
-# Upload a piece or collection package (a lowercase-slug folder with manifest.toml
-# and the media files) to the gallery's processor inbox on the cluster.
-# Requires kubectl configured for the cluster.
+# Upload a piece or collection package (slug folder, manifest.toml + media) to the gallery; requires kubectl for the cluster
 upload package:
     #!/usr/bin/env bash
     set -euo pipefail
