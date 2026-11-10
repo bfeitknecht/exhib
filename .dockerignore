@@ -5,6 +5,6 @@
 .git/
 .github/
 examples/
-scripts/
 README.md
 __pycache__/
+justfile
