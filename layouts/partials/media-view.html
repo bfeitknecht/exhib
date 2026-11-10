@@ -1,0 +1,15 @@
+{{/* Ordered media for a bundle as a slice of dicts: index, id (photo-NN),
+     item, kind, title, isVideo, ratio, poster. Both viewer loops (grid and
+     fullscreen overlays) and the standalone piece page consume this, so the
+     ordering/ratio/poster logic lives in exactly one place. */}}
+{{- $page := . -}}
+{{- $out := slice -}}
+{{- range $index, $item := partial "sorted-media.html" $page -}}
+  {{- $isVideo := eq $item.Params.kind "video" -}}
+  {{- $poster := false -}}
+  {{- if $isVideo -}}{{- $poster = $page.Resources.GetMatch $item.Params.poster -}}{{- end -}}
+  {{- $ratio := "1.7777778" -}}
+  {{- if not $isVideo -}}{{- $ratio = partial "image-ratio.html" $item -}}{{- end -}}
+  {{- $out = $out | append (dict "index" $index "id" (printf "photo-%02d" (add $index 1)) "item" $item "kind" $item.Params.kind "title" $item.Title "isVideo" $isVideo "ratio" $ratio "poster" $poster) -}}
+{{- end -}}
+{{- return $out -}}

@@ -35,6 +35,7 @@ IMAGE_EXTS = {
 VIDEO_EXTS = {".mov", ".mp4", ".m4v", ".3gp", ".mkv", ".webm"}
 
 
+# ── Small helpers ─────────────────────────────────────────────
 def run(args: list[str]) -> None:
     subprocess.run(args, check=True)
 
@@ -67,6 +68,7 @@ def copy_metadata(source: Path, output: Path) -> None:
     )
 
 
+# ── Media conversion ──────────────────────────────────────────
 def convert_image(source: Path, destination: Path) -> Path:
     # Encode lossless WebP; copy full source metadata back so Hugo can extract it.
     ext = source.suffix.lower()
@@ -212,6 +214,7 @@ def convert_video(source: Path, destination: Path) -> tuple[Path, Path]:
     return output, poster
 
 
+# ── Bundle generation ─────────────────────────────────────────
 def build_front_matter(
     manifest: dict, media_rows: list[dict], thumbnail: str | None
 ) -> str:
@@ -245,6 +248,7 @@ def build_front_matter(
     return "\n".join(lines) + "\n"
 
 
+# ── Publish pipeline ──────────────────────────────────────────
 def build_and_publish() -> None:
     staging = DATA / ".public-next"
     backup = DATA / ".public-previous"
@@ -390,10 +394,11 @@ def publish_bundle(package: Path) -> None:
         raise
 
 
+# ── Main ──────────────────────────────────────────────────────
 def main() -> None:
     for path in (INCOMING, CONTENT, ORIGINALS, PUBLIC):
         path.mkdir(parents=True, exist_ok=True)
-    # Seed the persistent content tree with the repository's demo and preserved assets once.
+    # On first boot, seed the persistent content tree from the repository.
     if not any(CONTENT.iterdir()):
         seed = APP / "content"
         if seed.is_dir():

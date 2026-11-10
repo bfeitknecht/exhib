@@ -1,39 +1,33 @@
 {{- $page := . -}}
 {{- $isCollection := eq $page.Kind "section" -}}
+{{- $useMosaic := and $isCollection (not $page.Params.thumbnail) -}}
 <article class="item-card">
-  {{- if and $isCollection (not $page.Params.thumbnail) -}}
-    {{/* Mosaic of up to nine images; each cell is its own link into the
-         collection's fullscreen overlay for that exact item. Images occupy
-         photo-01..photo-N in the collection's media order (videos follow),
-         so cell index + 1 maps directly onto the overlay id. */}}
-    {{- $images := first 9 (partial "sorted-images.html" $page) -}}
-    <div class="item-preview item-preview--grid">
+  {{- if $useMosaic }}{{/* Mosaic of up to nine images; each cell links straight to
+         that image in the collection's fullscreen overlay (#photo-NN). Images
+         occupy photo-01..photo-N since videos follow them. */}}
+    {{- $images := first 9 (partial "sorted-images.html" $page) }}
+    <div class="item-preview">
       <div class="preview-grid">
         {{- range $index, $image := $images }}
         <a href="{{ $page.RelPermalink }}#{{ printf "photo-%02d" (add $index 1) }}"{{ with $image.Title }} aria-label="Open {{ $page.Title }}: {{ . }}"{{ end }}><img src="{{ $image.RelPermalink }}" alt="" loading="lazy"></a>
         {{- end }}
       </div>
     </div>
-  {{- else -}}
+  {{- else }}
     <a class="item-preview" href="{{ $page.RelPermalink }}" aria-label="Open {{ $page.Title }}">
       {{- if $isCollection -}}
-        {{- $thumb := false -}}
-        {{- with $page.Params.thumbnail -}}{{- with $page.Resources.GetMatch . -}}{{- $thumb = . -}}{{- end -}}{{- end -}}
-        {{- with $thumb -}}<img src="{{ .RelPermalink }}" alt="" loading="lazy">{{- end -}}
+        {{- with $page.Params.thumbnail -}}{{- with $page.Resources.GetMatch . -}}<img src="{{ .RelPermalink }}" alt="" loading="lazy">{{- end -}}{{- end -}}
       {{- else -}}
-        {{- $media := partial "sorted-media.html" $page -}}
-        {{- if $media -}}
-          {{- with index $media 0 -}}
-            {{- if eq .Params.kind "video" -}}
-              {{- with $page.Resources.GetMatch .Params.poster -}}<img src="{{ .RelPermalink }}" alt="" loading="lazy">{{- else -}}<span class="video-placeholder">VIDEO</span>{{- end -}}
-            {{- else -}}
-              <img src="{{ .RelPermalink }}" alt="" loading="lazy">
-            {{- end -}}
+        {{- with index (partial "sorted-media.html" $page) 0 -}}
+          {{- if eq .Params.kind "video" -}}
+            {{- with $page.Resources.GetMatch .Params.poster -}}<img src="{{ .RelPermalink }}" alt="" loading="lazy">{{- else -}}<span class="video-placeholder">VIDEO</span>{{- end -}}
+          {{- else -}}
+            <img src="{{ .RelPermalink }}" alt="" loading="lazy">
           {{- end -}}
         {{- end -}}
       {{- end -}}
     </a>
-  {{- end -}}
+  {{- end }}
   <div class="item-copy">
     <h2><a href="{{ $page.RelPermalink }}">{{ $page.Title }}</a></h2>
     <time datetime="{{ $page.Date.Format "2006-01-02T15:04:05Z07:00" }}">{{ $page.Date.Format "2006-01-02" }}</time>
