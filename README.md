@@ -136,13 +136,13 @@ The manifests live in `bfeitknecht/infra` under `kubernetes/applications/exhib/`
 
 Make a folder whose name is a lowercase slug. Put `manifest.toml` and all source media files in it. The manifest has `kind = "piece"` or `kind = "collection"`, plus `title`, a TOML `date`, optional `description`, optional `thumbnail`, and one `[[media]]` table per file (`file`, optional `title`, optional `weight`). See `examples/upload-package/manifest.toml` for the schema.
 
-With `kubectl` configured for the Talos cluster, run:
+With [`just`](https://just.systems) installed and `kubectl` configured for the Talos cluster, run:
 
 ```sh
-./scripts/upload-item.sh path/to/my-new-collection
+just upload path/to/my-new-collection
 ```
 
-The script streams the complete folder to a temporary directory on the PVC, then moves it into the processor inbox. The processor detects it, converts the media, generates the Hugo bundle and rebuilds the gallery automatically. A build/conversion failure is logged by the processor and the upload is retained under a hidden `.failed-*` inbox name for inspection; originals are kept under `/data/originals/` after processing.
+The `upload` recipe in the `justfile` streams the complete folder to a temporary directory on the PVC, then moves it into the processor inbox. The processor detects it, converts the media, generates the Hugo bundle and rebuilds the gallery automatically. A build/conversion failure is logged by the processor and the upload is retained under a hidden `.failed-*` inbox name for inspection; originals are kept under `/data/originals/` after processing.
 
 Still images in JPEG, PNG, WebP, AVIF, TIFF, HEIC or HEIF are converted to **lossless WebP** (`cwebp -lossless -exact`). EXIF/IPTC/XMP is copied from the source into the WebP so Hugo can publish all available image metadata automatically. Videos in MOV/MP4/M4V/3GP/MKV/WebM are converted to WebM with **lossless VP9 video** and an Opus audio track; Opus audio is lossy because WebM's normal audio codec is not lossless. No video resizing is applied. A lossless WebP poster is generated for each video. The generated site uses native HTML `<video controls>`. Video metadata is passed through FFmpeg where supported; image metadata publishing remains automatic and publish-by-default, including GPS. Strip anything you do not want public from the source asset before upload. Lossless conversion preserves decoded pixels but may produce larger files than the iPhone's HEIC/HEVC originals; the originals remain privately stored on the PVC.
 
