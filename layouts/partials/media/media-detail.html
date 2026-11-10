@@ -1,8 +1,8 @@
-{{/* Renders the inner body of a fullscreen media viewer (image or video),
-     including its metadata block. Expects a dict with:
+{{/* Render the body of a fullscreen media viewer (image or video).
+     Expects a dict:
        item   - the media resource (image or video)
-       poster - the poster resource for videos, or false for images
-     Used by the collection grid overlays and the standalone piece overlay. */}}
+       poster - the poster resource for videos, or false for images.
+     The collection overlays and the standalone piece viewer use this. */}}
 {{- $item := .item -}}
 {{- if eq $item.Params.kind "video" -}}
   <div class="viewer-image">

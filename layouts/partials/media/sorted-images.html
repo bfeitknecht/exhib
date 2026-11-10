@@ -1,6 +1,7 @@
-{{/* Gallery images for a bundle, excluding generated video posters.
-     Images with an EXIF capture date come first, oldest first; the rest follow
-     in front-matter `weight` order. Returns a slice of image resources. */}}
+{{/* Gallery images of a bundle, without generated video posters.
+     Images with an EXIF capture date come first, oldest first.
+     The rest come next, in front-matter `weight` order.
+     Returns a slice of image resources. */}}
 {{- $dated := slice }}
 {{- $undated := slice }}
 {{- range .Resources.ByType "image" -}}

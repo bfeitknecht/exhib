@@ -1,5 +1,5 @@
-{{/* Renders the automatic metadata for an image resource: resolution,
-     capture date, then the EXIF/IPTC/XMP tag groups. */}}
+{{/* Render the automatic metadata of an image resource.
+     Output order: resolution, capture date, then the EXIF, IPTC and XMP groups. */}}
 {{- $image := .image -}}
 {{- $dimensions := partial "media/image-dimensions.html" $image -}}
 {{- $width := index $dimensions "width" -}}
@@ -10,7 +10,7 @@
     {{ with $image.Meta }}
       {{ with .Date }}{{ if gt .Year 1 }}<div class="metadata-row"><dt>Capture date</dt><dd><time datetime="{{ .Format "2006-01-02T15:04:05Z07:00" }}">{{ .Format "2006-01-02 15:04:05 MST" }}</time></dd></div>{{ end }}{{ end }}
       {{ $groups := dict "EXIF" .Exif "IPTC" .IPTC "XMP" .XMP }}
-      {{/* Go maps range in sorted key order: EXIF, IPTC, XMP. */}}
+      {{/* Go maps iterate in sorted key order: EXIF, IPTC, XMP. */}}
       {{ range $label, $group := $groups }}
         {{ with $group }}<div class="metadata-source">{{ $label }}</div>{{ range $key, $value := . }}<div class="metadata-row"><dt>{{ humanize $key }}</dt><dd>{{ partial "metadata/metadata-value.html" (dict "key" $key "value" $value) }}</dd></div>{{ end }}{{ end }}
       {{ end }}

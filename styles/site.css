@@ -1,4 +1,4 @@
-/* ── Fonts — Commit Mono, self-hosted (OFL; checksums in static/fonts/SHA256SUMS) ── */
+/* ── Fonts: Commit Mono, self-hosted (OFL; checksums in static/fonts/SHA256SUMS) ── */
 @font-face {
   font-family: "Commit Mono";
   src: url("../fonts/CommitMono-400-Regular.woff2") format("woff2");
@@ -13,7 +13,7 @@
   font-style: normal;
   font-display: swap;
 }
-/* ── Design tokens — OKLCH with zero chroma (strictly neutral) ── */
+/* ── Design tokens: OKLCH with zero chroma ── */
 :root {
   color-scheme: light dark;
   --bg: oklch(96% 0 0);
@@ -121,9 +121,9 @@ img { display: block; max-width: 100%; }
 }
 /* ── Focus ── */
 a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
-/* Subtle motion: gentle zoom on cropped grid tiles and card titles, quick
-   colour fades on the chrome. No loops, no scroll effects; disabled via
-   prefers-reduced-motion above. */
+/* Subtle motion: tiles and card titles scale to 1.03 on hover/focus.
+   Chrome links fade in color. No loops, no scroll effects.
+   All of it is disabled under prefers-reduced-motion. */
 .item-preview img, .preview-grid img, .collection-photo img { transition: transform .7s cubic-bezier(.2, .6, .2, 1); }
 a.item-preview:hover img, a.item-preview:focus-visible img,
 .preview-grid a:hover img, .preview-grid a:focus-visible img,

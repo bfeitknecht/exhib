@@ -1,6 +1,8 @@
-{{/* All gallery media for a bundle: poster-free images (metadata-date order,
-     then weight) followed by videos in weight order.
-     Returns a slice of resources with a `kind` param ("image" or "video"). */}}
+{{/* Gallery media of a bundle: images, then videos.
+     Images come in capture-date order, then `weight` order.
+     Videos come in `weight` order. Posters are excluded.
+     Returns a slice of resources. Each resource has a `kind` param,
+     "image" or "video". */}}
 {{- $media := partial "media/sorted-images.html" . -}}
 {{- range sort (.Resources.ByType "video") "Params.weight" "asc" -}}
   {{- $media = append . $media -}}

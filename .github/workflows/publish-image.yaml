@@ -4,16 +4,16 @@ on:
   push:
     tags:
       - "v*" # Triggers on tags like v0.1.0, v1.0.0, etc.
-  # Manual re-publish of the current HEAD without burning a tag:
+  # Republish the current HEAD without a tag:
   #   gh workflow run publish-image.yaml
   workflow_dispatch:
 
 jobs:
   publish:
-    # The caller caps the GITHUB_TOKEN the called workflow receives, and this
-    # repo's default is read-only — so packages: write must be granted here.
+    # The called workflow receives only the GITHUB_TOKEN that the caller grants.
+    # The default token is read-only, so packages: write is granted here.
     permissions:
       contents: read
       packages: write
-    # The build+push logic lives once, in the infra repo.
+    # The build and push logic is in the infra repo.
     uses: bfeitknecht/infra/.github/workflows/publish-image.yaml@master

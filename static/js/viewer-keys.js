@@ -1,6 +1,6 @@
 // Keyboard navigation for the CSS :target media viewers on collection pages.
-// Left/Right move between items; Escape closes back to the grid.
-// No dependencies; only active while a #photo-* overlay is open.
+// Left and Right move between items. Escape closes back to the grid.
+// No dependencies. Active only while a #photo-* overlay is open.
 (function () {
   var handled = ['ArrowLeft', 'ArrowRight', 'Escape'];
   document.addEventListener('keydown', function (event) {
@@ -14,7 +14,7 @@
     }
     var total = document.querySelectorAll('.photo-viewer[id^="photo-"]').length;
     var next = parseInt(match[1], 10) + (event.key === 'ArrowRight' ? 1 : -1);
-    // Clamp at the ends to match the disabled << / >> chrome.
+    // Stop at the ends, like the disabled << and >> controls.
     if (next < 1 || next > total) return;
     location.hash = 'photo-' + String(next).padStart(2, '0');
   });

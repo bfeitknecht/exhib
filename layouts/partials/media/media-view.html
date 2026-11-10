@@ -1,7 +1,7 @@
-{{/* Ordered media for a bundle as a slice of dicts: index, id (photo-NN),
-     item, kind, title, isVideo, ratio, poster. Both viewer loops (grid and
-     fullscreen overlays) and the standalone piece page consume this, so the
-     ordering/ratio/poster logic lives in exactly one place. */}}
+{{/* Ordered media of a bundle, as a slice of dicts.
+     Each dict has: index, id (photo-NN), item, kind, title, isVideo, ratio, poster.
+     The collection grid, the fullscreen overlays and the standalone piece page
+     read from this slice. */}}
 {{- $page := . -}}
 {{- $out := slice -}}
 {{- range $index, $item := partial "media/sorted-media.html" $page -}}

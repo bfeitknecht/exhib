@@ -1,5 +1,5 @@
-# Copy this folder, add the media files, and edit this manifest.
-# Folder name becomes the URL slug (lowercase letters, numbers and hyphens).
+# Copy this folder, add the media files, edit this manifest.
+# The folder name becomes the URL slug. Use lowercase letters, digits and hyphens.
 kind = "collection" # or "piece"
 title = "Evening walks"
 date = 2026-11-07T18:30:00Z
