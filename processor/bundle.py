@@ -1,43 +1,16 @@
-#!/usr/bin/env python3
-"""Consumes manifest.toml upload folders, creates Hugo bundles, then rebuilds public/."""
+"""Validate uploads, write Hugo page bundles and rebuild the public site."""
 
 from __future__ import annotations
 
 import json
-import os
 import re
 import shutil
-import subprocess
-import sys
-import time
 import tomllib
 from datetime import datetime, timezone
 from pathlib import Path
 
-DATA = Path(os.environ.get("EXHIB_DATA", "/data"))
-APP = Path(os.environ.get("EXHIB_APP", "/app"))
-INCOMING = DATA / "incoming"
-CONTENT = DATA / "content"
-ORIGINALS = DATA / "originals"
-PUBLIC = DATA / "public"
-POLL_SECONDS = int(os.environ.get("EXHIB_POLL_SECONDS", "3"))
-IMAGE_EXTS = {
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".webp",
-    ".avif",
-    ".tif",
-    ".tiff",
-    ".heic",
-    ".heif",
-}
-VIDEO_EXTS = {".mov", ".mp4", ".m4v", ".3gp", ".mkv", ".webm"}
-
-
-# ── Small helpers ─────────────────────────────────────────────
-def run(args: list[str]) -> None:
-    subprocess.run(args, check=True)
+from .media import IMAGE_EXTS, VIDEO_EXTS, convert_image, convert_video, run
+from .paths import APP, CONTENT, DATA, ORIGINALS, PUBLIC
 
 
 def toml_string(value: str) -> str:
@@ -54,167 +27,6 @@ def safe_relative(root: Path, value: str) -> Path:
     return resolved
 
 
-def copy_metadata(source: Path, output: Path) -> None:
-    # Preserve embedded EXIF/IPTC/XMP when a still image is converted.
-    run(
-        [
-            "exiftool",
-            "-overwrite_original",
-            "-TagsFromFile",
-            str(source),
-            "-all:all",
-            str(output),
-        ]
-    )
-
-
-# ── Media conversion ──────────────────────────────────────────
-def convert_image(source: Path, destination: Path) -> Path:
-    # Encode lossless WebP; copy full source metadata back so Hugo can extract it.
-    ext = source.suffix.lower()
-    decoded = destination / (source.stem + ".decoded.png")
-    output = destination / (source.stem + ".webp")
-    cwebp_inputs = {".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff"}
-    if ext in cwebp_inputs:
-        run(
-            [
-                "cwebp",
-                "-quiet",
-                "-lossless",
-                "-exact",
-                "-m",
-                "6",
-                str(source),
-                "-o",
-                str(output),
-            ]
-        )
-    else:
-        if ext in {".heic", ".heif"}:
-            run(["heif-convert", str(source), str(decoded)])
-        else:
-            run(
-                [
-                    "ffmpeg",
-                    "-hide_banner",
-                    "-loglevel",
-                    "error",
-                    "-y",
-                    "-noautorotate",
-                    "-i",
-                    str(source),
-                    "-frames:v",
-                    "1",
-                    str(decoded),
-                ]
-            )
-        run(
-            [
-                "cwebp",
-                "-quiet",
-                "-lossless",
-                "-exact",
-                "-m",
-                "6",
-                str(decoded),
-                "-o",
-                str(output),
-            ]
-        )
-        decoded.unlink(missing_ok=True)
-    copy_metadata(source, output)
-    return output
-
-
-def convert_video(source: Path, destination: Path) -> tuple[Path, Path]:
-    output = destination / (source.stem + ".webm")
-    poster_png = destination / (source.stem + "-poster.png")
-    poster = destination / (source.stem + "-poster.webp")
-    run(
-        [
-            "ffmpeg",
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-y",
-            "-i",
-            str(source),
-            "-map",
-            "0:v:0",
-            "-map",
-            "0:a?",
-            "-map_metadata",
-            "0",
-            "-c:v",
-            "libvpx-vp9",
-            "-lossless",
-            "1",
-            "-b:v",
-            "0",
-            "-deadline",
-            "good",
-            "-cpu-used",
-            "2",
-            "-c:a",
-            "libopus",
-            "-b:a",
-            "128k",
-            "-f",
-            "webm",
-            str(output),
-        ]
-    )
-    try:
-        run(
-            [
-                "ffmpeg",
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-y",
-                "-ss",
-                "1",
-                "-i",
-                str(source),
-                "-frames:v",
-                "1",
-                str(poster_png),
-            ]
-        )
-    except subprocess.CalledProcessError:
-        run(
-            [
-                "ffmpeg",
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-y",
-                "-i",
-                str(source),
-                "-frames:v",
-                "1",
-                str(poster_png),
-            ]
-        )
-    run(
-        [
-            "cwebp",
-            "-quiet",
-            "-lossless",
-            "-exact",
-            "-m",
-            "6",
-            str(poster_png),
-            "-o",
-            str(poster),
-        ]
-    )
-    poster_png.unlink(missing_ok=True)
-    copy_metadata(source, poster)
-    return output, poster
-
-
-# ── Bundle generation ─────────────────────────────────────────
 def build_front_matter(
     manifest: dict, media_rows: list[dict], thumbnail: str | None
 ) -> str:
@@ -248,7 +60,6 @@ def build_front_matter(
     return "\n".join(lines) + "\n"
 
 
-# ── Publish pipeline ──────────────────────────────────────────
 def build_and_publish() -> None:
     staging = DATA / ".public-next"
     backup = DATA / ".public-previous"
@@ -392,37 +203,3 @@ def publish_bundle(package: Path) -> None:
         shutil.rmtree(original_pending, ignore_errors=True)
         # Leave the incoming folder available for inspection/retry.
         raise
-
-
-# ── Main ──────────────────────────────────────────────────────
-def main() -> None:
-    for path in (INCOMING, CONTENT, ORIGINALS, PUBLIC):
-        path.mkdir(parents=True, exist_ok=True)
-    # On first boot, seed the persistent content tree from the repository.
-    if not any(CONTENT.iterdir()):
-        seed = APP / "content"
-        if seed.is_dir():
-            shutil.copytree(seed, CONTENT, dirs_exist_ok=True)
-    build_and_publish()
-    while True:
-        packages = sorted(
-            p for p in INCOMING.iterdir() if p.is_dir() and not p.name.startswith(".")
-        )
-        for package in packages:
-            try:
-                publish_bundle(package)
-            except Exception as exc:
-                print(
-                    f"Upload {package.name} failed: {exc}", file=sys.stderr, flush=True
-                )
-                # Avoid retrying a malformed package in a tight loop.
-                failed = INCOMING / (".failed-" + package.name)
-                try:
-                    package.rename(failed)
-                except OSError:
-                    pass
-        time.sleep(POLL_SECONDS)
-
-
-if __name__ == "__main__":
-    main()
