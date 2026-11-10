@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Consumes manifest.toml upload folders, creates Hugo bundles, then rebuilds public/."""
+
 from __future__ import annotations
 
 import json
@@ -20,7 +21,17 @@ CONTENT = DATA / "content"
 ORIGINALS = DATA / "originals"
 PUBLIC = DATA / "public"
 POLL_SECONDS = int(os.environ.get("EXHIB_POLL_SECONDS", "3"))
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".avif", ".tif", ".tiff", ".heic", ".heif"}
+IMAGE_EXTS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".avif",
+    ".tif",
+    ".tiff",
+    ".heic",
+    ".heif",
+}
 VIDEO_EXTS = {".mov", ".mp4", ".m4v", ".3gp", ".mkv", ".webm"}
 
 
@@ -44,7 +55,16 @@ def safe_relative(root: Path, value: str) -> Path:
 
 def copy_metadata(source: Path, output: Path) -> None:
     # Preserve embedded EXIF/IPTC/XMP when a still image is converted.
-    run(["exiftool", "-overwrite_original", "-TagsFromFile", str(source), "-all:all", str(output)])
+    run(
+        [
+            "exiftool",
+            "-overwrite_original",
+            "-TagsFromFile",
+            str(source),
+            "-all:all",
+            str(output),
+        ]
+    )
 
 
 def convert_image(source: Path, destination: Path) -> Path:
@@ -54,13 +74,51 @@ def convert_image(source: Path, destination: Path) -> Path:
     output = destination / (source.stem + ".webp")
     cwebp_inputs = {".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff"}
     if ext in cwebp_inputs:
-        run(["cwebp", "-quiet", "-lossless", "-exact", "-m", "6", str(source), "-o", str(output)])
+        run(
+            [
+                "cwebp",
+                "-quiet",
+                "-lossless",
+                "-exact",
+                "-m",
+                "6",
+                str(source),
+                "-o",
+                str(output),
+            ]
+        )
     else:
         if ext in {".heic", ".heif"}:
             run(["heif-convert", str(source), str(decoded)])
         else:
-            run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-noautorotate", "-i", str(source), "-frames:v", "1", str(decoded)])
-        run(["cwebp", "-quiet", "-lossless", "-exact", "-m", "6", str(decoded), "-o", str(output)])
+            run(
+                [
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-noautorotate",
+                    "-i",
+                    str(source),
+                    "-frames:v",
+                    "1",
+                    str(decoded),
+                ]
+            )
+        run(
+            [
+                "cwebp",
+                "-quiet",
+                "-lossless",
+                "-exact",
+                "-m",
+                "6",
+                str(decoded),
+                "-o",
+                str(output),
+            ]
+        )
         decoded.unlink(missing_ok=True)
     copy_metadata(source, output)
     return output
@@ -70,23 +128,93 @@ def convert_video(source: Path, destination: Path) -> tuple[Path, Path]:
     output = destination / (source.stem + ".webm")
     poster_png = destination / (source.stem + "-poster.png")
     poster = destination / (source.stem + "-poster.webp")
-    run([
-        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(source),
-        "-map", "0:v:0", "-map", "0:a?", "-map_metadata", "0",
-        "-c:v", "libvpx-vp9", "-lossless", "1", "-b:v", "0", "-deadline", "good", "-cpu-used", "2",
-        "-c:a", "libopus", "-b:a", "128k", "-f", "webm", str(output),
-    ])
+    run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            str(source),
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a?",
+            "-map_metadata",
+            "0",
+            "-c:v",
+            "libvpx-vp9",
+            "-lossless",
+            "1",
+            "-b:v",
+            "0",
+            "-deadline",
+            "good",
+            "-cpu-used",
+            "2",
+            "-c:a",
+            "libopus",
+            "-b:a",
+            "128k",
+            "-f",
+            "webm",
+            str(output),
+        ]
+    )
     try:
-        run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-ss", "1", "-i", str(source), "-frames:v", "1", str(poster_png)])
+        run(
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-ss",
+                "1",
+                "-i",
+                str(source),
+                "-frames:v",
+                "1",
+                str(poster_png),
+            ]
+        )
     except subprocess.CalledProcessError:
-        run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(source), "-frames:v", "1", str(poster_png)])
-    run(["cwebp", "-quiet", "-lossless", "-exact", "-m", "6", str(poster_png), "-o", str(poster)])
+        run(
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-i",
+                str(source),
+                "-frames:v",
+                "1",
+                str(poster_png),
+            ]
+        )
+    run(
+        [
+            "cwebp",
+            "-quiet",
+            "-lossless",
+            "-exact",
+            "-m",
+            "6",
+            str(poster_png),
+            "-o",
+            str(poster),
+        ]
+    )
     poster_png.unlink(missing_ok=True)
     copy_metadata(source, poster)
     return output, poster
 
 
-def build_front_matter(manifest: dict, media_rows: list[dict], thumbnail: str | None) -> str:
+def build_front_matter(
+    manifest: dict, media_rows: list[dict], thumbnail: str | None
+) -> str:
     kind = manifest["kind"]
     lines = ["+++", f"title = {toml_string(manifest['title'])}"]
     date = manifest["date"]
@@ -100,7 +228,15 @@ def build_front_matter(manifest: dict, media_rows: list[dict], thumbnail: str | 
     if kind == "collection" and thumbnail:
         lines.append(f"thumbnail = {toml_string(thumbnail)}")
     for row in media_rows:
-        lines += ["", "[[resources]]", f"src = {toml_string(row['file'])}", f"title = {toml_string(row['title'])}", "[resources.params]", f"weight = {int(row['weight'])}", f"kind = {toml_string(row['kind'])}"]
+        lines += [
+            "",
+            "[[resources]]",
+            f"src = {toml_string(row['file'])}",
+            f"title = {toml_string(row['title'])}",
+            "[resources.params]",
+            f"weight = {int(row['weight'])}",
+            f"kind = {toml_string(row['kind'])}",
+        ]
         if row.get("poster"):
             lines.append(f"poster = {toml_string(row['poster'])}")
         if row.get("role"):
@@ -115,7 +251,18 @@ def build_and_publish() -> None:
     shutil.rmtree(staging, ignore_errors=True)
     shutil.rmtree(backup, ignore_errors=True)
     staging.mkdir(parents=True)
-    run(["hugo", "--source", str(APP), "--contentDir", str(CONTENT), "--destination", str(staging), "--minify"])
+    run(
+        [
+            "hugo",
+            "--source",
+            str(APP),
+            "--contentDir",
+            str(CONTENT),
+            "--destination",
+            str(staging),
+            "--minify",
+        ]
+    )
     if PUBLIC.exists():
         PUBLIC.rename(backup)
     try:
@@ -151,7 +298,9 @@ def publish_bundle(package: Path) -> None:
     original_dir.parent.mkdir(parents=True, exist_ok=True)
     original_pending = original_dir.parent / ("." + slug + ".pending")
     if original_pending.exists():
-        raise ValueError(f"a previous processing attempt left a pending original for {slug}")
+        raise ValueError(
+            f"a previous processing attempt left a pending original for {slug}"
+        )
     bundle_dir = CONTENT / ("pieces" if kind == "piece" else "collections") / slug
     if bundle_dir.exists():
         # A previous attempt died before cleaning up; the bundle is generated
@@ -173,17 +322,36 @@ def publish_bundle(package: Path) -> None:
             weight = int(entry.get("weight", index))
             if ext in IMAGE_EXTS:
                 filename = convert_image(source, converted).name
-                row = {"file": filename, "title": title, "weight": weight, "kind": "image"}
+                row = {
+                    "file": filename,
+                    "title": title,
+                    "weight": weight,
+                    "kind": "image",
+                }
                 rows.append(row)
                 source_to_output[Path(str(entry["file"])).name] = filename
             elif ext in VIDEO_EXTS:
                 output, poster = convert_video(source, converted)
                 filename = output.name
                 poster_name = poster.name
-                row = {"file": filename, "title": title, "weight": weight, "kind": "video", "poster": poster_name}
+                row = {
+                    "file": filename,
+                    "title": title,
+                    "weight": weight,
+                    "kind": "video",
+                    "poster": poster_name,
+                }
                 video_rows.append(row)
                 rows.append(row)
-                rows.append({"file": poster_name, "title": title, "weight": weight, "kind": "image", "role": "poster"})
+                rows.append(
+                    {
+                        "file": poster_name,
+                        "title": title,
+                        "weight": weight,
+                        "kind": "image",
+                        "role": "poster",
+                    }
+                )
                 source_to_output[Path(str(entry["file"])).name] = poster_name
             else:
                 raise ValueError(f"unsupported media type: {source.suffix}")
@@ -191,13 +359,25 @@ def publish_bundle(package: Path) -> None:
             shutil.move(str(file), bundle_dir / file.name)
         converted.rmdir()
         thumbnail_source = manifest.get("thumbnail")
-        thumbnail = source_to_output.get(Path(str(thumbnail_source)).name) if thumbnail_source else None
+        thumbnail = (
+            source_to_output.get(Path(str(thumbnail_source)).name)
+            if thumbnail_source
+            else None
+        )
         if thumbnail_source and not thumbnail:
             raise ValueError("thumbnail must refer to a listed media file")
-        if kind == "piece" and not any(row["kind"] == "image" and row.get("role") != "poster" for row in rows) and not video_rows:
+        if (
+            kind == "piece"
+            and not any(
+                row["kind"] == "image" and row.get("role") != "poster" for row in rows
+            )
+            and not video_rows
+        ):
             raise ValueError("piece must contain at least one supported image or video")
         page_file = bundle_dir / ("index.md" if kind == "piece" else "_index.md")
-        page_file.write_text(build_front_matter(manifest, rows, thumbnail), encoding="utf-8")
+        page_file.write_text(
+            build_front_matter(manifest, rows, thumbnail), encoding="utf-8"
+        )
         shutil.copytree(package, original_pending)
         build_and_publish()
         original_pending.rename(original_dir)
@@ -220,12 +400,16 @@ def main() -> None:
             shutil.copytree(seed, CONTENT, dirs_exist_ok=True)
     build_and_publish()
     while True:
-        packages = sorted(p for p in INCOMING.iterdir() if p.is_dir() and not p.name.startswith("."))
+        packages = sorted(
+            p for p in INCOMING.iterdir() if p.is_dir() and not p.name.startswith(".")
+        )
         for package in packages:
             try:
                 publish_bundle(package)
             except Exception as exc:
-                print(f"Upload {package.name} failed: {exc}", file=sys.stderr, flush=True)
+                print(
+                    f"Upload {package.name} failed: {exc}", file=sys.stderr, flush=True
+                )
                 # Avoid retrying a malformed package in a tight loop.
                 failed = INCOMING / (".failed-" + package.name)
                 try:
