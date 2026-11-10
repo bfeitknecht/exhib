@@ -1,6 +1,6 @@
 {{ define "main" }}
 <header class="global-header">
-  <a class="apex-link" href="https://0xbf.ch/">0xbf.ch</a>
+  <a href="https://0xbf.ch/">0xbf.ch</a>
   <nav aria-label="Site links">
     <a href="{{ "sitemap.xml" | relURL }}">sitemap</a>
     <a href="{{ "rss.xml" | relURL }}">rss</a>
@@ -9,6 +9,6 @@
 </header>
 <header class="site-header"><h1>exhib</h1><p class="site-tagline">{{ site.Params.description }}</p></header>
 <main class="timeline">
-  {{ range partial "feed-entries.html" . }}{{ partial "item-card.html" . }}{{ end }}
+  {{ range partial "listing/feed-entries.html" . }}{{ partial "listing/item-card.html" . }}{{ end }}
 </main>
 {{ end }}

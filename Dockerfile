@@ -1,4 +1,4 @@
-# Worker image: gallery source/templates plus Hugo, FFmpeg and metadata tools.
+# Processor image: gallery source/templates plus Hugo, FFmpeg and metadata tools.
 # Gallery media is never copied into this image; it lives on the PVC.
 FROM alpine:3.22
 
@@ -21,4 +21,4 @@ RUN chown -R 1000:1000 /app
 ENV EXHIB_APP=/app \
     EXHIB_DATA=/data
 USER 1000:1000
-ENTRYPOINT ["python3", "/app/processor/worker.py"]
+ENTRYPOINT ["python3", "-m", "processor"]

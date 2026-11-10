@@ -44,3 +44,8 @@ enableRobotsTXT = true
 [imaging.meta]
   fields = ["**"]
   sources = ["exif", "iptc", "xmp"]
+
+[module]
+  [[module.mounts]]
+    source = "styles"
+    target = "assets/css"
