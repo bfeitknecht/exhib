@@ -1,4 +1,8 @@
-# exhib — common tasks. Run `just --list` to see the recipes.
+# exhib — common tasks. Bare `just` lists the recipes.
+
+# List the available recipes.
+default:
+    @just --list
 
 # Upload a piece or collection package (slug folder, manifest.toml + media) to the gallery; requires kubectl for the cluster
 upload package:
