@@ -1,5 +1,5 @@
 {{ define "main" }}
-{{ $media := partial "media-view.html" . }}
+{{ $media := partial "media/media-view.html" . }}
 <main class="piece-page piece-viewer" id="piece-main">
   <a class="view-home" href="{{ "/" | relURL }}" aria-label="Back to top-level view">/..</a>
   <header class="page-intro">
@@ -23,7 +23,7 @@
       <div class="view-chrome"><a class="close-detail" href="#piece-main" aria-label="Close detail">X</a></div>
       <div class="viewer-scroll">
         <div class="viewer-unit" style="--image-ratio: {{ $first.ratio }};">
-          {{ partial "media-detail.html" (dict "item" $first.item "poster" $first.poster) }}
+          {{ partial "media/media-detail.html" (dict "item" $first.item "poster" $first.poster) }}
         </div>
       </div>
     </section>

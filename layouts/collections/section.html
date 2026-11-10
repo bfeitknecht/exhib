@@ -4,11 +4,11 @@
     <a class="back-home" href="{{ "/" | relURL }}">/..</a>
     <h1>{{ .Title }}</h1>
     <div class="timeline">
-      {{ range sort .Sections "Date" "desc" }}{{ partial "item-card.html" . }}{{ end }}
+      {{ range sort .Sections "Date" "desc" }}{{ partial "listing/item-card.html" . }}{{ end }}
     </div>
   </main>
 {{ else }}
-  {{ $media := partial "media-view.html" . }}
+  {{ $media := partial "media/media-view.html" . }}
   <main class="collection-page" id="collection">
     <a class="view-home" href="{{ "/" | relURL }}" aria-label="Back to top-level view">/..</a>
     <header class="page-intro">
@@ -42,7 +42,7 @@
           </nav>
           <div class="viewer-scroll">
             <div class="viewer-unit" style="--image-ratio: {{ .ratio }};">
-              {{ partial "media-detail.html" (dict "item" .item "poster" .poster) }}
+              {{ partial "media/media-detail.html" (dict "item" .item "poster" .poster) }}
             </div>
           </div>
         </section>

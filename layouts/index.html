@@ -9,6 +9,6 @@
 </header>
 <header class="site-header"><h1>exhib</h1><p class="site-tagline">{{ site.Params.description }}</p></header>
 <main class="timeline">
-  {{ range partial "feed-entries.html" . }}{{ partial "item-card.html" . }}{{ end }}
+  {{ range partial "listing/feed-entries.html" . }}{{ partial "listing/item-card.html" . }}{{ end }}
 </main>
 {{ end }}

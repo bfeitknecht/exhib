@@ -3,7 +3,7 @@
   <a class="back-home" href="{{ "/" | relURL }}">/..</a>
   <h1>{{ .Title }}</h1>
   <div class="timeline">
-    {{ range sort .RegularPages "Date" "desc" }}{{ partial "item-card.html" . }}{{ end }}
+    {{ range sort .RegularPages "Date" "desc" }}{{ partial "listing/item-card.html" . }}{{ end }}
   </div>
 </main>
 {{ end }}
