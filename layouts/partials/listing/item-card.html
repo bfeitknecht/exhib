@@ -2,9 +2,9 @@
 {{- $isCollection := eq $page.Kind "section" -}}
 {{- $useMosaic := and $isCollection (not $page.Params.thumbnail) -}}
 <article class="item-card">
-  {{- if $useMosaic }}{{/* Mosaic of up to nine images; each cell links straight to
-         that image in the collection's fullscreen overlay (#photo-NN). Images
-         occupy photo-01..photo-N since videos follow them. */}}
+  {{- if $useMosaic }}{{/* Mosaic of up to nine images. Each cell links to the
+         fullscreen overlay of that image (#photo-NN). Images use
+         photo-01..photo-N, because videos come after the images. */}}
     {{- $images := first 9 (partial "media/sorted-images.html" $page) }}
     <div class="item-preview">
       <div class="preview-grid">

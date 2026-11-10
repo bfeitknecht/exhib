@@ -118,8 +118,8 @@ def publish_bundle(package: Path) -> None:
         )
     bundle_dir = CONTENT / ("pieces" if kind == "piece" else "collections") / slug
     if bundle_dir.exists():
-        # A previous attempt died before cleaning up; the bundle is generated
-        # output, so it is safe to discard before re-processing.
+        # The previous attempt stopped before cleanup. The bundle holds
+        # generated output, so discard it before re-processing.
         shutil.rmtree(bundle_dir)
     bundle_dir.mkdir(parents=True, exist_ok=False)
     converted = bundle_dir / ".converted"

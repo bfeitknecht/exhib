@@ -6,7 +6,7 @@ locale = "en"
 disableKinds = ["taxonomy", "term"]
 enableRobotsTXT = true
 
-# Keep the default RSS media type but pin baseName so the feed stays at /rss.xml.
+# Keep the default RSS media type. Pin baseName so the feed stays at /rss.xml.
 [outputFormats.RSS]
   mediaType = "application/rss+xml"
   baseName = "rss"

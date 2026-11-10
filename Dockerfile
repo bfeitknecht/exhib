@@ -1,5 +1,5 @@
-# Processor image: gallery source/templates plus Hugo, FFmpeg and metadata tools.
-# Gallery media is never copied into this image; it lives on the PVC.
+# Processor image: gallery source and templates, Hugo, FFmpeg, metadata tools.
+# The PVC holds the gallery media. This image does not contain media.
 FROM alpine:3.22
 
 ARG HUGO_VERSION=0.169.0

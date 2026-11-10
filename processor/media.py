@@ -38,7 +38,7 @@ def copy_metadata(source: Path, output: Path) -> None:
 
 
 def convert_image(source: Path, destination: Path) -> Path:
-    # Encode lossless WebP; copy full source metadata back so Hugo can extract it.
+    # Encode lossless WebP. Copy the full source metadata back, so Hugo can read it.
     ext = source.suffix.lower()
     decoded = destination / (source.stem + ".decoded.png")
     output = destination / (source.stem + ".webp")

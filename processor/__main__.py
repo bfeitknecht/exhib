@@ -1,4 +1,4 @@
-"""Entrypoint: watch the incoming queue and publish uploads as they arrive."""
+"""Entrypoint. Watch the incoming queue and publish uploads as they arrive."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def main() -> None:
                 print(
                     f"Upload {package.name} failed: {exc}", file=sys.stderr, flush=True
                 )
-                # Avoid retrying a malformed package in a tight loop.
+                # Do not retry a malformed package in a tight loop.
                 failed = INCOMING / (".failed-" + package.name)
                 try:
                     package.rename(failed)
