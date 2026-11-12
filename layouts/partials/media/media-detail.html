@@ -12,7 +12,10 @@
       Your browser does not support HTML video.
     </video>
   </div>
-  <div class="viewer-metadata"><dl class="metadata-list"><div class="metadata-row"><dt>Video</dt><dd>{{ $item.Title }}</dd></div><div class="metadata-row"><dt>Format</dt><dd>{{ $item.Params.format | default "WebM" }}</dd></div></dl></div>
+  <div class="viewer-metadata"><dl class="metadata-list"><div class="metadata-row"><dt>Video</dt><dd>{{ $item.Title }}</dd></div><div class="metadata-row"><dt>Format</dt><dd>{{ $item.Params.format | default "WebM" }}</dd></div>
+    {{ with $item.Params.resolution }}<div class="metadata-row"><dt>Resolution</dt><dd>{{ . }}</dd></div>{{ end }}
+    {{ with $item.Params.framerate }}<div class="metadata-row"><dt>Frame rate</dt><dd>{{ . }}</dd></div>{{ end }}
+    {{ with $item.Params.duration }}<div class="metadata-row"><dt>Duration</dt><dd>{{ . }}</dd></div>{{ end }}</dl></div>
 {{- else -}}
   <div class="viewer-image"><img src="{{ $item.RelPermalink }}" alt="{{ $item.Title }}"></div>
   <div class="viewer-metadata">{{ partial "metadata/metadata-list.html" (dict "image" $item) }}</div>

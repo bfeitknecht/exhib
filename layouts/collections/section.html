@@ -21,7 +21,6 @@
           <a class="collection-photo" href="#{{ .id }}" aria-label="View {{ .title }}">
             {{ if .isVideo }}
               {{- with .item.Params.preview -}}{{- with $page.Resources.GetMatch . -}}<img src="{{ .RelPermalink }}" alt="" loading="lazy">{{- end -}}{{- else -}}<video autoplay muted loop playsinline preload="metadata"{{ with .poster }} poster="{{ .RelPermalink }}"{{ end }} aria-hidden="true"><source src="{{ .item.RelPermalink }}" type="video/webm"></video>{{- end -}}
-              <span class="video-badge" aria-hidden="true">▶</span>
               <span class="preview-tap" aria-hidden="true"></span>
             {{ else }}
               <img src="{{ .item.RelPermalink }}" alt="{{ .title }}" loading="lazy">

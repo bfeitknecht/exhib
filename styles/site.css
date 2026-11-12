@@ -82,7 +82,6 @@ img { display: block; max-width: 100%; }
 .collection-photo { position: relative; display: block; aspect-ratio: 1.41421356 / 1; overflow: hidden; background: var(--bg); }
 .collection-photo img, .collection-photo video { width: 100%; height: 100%; object-fit: cover; }
 .preview-tap { position: absolute; inset: 0; display: block; }
-.video-badge { position: absolute; right: .75rem; bottom: .75rem; display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 50%; color: var(--bg); background: color-mix(in oklch, var(--fg) 75%, transparent); font-size: .8rem; pointer-events: none; }
 .video-placeholder { display: grid; place-items: center; width: 100%; height: 100%; color: var(--muted); background: color-mix(in oklch, var(--fg) 8%, var(--bg)); font: 700 .8rem/1 var(--mono); }
 /* ── Fullscreen viewers ── */
 .piece-page .page-intro { width: 100%; margin: 0 auto clamp(1rem, 2vw, 2rem); }

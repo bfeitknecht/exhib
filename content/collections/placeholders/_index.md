@@ -90,7 +90,10 @@ weight = 14
 kind = "video"
 poster = "test-pattern-poster.jpg"
 preview = "test-pattern-preview.webp"
-format = "WebM · VP9 · 1280×720 · 24 fps · 4 s"
+format = "WebM · VP9"
+resolution = "1280×720"
+framerate = "24 fps"
+duration = "4 s"
 
 [[resources]]
 src = "test-pattern-poster.jpg"
