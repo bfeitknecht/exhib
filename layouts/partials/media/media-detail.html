@@ -1,13 +1,13 @@
 {{/* Render the body of a fullscreen media viewer (image or video).
      Expects a dict:
-       item     - the media resource (image or video)
-       poster   - the poster resource for videos, or false for images.
-       autoplay - true to start the video on load (the standalone piece page).
+       item   - the media resource (image or video)
+       poster - the poster resource for videos, or false for images.
+     Videos autoplay while their overlay is open (see viewer-keys.js).
      The collection overlays and the standalone piece viewer use this. */}}
 {{- $item := .item -}}
 {{- if eq $item.Params.kind "video" -}}
   <div class="viewer-image">
-    <video controls preload="auto" playsinline muted{{ if .autoplay }} autoplay{{ end }} {{ with .poster }}poster="{{ .RelPermalink }}"{{ end }}>
+    <video controls preload="auto" playsinline muted {{ with .poster }}poster="{{ .RelPermalink }}"{{ end }}>
       <source src="{{ $item.RelPermalink }}" type="video/webm">
       Your browser does not support HTML video.
     </video>

@@ -1,5 +1,5 @@
-// Keyboard control for the fullscreen media viewers and the standalone piece video.
-// Left and Right move between items. Escape closes back to the grid.
+// Keyboard control for the fullscreen media viewers.
+// Left and Right move between items. Escape closes the viewer.
 // Space toggles play and pause of the active video.
 // A viewer video autoplays while its overlay is open. No dependencies.
 (function () {
@@ -17,10 +17,6 @@
       return !!video.closest('.photo-viewer');
     });
   }
-  function pieceVideos() {
-    var piece = document.querySelector('.piece-page');
-    return piece ? videos(piece) : [];
-  }
   function play(video) {
     var attempt = video.play();
     if (attempt && typeof attempt.catch === 'function') {
@@ -32,7 +28,7 @@
     }
   }
   function stopAutoplay() {
-    pieceVideos().forEach(function (video) {
+    overlayVideos().forEach(function (video) {
       video.pause();
     });
   }
@@ -42,10 +38,7 @@
     overlayVideos().forEach(function (video) {
       if (!open || !open.contains(video)) video.pause();
     });
-    if (reduceMotion.matches) {
-      stopAutoplay();
-      return;
-    }
+    if (reduceMotion.matches) return;
     if (open) videos(open).forEach(play);
   }
   function togglePlay(scope) {
@@ -59,24 +52,31 @@
 
   document.addEventListener('hashchange', syncVideos);
   document.addEventListener('keydown', function (event) {
-    // Space toggles the active video. Native control keys win when a
-    // control has the focus, so buttons and links keep their behavior.
+    // Space toggles the video in the open viewer. Native control keys
+    // win when a control has the focus, so buttons and links keep
+    // their behavior.
     if (event.key === ' ') {
       var onControl = event.target && event.target.closest &&
         event.target.closest('a, button, input, textarea, select, video, audio, [contenteditable]');
       if (onControl) return;
-      var scope = openViewer() || document.querySelector('.piece-page');
-      if (scope && togglePlay(scope)) event.preventDefault();
+      var open = openViewer();
+      if (open && togglePlay(open)) event.preventDefault();
       return;
     }
     if (handled.indexOf(event.key) === -1) return;
+    if (event.key === 'Escape') {
+      if (location.hash === '#piece-detail') {
+        event.preventDefault();
+        location.hash = 'piece-main';
+      } else if (/^#photo-\d+$/.test(location.hash)) {
+        event.preventDefault();
+        location.hash = 'gallery';
+      }
+      return;
+    }
     var match = location.hash.match(/^#photo-(\d+)$/);
     if (!match) return;
     event.preventDefault();
-    if (event.key === 'Escape') {
-      location.hash = 'gallery';
-      return;
-    }
     var total = document.querySelectorAll('.photo-viewer[id^="photo-"]').length;
     var next = parseInt(match[1], 10) + (event.key === 'ArrowRight' ? 1 : -1);
     // Stop at the ends, like the disabled << and >> controls.
