@@ -2,12 +2,12 @@
      Expects a dict:
        item   - the media resource (image or video)
        poster - the poster resource for videos, or false for images.
-     Videos autoplay while their overlay is open (see viewer-keys.js).
+     Videos do not autoplay. The reader starts playback with the controls.
      The collection overlays and the standalone piece viewer use this. */}}
 {{- $item := .item -}}
 {{- if eq $item.Params.kind "video" -}}
   <div class="viewer-image">
-    <video controls preload="auto" playsinline muted {{ with .poster }}poster="{{ .RelPermalink }}"{{ end }}>
+    <video controls preload="metadata" playsinline {{ with .poster }}poster="{{ .RelPermalink }}"{{ end }}>
       <source src="{{ $item.RelPermalink }}" type="video/webm">
       Your browser does not support HTML video.
     </video>

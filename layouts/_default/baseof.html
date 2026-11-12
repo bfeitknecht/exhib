@@ -26,6 +26,6 @@
       <a href="{{ "atom.xml" | relURL }}">atom</a>
     </nav>
   </footer>
-  {{ if or (eq .Section "collections") (eq .Section "pieces") }}<script src="{{ "js/viewer-keys.js" | relURL }}" defer></script>{{ end }}
+  {{ if or .IsHome (eq .Section "collections") (eq .Section "pieces") }}<script src="{{ "js/viewer-keys.js" | relURL }}" defer></script>{{ end }}
 </body>
 </html>

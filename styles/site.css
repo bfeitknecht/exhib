@@ -58,7 +58,7 @@ img { display: block; max-width: 100%; }
 .timeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); align-items: start; gap: clamp(2rem, 4vw, 4rem); }
 .item-card { min-width: 0; max-width: 40rem; }
 .item-preview { display: block; width: 100%; aspect-ratio: 1.41421356 / 1; overflow: hidden; background: var(--bg); }
-.item-preview > img { width: 100%; height: 100%; object-fit: cover; }
+.item-preview > img, .item-preview > video { width: 100%; height: 100%; object-fit: cover; }
 .preview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
 .preview-grid a { display: block; min-width: 0; aspect-ratio: 1.41421356 / 1; overflow: hidden; background: var(--bg); }
 .preview-grid img { width: 100%; height: 100%; object-fit: cover; }
@@ -81,7 +81,6 @@ img { display: block; max-width: 100%; }
 .collection-photo { position: relative; display: block; aspect-ratio: 1.41421356 / 1; overflow: hidden; background: var(--bg); }
 .collection-photo img { width: 100%; height: 100%; object-fit: cover; }
 .video-placeholder { display: grid; place-items: center; width: 100%; height: 100%; color: var(--muted); background: color-mix(in oklch, var(--fg) 8%, var(--bg)); font: 700 .8rem/1 var(--mono); }
-.video-badge { position: absolute; right: .75rem; bottom: .75rem; display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 50%; color: var(--bg); background: color-mix(in oklch, var(--fg) 75%, transparent); font-size: .8rem; }
 /* ── Fullscreen viewers ── */
 .piece-page .page-intro { width: 100%; margin: 0 auto clamp(1rem, 2vw, 2rem); }
 .piece-flow { width: min(100%, calc(100svh * var(--image-ratio))); max-width: 100rem; margin: 0 auto; }

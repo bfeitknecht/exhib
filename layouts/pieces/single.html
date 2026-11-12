@@ -12,7 +12,6 @@
       <a class="piece-open" href="#piece-detail" aria-label="Open {{ if $first.isVideo }}video{{ else }}image{{ end }} detail">
         {{ if $first.isVideo }}
           {{ with $first.poster }}<img src="{{ .RelPermalink }}" alt="Video poster for {{ $first.title }}">{{ else }}<span class="video-placeholder">VIDEO</span>{{ end }}
-          <span class="video-badge" aria-hidden="true">▶</span>
         {{ else }}
           <img src="{{ $first.item.RelPermalink }}" alt="{{ $first.title }}">
         {{ end }}
