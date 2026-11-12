@@ -1,16 +1,7 @@
-// Home page videos autoplay unless the user prefers reduced motion.
 // Left and Right move between items in the fullscreen viewers.
-// Escape closes the viewer. No dependencies.
+// Escape closes the viewer. Feed videos autoplay through the playsinline
+// autoplay attribute in the markup. No dependencies.
 (function () {
-  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  if (!reduceMotion.matches) {
-    // Silent inline loops on the feed. No controls, no audio.
-    Array.prototype.forEach.call(document.querySelectorAll('.item-preview video[data-autoplay]'), function (video) {
-      var attempt = video.play();
-      if (attempt && typeof attempt.catch === 'function') attempt.catch(function () {});
-    });
-  }
-
   var handled = ['ArrowLeft', 'ArrowRight', 'Escape'];
   document.addEventListener('keydown', function (event) {
     if (handled.indexOf(event.key) === -1) return;
