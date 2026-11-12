@@ -8,6 +8,7 @@
   </main>
 {{ else }}
   {{ $media := partial "media/media-view.html" . }}
+  {{ $page := . }}
   <main class="collection-page" id="collection">
     <header class="page-intro">
       <h1>{{ .Title }}</h1>
@@ -19,7 +20,7 @@
         {{ range $media }}
           <a class="collection-photo" href="#{{ .id }}" aria-label="View {{ .title }}">
             {{ if .isVideo }}
-              <video autoplay muted loop playsinline preload="metadata"{{ with .poster }} poster="{{ .RelPermalink }}"{{ end }} aria-hidden="true"><source src="{{ .item.RelPermalink }}" type="video/webm"></video>
+              {{- with .item.Params.preview -}}{{- with $page.Resources.GetMatch . -}}<img src="{{ .RelPermalink }}" alt="" loading="lazy">{{- end -}}{{- else -}}<video autoplay muted loop playsinline preload="metadata"{{ with .poster }} poster="{{ .RelPermalink }}"{{ end }} aria-hidden="true"><source src="{{ .item.RelPermalink }}" type="video/webm"></video>{{- end -}}
               <span class="video-badge" aria-hidden="true">▶</span>
               <span class="preview-tap" aria-hidden="true"></span>
             {{ else }}

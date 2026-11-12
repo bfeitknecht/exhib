@@ -89,6 +89,7 @@ title = "Test pattern"
 weight = 14
 kind = "video"
 poster = "test-pattern-poster.jpg"
+preview = "test-pattern-preview.webp"
 
 [[resources]]
 src = "test-pattern-poster.jpg"
@@ -97,4 +98,12 @@ title = "Test pattern"
 weight = 14
 kind = "image"
 role = "poster"
+
+[[resources]]
+src = "test-pattern-preview.webp"
+title = "Test pattern"
+[resources.params]
+weight = 14
+kind = "image"
+role = "preview"
 +++
