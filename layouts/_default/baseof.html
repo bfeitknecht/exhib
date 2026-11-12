@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="{{ .Description | default site.Params.description | htmlEscape }}">
+  <meta name="description" content="{{ .Description | default site.Params.description | markdownify | plainify | htmlEscape }}">
   <title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }} — {{ site.Title }}{{ end }}</title>
   {{- $css := resources.Get "css/site.css" | resources.Minify | resources.Fingerprint "sha256" }}
   <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">

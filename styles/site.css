@@ -42,7 +42,7 @@ body { min-height: 100vh; margin: 0; padding: var(--gutter); background: var(--b
 a { color: inherit; }
 img { display: block; max-width: 100%; }
 /* ── Chrome ── */
-.global-header, .site-header, .timeline, .archive, .collection-page, .piece-page { width: 100%; max-width: 100rem; margin-inline: auto; }
+.global-header, .site-header, .timeline, .archive, .collection-page, .piece-page, .writing-page { width: 100%; max-width: 100rem; margin-inline: auto; }
 .global-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: .25rem clamp(1.75rem, 3vw, 3rem); color: var(--muted); font: 400 .8rem/1.2 var(--mono); }
 .global-header nav { display: flex; flex-wrap: wrap; gap: clamp(.8rem, 2vw, 1.75rem); }
 .global-header a { text-decoration: none; }
@@ -68,6 +68,10 @@ img { display: block; max-width: 100%; }
 .page-intro h1 { margin: 0 0 .2rem; font-size: clamp(1.8rem, 4vw, 3.5rem); line-height: 1.05; font-weight: 500; letter-spacing: -.045em; }
 .page-intro time { display: block; margin-top: .55rem; }
 .page-intro p { max-width: 64rem; margin: .5rem 0 0; color: var(--muted); font-size: clamp(1.1rem, 1.8vw, 1.5rem); line-height: 1.4; }
+/* ── Writings ── */
+.writing-body { max-width: 46ch; }
+.writing-body p { margin: 0 0 1.25em; font-size: 1.05rem; line-height: 1.7; white-space: pre-line; }
+.writing-body p:last-child { margin-bottom: 0; }
 /* ── Collection grid & video placeholders ── */
 .collection-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
 .collection-photo { position: relative; display: block; aspect-ratio: 1.41421356 / 1; overflow: hidden; background: var(--bg); }

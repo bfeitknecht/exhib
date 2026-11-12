@@ -1,6 +1,7 @@
 {{/* Return all pieces and collections, sorted newest first.
      The home page and the RSS and Atom feeds use this list. */}}
 {{- $entries := where site.RegularPages "Section" "pieces" -}}
+{{- $entries = $entries | append (where site.RegularPages "Section" "writings") -}}
 {{- with site.GetPage "/collections" -}}
   {{- range .Sections -}}{{- $entries = $entries | append . -}}{{- end -}}
 {{- end -}}
