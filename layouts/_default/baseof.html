@@ -14,6 +14,10 @@
   <link rel="alternate" type="application/atom+xml" title="{{ site.Title }} Atom" href="{{ "atom.xml" | relURL }}">
 </head>
 <body>
+  <header class="global-header">
+    <a href="https://0xbf.ch/">0xbf.ch</a>
+    {{ partial "listing/view-nav.html" . }}
+  </header>
   {{ block "main" . }}{{ end }}
   {{ if eq .Section "collections" }}<script src="{{ "js/viewer-keys.js" | relURL }}" defer></script>{{ end }}
 </body>

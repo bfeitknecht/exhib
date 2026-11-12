@@ -1,8 +1,6 @@
 {{ define "main" }}
 {{ if .Parent.IsHome }}
   <main class="archive">
-    <a class="back-home" href="{{ "/" | relURL }}">/..</a>
-    {{ partial "listing/view-nav.html" . }}
     <h1>{{ .Title }}</h1>
     <div class="timeline">
       {{ range sort .Sections "Date" "desc" }}{{ partial "listing/item-card.html" . }}{{ end }}
@@ -11,7 +9,6 @@
 {{ else }}
   {{ $media := partial "media/media-view.html" . }}
   <main class="collection-page" id="collection">
-    <a class="view-home" href="{{ "/" | relURL }}" aria-label="Back to top-level view">/..</a>
     <header class="page-intro">
       <h1>{{ .Title }}</h1>
       <time datetime="{{ .Date.Format "2006-01-02T15:04:05Z07:00" }}">{{ .Date.Format "2006-01-02" }}</time>

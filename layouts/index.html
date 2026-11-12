@@ -1,14 +1,5 @@
 {{ define "main" }}
-<header class="global-header">
-  <a href="https://0xbf.ch/">0xbf.ch</a>
-  <nav aria-label="Site links">
-    <a href="{{ "sitemap.xml" | relURL }}">sitemap</a>
-    <a href="{{ "rss.xml" | relURL }}">rss</a>
-    <a href="{{ "atom.xml" | relURL }}">atom</a>
-  </nav>
-</header>
 <header class="site-header"><h1>exhib</h1><p class="site-tagline">{{ site.Params.description }}</p></header>
-{{ partial "listing/view-nav.html" . }}
 <main class="timeline">
   {{ range partial "listing/feed-entries.html" . }}{{ partial "listing/item-card.html" . }}{{ end }}
 </main>

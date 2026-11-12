@@ -16,7 +16,7 @@ The design language is the site's original one, kept intact: Helvetica Neue (sys
 | Writing | `/writings/<slug>/` | `layouts/writings/single.html` | Title/date/description and a markdown body in a verse measure; no media, no metadata |
 | Standalone piece | `/pieces/<slug>/` | `layouts/pieces/single.html` | Title/date/description and the first media item as stage artwork (`.piece-flow`), no metadata; clicking opens a fullscreen detail with metadata and no previous/next |
 
-The shared document shell and the feed discovery links are in `layouts/_default/baseof.html`.
+The shared document shell is in `layouts/_default/baseof.html`. Every page carries the global bar: `0xbf.ch` on the left; `/`, `/collections/`, `/pieces/`, `/writings/`, `sitemap`, `rss` and `atom` on the right. It is styled like the page chrome (Commit Mono, muted). The current view is marked with `aria-current="page"`.
 
 - Home-page card markup: `layouts/partials/listing/item-card.html` (writings reuse it without the image block).
 - Collection image ordering: `layouts/partials/media/sorted-images.html` (images with an EXIF capture date first, oldest first, then `weight` order; generated video posters are excluded).
@@ -60,7 +60,7 @@ title = "Evening study"
 +++
 ```
 
-The `/..` link is in the page flow. It scrolls away with the title. Clicking the image opens a fullscreen `:target` detail. `X` closes back to the standalone page. There is no previous/next navigation on standalone pages.
+Clicking the image opens a fullscreen `:target` detail. `X` closes back to the standalone page. There is no previous/next navigation on standalone pages.
 
 ### Writings
 

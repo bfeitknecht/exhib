@@ -1,7 +1,5 @@
 {{ define "main" }}
 <main class="archive">
-  <a class="back-home" href="{{ "/" | relURL }}">/..</a>
-  {{ partial "listing/view-nav.html" . }}
   <h1>{{ .Title }}</h1>
   {{ with .RegularPages }}
     <div class="timeline">

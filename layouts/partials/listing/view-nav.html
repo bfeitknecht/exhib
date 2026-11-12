@@ -1,9 +1,12 @@
-{{/* Minimal view switcher for the feed-like pages (home and the three
-     indexes). The current view is shown in full color. */}}
-{{- $current := .Section | default "everything" -}}
-<nav class="view-nav" aria-label="Views">
-  <a href="{{ "/" | relURL }}"{{ if eq $current "everything" }} aria-current="page"{{ end }}>everything</a>
-  <a href="{{ "/collections/" | relURL }}"{{ if eq $current "collections" }} aria-current="page"{{ end }}>collections</a>
-  <a href="{{ "/pieces/" | relURL }}"{{ if eq $current "pieces" }} aria-current="page"{{ end }}>pieces</a>
-  <a href="{{ "/writings/" | relURL }}"{{ if eq $current "writings" }} aria-current="page"{{ end }}>writings</a>
+{{/* Global navigation bar: view switcher and syndication links.
+     Shown on every page. The current view is shown in full color. */}}
+{{- $current := .Section | default "" -}}
+<nav class="view-nav" aria-label="Site">
+  <a href="{{ "/" | relURL }}"{{ if .IsHome }} aria-current="page"{{ end }} aria-label="Everything">/</a>
+  <a href="{{ "/collections/" | relURL }}"{{ if eq $current "collections" }} aria-current="page"{{ end }} aria-label="Collections">/collections/</a>
+  <a href="{{ "/pieces/" | relURL }}"{{ if eq $current "pieces" }} aria-current="page"{{ end }} aria-label="Pieces">/pieces/</a>
+  <a href="{{ "/writings/" | relURL }}"{{ if eq $current "writings" }} aria-current="page"{{ end }} aria-label="Writings">/writings/</a>
+  <a href="{{ "sitemap.xml" | relURL }}">sitemap</a>
+  <a href="{{ "rss.xml" | relURL }}">rss</a>
+  <a href="{{ "atom.xml" | relURL }}">atom</a>
 </nav>
