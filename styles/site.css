@@ -79,7 +79,7 @@ img { display: block; max-width: 100%; }
 /* ── Collection grid & video placeholders ── */
 .collection-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
 .collection-photo { position: relative; display: block; aspect-ratio: 1.41421356 / 1; overflow: hidden; background: var(--bg); }
-.collection-photo img { width: 100%; height: 100%; object-fit: cover; }
+.collection-photo img, .collection-photo video { width: 100%; height: 100%; object-fit: cover; }
 .video-placeholder { display: grid; place-items: center; width: 100%; height: 100%; color: var(--muted); background: color-mix(in oklch, var(--fg) 8%, var(--bg)); font: 700 .8rem/1 var(--mono); }
 /* ── Fullscreen viewers ── */
 .piece-page .page-intro { width: 100%; margin: 0 auto clamp(1rem, 2vw, 2rem); }
@@ -129,10 +129,10 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 /* Subtle motion: tiles and card titles scale to 1.03 on hover/focus.
    Chrome links fade in color. No loops, no scroll effects.
    All of it is disabled under prefers-reduced-motion. */
-.item-preview img, .preview-grid img, .collection-photo img { transition: transform .7s cubic-bezier(.2, .6, .2, 1); }
+.item-preview img, .preview-grid img, .collection-photo img, .collection-photo video { transition: transform .7s cubic-bezier(.2, .6, .2, 1); }
 a.item-preview:hover img, a.item-preview:focus-visible img,
 .preview-grid a:hover img, .preview-grid a:focus-visible img,
-.collection-photo:hover img, .collection-photo:focus-visible img { transform: scale(1.03); }
+.collection-photo:hover img, .collection-photo:focus-visible img, .collection-photo:hover video, .collection-photo:focus-visible video { transform: scale(1.03); }
 .global-header a, .site-footer a, .close-detail, .viewer-nav a, .view-nav a { transition: color .25s ease; }
 .item-copy h2 a { display: inline-block; transform-origin: left center; transition: color .25s ease, transform .7s cubic-bezier(.2, .6, .2, 1); }
 .item-copy h2 a:hover, .item-copy h2 a:focus-visible { transform: scale(1.03); }
