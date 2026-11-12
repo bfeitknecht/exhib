@@ -24,7 +24,8 @@
         {{- with index (partial "media/sorted-media.html" $page) 0 -}}
           {{- if eq .Params.kind "video" -}}
             {{- $video := . -}}
-            {{- with $page.Resources.GetMatch $video.Params.poster -}}<video autoplay muted loop playsinline preload="metadata" poster="{{ .RelPermalink }}" data-autoplay aria-hidden="true"><source src="{{ $video.RelPermalink }}" type="video/webm"></video>{{- else -}}<video muted loop playsinline preload="metadata" data-autoplay aria-hidden="true"><source src="{{ $video.RelPermalink }}" type="video/webm"></video>{{- end -}}
+            {{- $poster := $page.Resources.GetMatch $video.Params.poster -}}
+            <video autoplay muted loop playsinline preload="metadata"{{ with $poster }} poster="{{ .RelPermalink }}"{{ end }} aria-hidden="true"><source src="{{ $video.RelPermalink }}" type="video/webm"></video><span class="video-badge" aria-hidden="true">▶</span>
           {{- else -}}
             <img src="{{ .RelPermalink }}" alt="" loading="lazy">
           {{- end -}}

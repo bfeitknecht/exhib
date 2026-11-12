@@ -20,6 +20,7 @@
           <a class="collection-photo" href="#{{ .id }}" aria-label="View {{ .title }}">
             {{ if .isVideo }}
               <video autoplay muted loop playsinline preload="metadata"{{ with .poster }} poster="{{ .RelPermalink }}"{{ end }} aria-hidden="true"><source src="{{ .item.RelPermalink }}" type="video/webm"></video>
+              <span class="video-badge" aria-hidden="true">▶</span>
             {{ else }}
               <img src="{{ .item.RelPermalink }}" alt="{{ .title }}" loading="lazy">
             {{ end }}
