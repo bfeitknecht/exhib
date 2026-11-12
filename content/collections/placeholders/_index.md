@@ -1,7 +1,7 @@
 +++
 title = "Placeholders"
 date = 2026-10-29T00:00:00Z
-description = "All assistant-created placeholder artwork: cover, studies, standalone-piece and card-thumbnail previews."
+description = "All assistant-created placeholder artwork: cover, studies, standalone-piece and card-thumbnail previews, plus a generated test pattern video."
 thumbnail = "cover.svg"
 
 [[resources]]
@@ -27,7 +27,6 @@ src = "standalone-piece.svg"
 title = "Standalone architectural placeholder"
 [resources.params]
 weight = 4
-+++
 
 [[resources]]
 src = "01-paper-light.svg"
@@ -82,3 +81,20 @@ src = "placeholder.svg"
 title = "Abstract architectural study"
 [resources.params]
 weight = 13
+
+[[resources]]
+src = "test-pattern.webm"
+title = "Test pattern"
+[resources.params]
+weight = 14
+kind = "video"
+poster = "test-pattern-poster.jpg"
+
+[[resources]]
+src = "test-pattern-poster.jpg"
+title = "Test pattern"
+[resources.params]
+weight = 14
+kind = "image"
+role = "poster"
++++
