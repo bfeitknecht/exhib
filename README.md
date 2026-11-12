@@ -139,7 +139,7 @@ The GPS example removes the EXIF GPS group. XMP is enabled too. Inspect the XMP 
 
 All artwork is local to this repository. The templates do not fetch images from another service.
 
-- `content/collections/placeholders/` holds the assistant-created placeholder artwork: the cover, the studies, the standalone-piece and the card previews.
+- `content/collections/placeholders/` holds the assistant-created placeholder artwork: the cover, the studies, the standalone-piece, the card previews and the generated test-pattern clips and calibration charts.
 
 ## Build and local preview
 

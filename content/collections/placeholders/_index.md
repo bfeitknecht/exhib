@@ -1,7 +1,7 @@
 +++
 title = "Placeholders"
 date = 2026-10-29T00:00:00Z
-description = "All assistant-created placeholder artwork: cover, studies, standalone-piece and card-thumbnail previews, plus a generated test pattern video."
+description = "All assistant-created placeholder artwork: cover, studies, standalone-piece and card-thumbnail previews, generated calibration charts and test-pattern clips."
 thumbnail = "cover.svg"
 
 [[resources]]
@@ -108,6 +108,65 @@ src = "test-pattern-preview.webp"
 title = "Test pattern"
 [resources.params]
 weight = 14
+kind = "image"
+role = "preview"
+
+[[resources]]
+src = "color-bars.jpg"
+title = "Colour bars"
+[resources.params]
+weight = 15
+
+[[resources]]
+src = "gradient-sweep.jpg"
+title = "Gradient sweep"
+[resources.params]
+weight = 16
+
+[[resources]]
+src = "convergence-chart.jpg"
+title = "Convergence chart"
+[resources.params]
+weight = 17
+
+[[resources]]
+src = "grayscale-ramp.jpg"
+title = "Greyscale ramp"
+[resources.params]
+weight = 18
+
+[[resources]]
+src = "crosshair.jpg"
+title = "Crosshair"
+[resources.params]
+weight = 19
+
+[[resources]]
+src = "signal-sweep.webm"
+title = "Signal sweep"
+[resources.params]
+weight = 20
+kind = "video"
+poster = "signal-sweep-poster.jpg"
+preview = "signal-sweep-preview.webp"
+format = "WebM · VP9"
+resolution = "1280×720"
+framerate = "24 fps"
+duration = "4 s"
+
+[[resources]]
+src = "signal-sweep-poster.jpg"
+title = "Signal sweep"
+[resources.params]
+weight = 20
+kind = "image"
+role = "poster"
+
+[[resources]]
+src = "signal-sweep-preview.webp"
+title = "Signal sweep"
+[resources.params]
+weight = 20
 kind = "image"
 role = "preview"
 +++
