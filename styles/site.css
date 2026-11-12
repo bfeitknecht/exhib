@@ -36,13 +36,13 @@ html { background: var(--bg); scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .item-preview img, .preview-grid img, .collection-photo img,
-  .global-header a, .view-home, .back-home, .close-detail, .viewer-nav a, .item-copy h2 a { transition: none; }
+  .global-header a, .view-home, .back-home, .close-detail, .viewer-nav a, .item-copy h2 a, .view-nav a { transition: none; }
 }
 body { min-height: 100vh; margin: 0; padding: var(--gutter); background: var(--bg); color: var(--fg); font: 400 1rem/1.5 var(--sans); }
 a { color: inherit; }
 img { display: block; max-width: 100%; }
 /* ── Chrome ── */
-.global-header, .site-header, .timeline, .archive, .collection-page, .piece-page, .writing-page { width: 100%; max-width: 100rem; margin-inline: auto; }
+.global-header, .site-header, .timeline, .archive, .collection-page, .piece-page, .writing-page, .view-nav { width: 100%; max-width: 100rem; margin-inline: auto; }
 .global-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: .25rem clamp(1.75rem, 3vw, 3rem); color: var(--muted); font: 400 .8rem/1.2 var(--mono); }
 .global-header nav { display: flex; flex-wrap: wrap; gap: clamp(.8rem, 2vw, 1.75rem); }
 .global-header a { text-decoration: none; }
@@ -50,6 +50,10 @@ img { display: block; max-width: 100%; }
 .site-header { padding-block: 0 clamp(2rem, 5vw, 5rem); }
 .site-header h1 { margin: 0; font: 500 clamp(4rem, 12vw, 10rem)/.85 var(--sans); letter-spacing: -.095em; }
 .site-tagline { margin: .7rem 0 0; color: var(--muted); font-size: clamp(1rem, 1.5vw, 1.35rem); line-height: 1.35; }
+/* ── View nav ── */
+.view-nav { display: flex; flex-wrap: wrap; gap: clamp(.8rem, 2vw, 1.75rem); margin: 0 0 clamp(1.5rem, 3vh, 2.5rem); color: var(--muted); font: 400 .9rem/1.4 var(--mono); }
+.view-nav a { color: inherit; text-decoration: none; }
+.view-nav a:hover, .view-nav a:focus-visible, .view-nav a[aria-current="page"] { color: var(--fg); }
 /* ── Home feed & cards ── */
 .timeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); align-items: start; gap: clamp(2rem, 4vw, 4rem); }
 .item-card { min-width: 0; max-width: 40rem; }
@@ -132,6 +136,6 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 a.item-preview:hover img, a.item-preview:focus-visible img,
 .preview-grid a:hover img, .preview-grid a:focus-visible img,
 .collection-photo:hover img, .collection-photo:focus-visible img { transform: scale(1.03); }
-.global-header a, .view-home, .back-home, .close-detail, .viewer-nav a { transition: color .25s ease; }
+.global-header a, .view-home, .back-home, .close-detail, .viewer-nav a, .view-nav a { transition: color .25s ease; }
 .item-copy h2 a { display: inline-block; transform-origin: left center; transition: color .25s ease, transform .7s cubic-bezier(.2, .6, .2, 1); }
 .item-copy h2 a:hover, .item-copy h2 a:focus-visible { transform: scale(1.03); }

@@ -2,6 +2,7 @@
 {{ if .Parent.IsHome }}
   <main class="archive">
     <a class="back-home" href="{{ "/" | relURL }}">/..</a>
+    {{ partial "listing/view-nav.html" . }}
     <h1>{{ .Title }}</h1>
     <div class="timeline">
       {{ range sort .Sections "Date" "desc" }}{{ partial "listing/item-card.html" . }}{{ end }}

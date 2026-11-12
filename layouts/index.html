@@ -8,6 +8,7 @@
   </nav>
 </header>
 <header class="site-header"><h1>exhib</h1><p class="site-tagline">{{ site.Params.description }}</p></header>
+{{ partial "listing/view-nav.html" . }}
 <main class="timeline">
   {{ range partial "listing/feed-entries.html" . }}{{ partial "listing/item-card.html" . }}{{ end }}
 </main>

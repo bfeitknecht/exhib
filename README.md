@@ -10,6 +10,7 @@ The design language is the site's original one, kept intact: Helvetica Neue (sys
 |---|---|---|---|
 | Home / top level | `/` | `layouts/index.html` | Tagline, Apex/sitemap/feed links, feed of cards, newest first |
 | Collections index | `/collections/` | `layouts/collections/section.html` | Collection archive/list |
+| Pieces index | `/pieces/` | `layouts/pieces/section.html` | List of standalone pieces, newest first |
 | Collection | `/collections/<slug>/` | `layouts/collections/section.html` | Title/date/description, 1:√2 image/video grid, CSS `:target` details with close and `<< n/m >>` (and arrow/Escape) navigation |
 | Writings index | `/writings/` | `layouts/writings/section.html` | List of writings, newest first |
 | Writing | `/writings/<slug>/` | `layouts/writings/single.html` | Title/date/description and a markdown body in a verse measure; no media, no metadata |
