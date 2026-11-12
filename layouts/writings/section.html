@@ -1,0 +1,12 @@
+{{ define "main" }}
+<main class="archive">
+  <h1>{{ .Title }}</h1>
+  {{ with .RegularPages }}
+    <div class="timeline">
+      {{ range sort . "Date" "desc" }}{{ partial "listing/item-card.html" . }}{{ end }}
+    </div>
+  {{ else }}
+    <p class="empty-state">No writings yet.</p>
+  {{ end }}
+</main>
+{{ end }}

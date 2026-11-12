@@ -1,11 +1,10 @@
 {{ define "main" }}
 {{ $media := partial "media/media-view.html" . }}
-<main class="piece-page piece-viewer" id="piece-main">
-  <a class="view-home" href="{{ "/" | relURL }}" aria-label="Back to top-level view">/..</a>
+<main class="piece-page" id="piece-main">
   <header class="page-intro">
     <h1>{{ .Title }}</h1>
     <time datetime="{{ .Date.Format "2006-01-02T15:04:05Z07:00" }}">{{ .Date.Format "2006-01-02" }}</time>
-    {{ with .Description }}<p>{{ . }}</p>{{ end }}
+    {{ with .Description }}<p>{{ . | markdownify }}</p>{{ end }}
   </header>
   {{ if $media }}
     {{ $first := index $media 0 }}
@@ -13,7 +12,6 @@
       <a class="piece-open" href="#piece-detail" aria-label="Open {{ if $first.isVideo }}video{{ else }}image{{ end }} detail">
         {{ if $first.isVideo }}
           {{ with $first.poster }}<img src="{{ .RelPermalink }}" alt="Video poster for {{ $first.title }}">{{ else }}<span class="video-placeholder">VIDEO</span>{{ end }}
-          <span class="video-badge" aria-hidden="true">▶</span>
         {{ else }}
           <img src="{{ $first.item.RelPermalink }}" alt="{{ $first.title }}">
         {{ end }}

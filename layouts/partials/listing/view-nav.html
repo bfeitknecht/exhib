@@ -1,0 +1,9 @@
+{{/* Global navigation bar: path-style view switcher.
+     Shown on every page. The current view is shown in full color. */}}
+{{- $current := .Section | default "" -}}
+<nav class="view-nav" aria-label="Site">
+  <a href="{{ "/" | relURL }}"{{ if .IsHome }} aria-current="page"{{ end }} aria-label="Everything">/</a>
+  <a href="{{ "/collections/" | relURL }}"{{ if eq $current "collections" }} aria-current="page"{{ end }} aria-label="Collections">/collections/</a>
+  <a href="{{ "/pieces/" | relURL }}"{{ if eq $current "pieces" }} aria-current="page"{{ end }} aria-label="Pieces">/pieces/</a>
+  <a href="{{ "/writings/" | relURL }}"{{ if eq $current "writings" }} aria-current="page"{{ end }} aria-label="Writings">/writings/</a>
+</nav>

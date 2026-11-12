@@ -1,7 +1,6 @@
 {{ define "main" }}
 {{ if .Parent.IsHome }}
   <main class="archive">
-    <a class="back-home" href="{{ "/" | relURL }}">/..</a>
     <h1>{{ .Title }}</h1>
     <div class="timeline">
       {{ range sort .Sections "Date" "desc" }}{{ partial "listing/item-card.html" . }}{{ end }}
@@ -9,20 +8,20 @@
   </main>
 {{ else }}
   {{ $media := partial "media/media-view.html" . }}
+  {{ $page := . }}
   <main class="collection-page" id="collection">
-    <a class="view-home" href="{{ "/" | relURL }}" aria-label="Back to top-level view">/..</a>
     <header class="page-intro">
       <h1>{{ .Title }}</h1>
       <time datetime="{{ .Date.Format "2006-01-02T15:04:05Z07:00" }}">{{ .Date.Format "2006-01-02" }}</time>
-      {{ with .Description }}<p>{{ . }}</p>{{ end }}
+      {{ with .Description }}<p>{{ . | markdownify }}</p>{{ end }}
     </header>
     {{ if $media }}
       <section class="collection-grid" id="gallery" aria-label="Collection media">
         {{ range $media }}
-          <a class="collection-photo" href="#{{ .id }}" aria-label="{{ if .isVideo }}Play{{ else }}View{{ end }} {{ .title }}">
+          <a class="collection-photo" href="#{{ .id }}" aria-label="View {{ .title }}">
             {{ if .isVideo }}
-              {{ with .poster }}<img src="{{ .RelPermalink }}" alt="" loading="lazy">{{ else }}<span class="video-placeholder">VIDEO</span>{{ end }}
-              <span class="video-badge" aria-hidden="true">▶</span>
+              {{- with .item.Params.preview -}}{{- with $page.Resources.GetMatch . -}}<img src="{{ .RelPermalink }}" alt="" loading="lazy">{{- end -}}{{- else -}}<video autoplay muted loop playsinline preload="metadata"{{ with .poster }} poster="{{ .RelPermalink }}"{{ end }} aria-hidden="true"><source src="{{ .item.RelPermalink }}" type="video/webm"></video>{{- end -}}
+              <span class="preview-tap" aria-hidden="true"></span>
             {{ else }}
               <img src="{{ .item.RelPermalink }}" alt="{{ .title }}" loading="lazy">
             {{ end }}

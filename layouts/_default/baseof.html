@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="{{ .Description | default site.Params.description | htmlEscape }}">
+  <meta name="description" content="{{ .Description | default site.Params.description | markdownify | plainify | htmlEscape }}">
   <title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }} — {{ site.Title }}{{ end }}</title>
   {{- $css := resources.Get "css/site.css" | resources.Minify | resources.Fingerprint "sha256" }}
   <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
@@ -14,7 +14,18 @@
   <link rel="alternate" type="application/atom+xml" title="{{ site.Title }} Atom" href="{{ "atom.xml" | relURL }}">
 </head>
 <body>
+  <header class="global-header">
+    {{ partial "listing/view-nav.html" . }}
+  </header>
   {{ block "main" . }}{{ end }}
-  {{ if eq .Section "collections" }}<script src="{{ "js/viewer-keys.js" | relURL }}" defer></script>{{ end }}
+  <footer class="site-footer">
+    <a href="https://0xbf.ch/">0xbf.ch</a>
+    <nav class="footer-nav" aria-label="Feeds and files">
+      <a href="{{ "sitemap.xml" | relURL }}">sitemap</a>
+      <a href="{{ "rss.xml" | relURL }}">rss</a>
+      <a href="{{ "atom.xml" | relURL }}">atom</a>
+    </nav>
+  </footer>
+  {{ if or (eq .Section "collections") (eq .Section "pieces") }}<script src="{{ "js/viewer-keys.js" | relURL }}" defer></script>{{ end }}
 </body>
 </html>

@@ -1,6 +1,6 @@
 # exhib
 
-A chronological Hugo gallery for standalone pieces and collections. The site is static. It uses custom templates and CSS-only viewers (`:target` overlays). The only JavaScript is a small (~20-line) keyboard-navigation script on collection pages (arrow keys move between items, Escape closes the viewer). There is no Hugo theme, no gallery admin UI and no remote image service. Hugo configuration is `hugo.toml`. Content front matter is TOML (`+++`) throughout.
+A chronological Hugo gallery for standalone pieces, collections and writings. The site is static. It uses custom templates and CSS-only viewers (`:target` overlays). The only JavaScript is a small (~20-line) keyboard-navigation script on collection pages (arrow keys move between items, Escape closes the viewer). There is no Hugo theme, no gallery admin UI and no remote image service. Hugo configuration is `hugo.toml`. Content front matter is TOML (`+++`) throughout.
 
 The design language is the site's original one, kept intact: Helvetica Neue (system stack) for prose and UI, Commit Mono (self-hosted) for navigation, dates and metadata, system light/dark scheme. Colors use OKLCH with zero chroma (neutral colors only). The light and dark schemes switch via `prefers-color-scheme`.
 
@@ -10,12 +10,15 @@ The design language is the site's original one, kept intact: Helvetica Neue (sys
 |---|---|---|---|
 | Home / top level | `/` | `layouts/index.html` | Tagline, Apex/sitemap/feed links, feed of cards, newest first |
 | Collections index | `/collections/` | `layouts/collections/section.html` | Collection archive/list |
+| Pieces index | `/pieces/` | `layouts/pieces/section.html` | List of standalone pieces, newest first |
 | Collection | `/collections/<slug>/` | `layouts/collections/section.html` | Title/date/description, 1:√2 image/video grid, CSS `:target` details with close and `<< n/m >>` (and arrow/Escape) navigation |
+| Writings index | `/writings/` | `layouts/writings/section.html` | List of writings, newest first |
+| Writing | `/writings/<slug>/` | `layouts/writings/single.html` | Title/date/description and a markdown body in a verse measure; no media, no metadata |
 | Standalone piece | `/pieces/<slug>/` | `layouts/pieces/single.html` | Title/date/description and the first media item as stage artwork (`.piece-flow`), no metadata; clicking opens a fullscreen detail with metadata and no previous/next |
 
-The shared document shell and the feed discovery links are in `layouts/_default/baseof.html`.
+The shared document shell is in `layouts/_default/baseof.html`. Every page carries the global bar: `0xbf.ch` on the left; `/`, `/collections/`, `/pieces/`, `/writings/`, `sitemap`, `rss` and `atom` on the right. It is styled like the page chrome (Commit Mono, muted). The current view is marked with `aria-current="page"`.
 
-- Home-page card markup: `layouts/partials/listing/item-card.html`.
+- Home-page card markup: `layouts/partials/listing/item-card.html` (writings reuse it without the image block).
 - Collection image ordering: `layouts/partials/media/sorted-images.html` (images with an EXIF capture date first, oldest first, then `weight` order; generated video posters are excluded).
 - Combined image/video ordering: `layouts/partials/media/sorted-media.html`.
 - Fullscreen viewer body: `layouts/partials/media/media-detail.html`.
@@ -57,7 +60,28 @@ title = "Evening study"
 +++
 ```
 
-The `/..` link is in the page flow. It scrolls away with the title. Clicking the image opens a fullscreen `:target` detail. `X` closes back to the standalone page. There is no previous/next navigation on standalone pages.
+Clicking the image opens a fullscreen `:target` detail. `X` closes back to the standalone page. There is no previous/next navigation on standalone pages.
+
+### Writings
+
+Create `content/writings/<slug>/index.md`. Writings are text only. There is no media, no grid and no metadata. The body is markdown. A single newline breaks the line; a blank line separates paragraphs and stanzas. This suits verse. Descriptions are optional.
+
+```toml
++++
+title = "Field notes"
+date = 2026-11-08T12:00:00Z
+description = "Optional summary. *Markdown* is supported."
++++
+
+First line
+Second line
+
+A new stanza.
+```
+
+The home feed shows writings without an image: title, date and description. `/writings/` lists all writings. Writings appear in the home feed and in the RSS and Atom feeds.
+
+Descriptions are rendered as markdown wherever they appear on the page (page intros, cards). In the `<meta name="description">` tag and in the RSS and Atom feeds they are flattened to plain text.
 
 ### Collection
 
@@ -115,7 +139,7 @@ The GPS example removes the EXIF GPS group. XMP is enabled too. Inspect the XMP 
 
 All artwork is local to this repository. The templates do not fetch images from another service.
 
-- `content/collections/placeholders/` holds the assistant-created placeholder artwork: the cover, the studies, the standalone-piece and the card previews.
+- `content/collections/placeholders/` holds the assistant-created placeholder artwork: the cover, the studies, the standalone-piece, the card previews and the generated test-pattern clips and calibration charts.
 
 ## Build and local preview
 

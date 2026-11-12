@@ -1,17 +1,23 @@
-// Keyboard navigation for the CSS :target media viewers on collection pages.
-// Left and Right move between items. Escape closes back to the grid.
-// No dependencies. Active only while a #photo-* overlay is open.
+// Left and Right move between items in the fullscreen viewers.
+// Escape closes the viewer. Feed videos autoplay through the playsinline
+// autoplay attribute in the markup. No dependencies.
 (function () {
   var handled = ['ArrowLeft', 'ArrowRight', 'Escape'];
   document.addEventListener('keydown', function (event) {
     if (handled.indexOf(event.key) === -1) return;
+    if (event.key === 'Escape') {
+      if (location.hash === '#piece-detail') {
+        event.preventDefault();
+        location.hash = 'piece-main';
+      } else if (/^#photo-\d+$/.test(location.hash)) {
+        event.preventDefault();
+        location.hash = 'gallery';
+      }
+      return;
+    }
     var match = location.hash.match(/^#photo-(\d+)$/);
     if (!match) return;
     event.preventDefault();
-    if (event.key === 'Escape') {
-      location.hash = 'gallery';
-      return;
-    }
     var total = document.querySelectorAll('.photo-viewer[id^="photo-"]').length;
     var next = parseInt(match[1], 10) + (event.key === 'ArrowRight' ? 1 : -1);
     // Stop at the ends, like the disabled << and >> controls.

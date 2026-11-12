@@ -5,7 +5,7 @@
 {{- $dated := slice }}
 {{- $undated := slice }}
 {{- range .Resources.ByType "image" -}}
-  {{- if ne .Params.role "poster" }}
+  {{- if and (ne .Params.role "poster") (ne .Params.role "preview") }}
     {{- $date := false }}
     {{- if reflect.IsImageResourceWithMeta . }}{{- with .Meta.Date }}{{- if gt .Year 1 -}}{{- $date = . -}}{{- end -}}{{- end -}}{{- end }}
     {{- if $date }}{{ $dated = append (dict "date" $date "image" .) $dated }}
