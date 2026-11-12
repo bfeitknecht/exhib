@@ -85,10 +85,8 @@ img { display: block; max-width: 100%; }
 /* ── Fullscreen viewers ── */
 .piece-page .page-intro { width: 100%; margin: 0 auto clamp(1rem, 2vw, 2rem); }
 .piece-flow { width: min(100%, calc(100svh * var(--image-ratio))); max-width: 100rem; margin: 0 auto; }
-.piece-open { position: relative; display: block; text-decoration: none; }
 .piece-flow img { display: block; width: 100%; height: auto; max-height: 100svh; object-fit: contain; }
-.piece-flow .video-placeholder { aspect-ratio: 1.7777778 / 1; width: 100%; height: auto; }
-.piece-flow .video-badge { right: 1rem; bottom: 1rem; width: 3rem; height: 3rem; font-size: 1.1rem; }
+.piece-flow video { display: block; width: 100%; height: auto; max-height: 100svh; object-fit: contain; margin-inline: auto; background: oklch(0% 0 0); aspect-ratio: var(--image-ratio); }
 .viewer-metadata { width: min(100%, 32rem); margin: 1rem 0 3rem; }
 .piece-page .viewer-metadata { margin: 1rem auto 3rem; }
 /* ── Metadata ── */
