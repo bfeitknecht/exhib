@@ -26,11 +26,11 @@ The shared document shell is in `layouts/_default/baseof.html`. Every page carri
 - Home/feed entry list: `layouts/partials/listing/feed-entries.html`.
 - Automatic image metadata: `layouts/partials/metadata/metadata-list.html`.
 
-`styles/site.css` controls fonts, colors, spacing, responsive layout, preview sizes and viewer sizing. The source is mounted into Hugo's asset pipeline via `[module] mounts` in `hugo.toml`. Hugo minifies it and adds a content hash with an SRI `integrity` attribute, so the file can be cached immutably. There is no manual `?v=` to bump.
+`static/css/site.css` controls fonts, colors, spacing, responsive layout, preview sizes and viewer sizing. It is a plain static file served at `/css/site.css`. Hugo does not process it, so there is no content hash; clients revalidate it against SWS (`no-cache`, Last-Modified → 304).
 
 ### Styling knobs
 
-- **System light/dark colors:** CSS variables `--bg`, `--fg` and `--muted` near the top of `styles/site.css`. `prefers-color-scheme` switches between them.
+- **System light/dark colors:** CSS variables `--bg`, `--fg` and `--muted` near the top of `static/css/site.css`. `prefers-color-scheme` switches between them.
 - **Typography:** `--sans` is "Helvetica Neue", Helvetica, Arial, system-ui. It is used for prose and UI. `--mono` is Commit Mono (self-hosted from `static/fonts/`; license in `OFL-CommitMono.txt`; checksums in `SHA256SUMS`). It is used for navigation, dates and metadata, matching the original design.
 - **OKLCH neutrals:** `--bg`/`--fg`/`--muted` use `oklch()` with chroma 0. Light: `oklch(96% 0 0)` paper (≈`#f2f2f2`), `oklch(21% 0 0)` ink (≈`#181818`), `oklch(47% 0 0)` muted (≈`#5b5b5b`). Dark: `oklch(17% 0 0)` (≈`#0f0f0f`), `oklch(95% 0 0)` (≈`#eeeeee`), `oklch(70% 0 0)` (≈`#9e9e9e`). This palette was chosen in the thyme design session. Keep chroma at 0. Emphasis comes from weight, size and letter-spacing, not color. The `theme-color` metas and the favicon use the hex approximations.
 - **Top-level card density:** `.timeline`, `.item-card` and `.item-preview`. The responsive timeline columns and the maximum card width decide how many cards fit per screen.
@@ -156,7 +156,7 @@ Hugo writes static output to `public/`. The home page links to Apex (`https://0x
 
 The public site is served by **Static Web Server (SWS)**. The exhib pod has three containers that share one PVC:
 
-- **SWS** serves `/data/public` and mounts the PVC read-only. Cache headers come from `sws.toml` in the infra repo's `kubernetes/applications/exhib/`: `no-cache` everywhere (revalidation via Last-Modified → 304), `public, max-age=31536000, immutable` for the content-hashed `css/**`.
+- **SWS** serves `/data/public` and mounts the PVC read-only. Cache headers come from `sws.toml` in the infra repo's `kubernetes/applications/exhib/`: `no-cache` everywhere (revalidation via Last-Modified → 304), including `/css/site.css`, which has no content hash. `fonts/**` keeps `public, max-age=31536000, immutable`. Note: `sws.toml` must not keep an `immutable` rule for `/css/**` — the stylesheet URL is stable, so immutable would pin a stale copy for a year.
 - **Uploader** is a quiet BusyBox container. It has no listener and no SSH. Uploads go through the Kubernetes API (`kubectl exec`). There is no public admin endpoint.
 - **Processor** watches `/data/incoming`. It converts media, writes Hugo page bundles into `/data/content`, keeps uploaded originals privately in `/data/originals` and rebuilds the public output. It contains Hugo, FFmpeg and metadata tools. The image is rebuilt when the site or the processor code changes. New gallery items do not need an image rebuild or push. The ingest code is a small package (`processor/`, run as `python -m processor`): `paths` (environment-derived locations), `media` (FFmpeg, cwebp and exiftool conversion), `bundle` (manifest validation, page bundles, atomic site rebuild), `__main__` (the poll loop).
 
