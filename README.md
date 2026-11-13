@@ -166,7 +166,15 @@ The manifests live in `bfeitknecht/infra` under `kubernetes/applications/exhib/`
 
 ### Upload a piece or collection
 
-Make a folder whose name is a lowercase slug. Put `manifest.toml` and all source media files in it. The manifest has `kind = "piece"` or `kind = "collection"`, plus `title`, a TOML `date`, an optional `description`, an optional `thumbnail` and one `[[media]]` table per file (`file`, optional `title`, optional `weight`).
+Make a folder whose name is a lowercase slug. Put `manifest.toml` and the source media files in it. The smallest working manifest:
+
+```toml
+kind = "collection" # or "piece"
+title = "Evening walks"
+date = 2026-11-07T18:30:00Z
+```
+
+The folder name becomes the URL slug. Every supported media file in the folder is included automatically, in numeric-aware filename order, titled after the filename (`01-paper-light.jpg` → “Paper light”). Still images with an EXIF capture date are shown oldest first; the rest follow in filename order. Per-file `[[media]]` tables (`file`, optional `title`, optional `weight`) are only needed to override those defaults — `title` falls back to the filename and `weight` to the position. Optional extras in the manifest: `description` and `thumbnail` (the name of one media file; without it, the feed card uses a mosaic of the first items).
 
 With [`just`](https://just.systems) installed and `kubectl` configured for the Talos cluster, run:
 
@@ -176,8 +184,8 @@ just upload path/to/my-new-collection
 
 The `upload` recipe in the `justfile` streams the complete folder to a temporary directory on the PVC. It then moves the folder into the processor inbox. The processor detects the new folder, converts the media, generates the Hugo bundle and rebuilds the gallery. If a build or a conversion fails, the processor logs the error and keeps the upload under a hidden `.failed-*` name in the inbox for inspection. Originals are kept under `/data/originals/` after processing.
 
-Still images in JPEG, PNG, WebP, AVIF, TIFF, HEIC or HEIF are converted to **lossless WebP** (`cwebp -lossless -exact`). EXIF/IPTC/XMP is copied from the source into the WebP, so Hugo can publish all image metadata automatically. Videos in MOV/MP4/M4V/3GP/MKV/WebM are converted to WebM with **lossless VP9 video** and an Opus audio track. Opus audio is lossy, because lossless audio in WebM is not common. No video resizing is applied. A lossless WebP poster is generated for each video. The site uses native HTML `<video controls>`. Video metadata is passed through FFmpeg where supported. Image metadata publishing stays automatic and publish-by-default, including GPS. Strip anything you do not want public from the source asset before upload. Lossless conversion keeps the decoded pixels, but the files can be larger than the iPhone's HEIC/HEVC originals. The originals remain privately stored on the PVC.
+Still images in JPEG, PNG, WebP, AVIF, TIFF, HEIC or HEIF are converted to **lossless WebP** (`cwebp -lossless -exact`). EXIF/IPTC/XMP is copied from the source into the WebP, so Hugo can publish all image metadata automatically. Videos in MOV/MP4/M4V/3GP/MKV/WebM are converted to WebM with **lossless VP9 video** and an Opus audio track. Opus audio is lossy, because lossless audio in WebM is not common. No video resizing is applied. A lossless WebP poster is generated for each video. The site uses native HTML `<video controls>`. Each video is probed (ffprobe, falling back to ffmpeg's input banner); resolution, frame rate and duration are written into the generated page bundle alongside the fixed `WebM · VP9` format. Image metadata publishing stays automatic and publish-by-default, including GPS. Strip anything you do not want public from the source asset before upload. Lossless conversion keeps the decoded pixels, but the files can be larger than the iPhone's HEIC/HEVC originals. The originals remain privately stored on the PVC.
 
-The processor writes one generated Hugo page bundle per upload. For a collection, each `[[media]]` entry becomes one item in the grid and in the CSS-only detail navigation. For a standalone piece, the first ordered media item is shown; videos open in the same closeable detail overlay. There is no JavaScript admin UI and no network upload service.
+The processor writes one generated Hugo page bundle per upload. For a collection, each included file becomes one item in the grid and in the CSS-only detail navigation. For a standalone piece, the first ordered media item is shown; videos open in the same closeable detail overlay. There is no JavaScript admin UI and no network upload service.
 
 Hugo configuration, SWS configuration, manifests and generated page front matter use TOML. Kubernetes resources stay YAML, as required by Kubernetes/Kustomize. The serving image is `ghcr.io/bfeitknecht/exhib-sws`, built from this repo; the infra repo only references it. The processor image only needs rebuilding when templates, conversion logic or dependencies change. It does not need rebuilding when content changes. The serving image only needs rebuilding when the upstream SWS base or `sws.toml` changes.
