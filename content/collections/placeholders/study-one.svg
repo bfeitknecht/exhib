@@ -1,16 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200" role="img" aria-labelledby="title desc">
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 900 1200"
+  role="img"
+  aria-labelledby="title desc"
+>
   <title id="title">Study in warm stone</title>
   <desc id="desc">A spare composition of warm stone-colored planes and a dark opening.</desc>
-  <rect width="900" height="1200" fill="#d8d0bf"/>
-  <path d="M0 0h900v275L0 610z" fill="#ece5d7"/>
-  <path d="M0 610 900 275v925H0z" fill="#bbb4a6"/>
-  <path d="M145 240h570v730H145z" fill="#555a56"/>
-  <path d="M195 295h465v625H195z" fill="#aeb9b6"/>
-  <path d="M195 295h222v625H195z" fill="#c9d0c7"/>
-  <path d="M435 295h225v625H435z" fill="#b9c5c2"/>
-  <path d="M417 295h18v625h-18z" fill="#555a56"/>
-  <path d="M195 590h465v18H195z" fill="#555a56"/>
-  <path d="M0 1010 900 830v370H0z" fill="#8e9189"/>
-  <path d="M0 1010 335 943 220 1200H0z" fill="#e4dccb"/>
-  <circle cx="730" cy="1020" r="54" fill="#e9dfca"/>
+  <rect width="900" height="1200" fill="#d8d0bf" />
+  <path d="M0 0h900v275L0 610z" fill="#ece5d7" />
+  <path d="M0 610 900 275v925H0z" fill="#bbb4a6" />
+  <path d="M145 240h570v730H145z" fill="#555a56" />
+  <path d="M195 295h465v625H195z" fill="#aeb9b6" />
+  <path d="M195 295h222v625H195z" fill="#c9d0c7" />
+  <path d="M435 295h225v625H435z" fill="#b9c5c2" />
+  <path d="M417 295h18v625h-18z" fill="#555a56" />
+  <path d="M195 590h465v18H195z" fill="#555a56" />
+  <path d="M0 1010 900 830v370H0z" fill="#8e9189" />
+  <path d="M0 1010 335 943 220 1200H0z" fill="#e4dccb" />
+  <circle cx="730" cy="1020" r="54" fill="#e9dfca" />
 </svg>

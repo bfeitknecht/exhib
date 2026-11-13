@@ -1,19 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200" role="img" aria-labelledby="title desc">
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 900 1200"
+  role="img"
+  aria-labelledby="title desc"
+>
   <title id="title">Study in blue and ochre</title>
   <desc id="desc">Blocks of muted blue and ochre arranged like a quiet urban facade.</desc>
-  <rect width="900" height="1200" fill="#aebdc0"/>
-  <rect x="0" y="0" width="545" height="780" fill="#6d7e83"/>
-  <rect x="570" y="0" width="330" height="780" fill="#d2c5a5"/>
-  <path d="M0 780h900v420H0z" fill="#555f60"/>
-  <path d="M0 850 900 670v128L0 980z" fill="#303a3c"/>
+  <rect width="900" height="1200" fill="#aebdc0" />
+  <rect x="0" y="0" width="545" height="780" fill="#6d7e83" />
+  <rect x="570" y="0" width="330" height="780" fill="#d2c5a5" />
+  <path d="M0 780h900v420H0z" fill="#555f60" />
+  <path d="M0 850 900 670v128L0 980z" fill="#303a3c" />
   <g fill="#d7c6a2">
-    <rect x="75" y="125" width="165" height="245"/><rect x="300" y="125" width="165" height="245"/>
-    <rect x="620" y="110" width="205" height="290"/><rect x="120" y="900" width="210" height="230"/>
+    <rect x="75" y="125" width="165" height="245" /><rect
+      x="300"
+      y="125"
+      width="165"
+      height="245"
+    />
+    <rect x="620" y="110" width="205" height="290" /><rect
+      x="120"
+      y="900"
+      width="210"
+      height="230"
+    />
   </g>
   <g fill="#364043">
-    <rect x="100" y="155" width="115" height="185"/><rect x="325" y="155" width="115" height="185"/>
-    <rect x="650" y="140" width="145" height="230"/><rect x="470" y="900" width="210" height="300"/>
+    <rect x="100" y="155" width="115" height="185" /><rect
+      x="325"
+      y="155"
+      width="115"
+      height="185"
+    />
+    <rect x="650" y="140" width="145" height="230" /><rect
+      x="470"
+      y="900"
+      width="210"
+      height="300"
+    />
   </g>
-  <circle cx="490" cy="610" r="60" fill="#eee2ca"/>
-  <path d="M0 1140h900" stroke="#eee2ca" stroke-width="10" stroke-opacity=".65"/>
+  <circle cx="490" cy="610" r="60" fill="#eee2ca" />
+  <path d="M0 1140h900" stroke="#eee2ca" stroke-width="10" stroke-opacity=".65" />
 </svg>
