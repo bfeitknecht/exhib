@@ -166,7 +166,7 @@ The manifests live in `bfeitknecht/infra` under `kubernetes/applications/exhib/`
 
 ### Upload a piece or collection
 
-Make a folder whose name is a lowercase slug. Put `manifest.toml` and all source media files in it. The manifest has `kind = "piece"` or `kind = "collection"`, plus `title`, a TOML `date`, an optional `description`, an optional `thumbnail` and one `[[media]]` table per file (`file`, optional `title`, optional `weight`). See `examples/upload-package/manifest.toml` for the schema.
+Make a folder whose name is a lowercase slug. Put `manifest.toml` and all source media files in it. The manifest has `kind = "piece"` or `kind = "collection"`, plus `title`, a TOML `date`, an optional `description`, an optional `thumbnail` and one `[[media]]` table per file (`file`, optional `title`, optional `weight`).
 
 With [`just`](https://just.systems) installed and `kubectl` configured for the Talos cluster, run:
 
