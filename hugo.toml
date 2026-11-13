@@ -28,7 +28,7 @@ enableRobotsTXT = true
   page = ["HTML"]
 
 [params]
-  description = "A collection of photographs and visual work."
+  description = "A collection of pictures, videos, graphic designs, and writings."
 
 [markup.goldmark.renderer]
   unsafe = false

@@ -6,15 +6,15 @@ The design language is the site's original one, kept intact: Helvetica Neue (sys
 
 ## Quick orientation
 
-| View | Route / action | Main template | What it controls |
-|---|---|---|---|
-| Home / top level | `/` | `layouts/index.html` | Tagline, Apex/sitemap/feed links, feed of cards, newest first |
-| Collections index | `/collections/` | `layouts/collections/section.html` | Collection archive/list |
-| Pieces index | `/pieces/` | `layouts/pieces/section.html` | List of standalone pieces, newest first |
-| Collection | `/collections/<slug>/` | `layouts/collections/section.html` | Title/date/description, 1:√2 image/video grid, CSS `:target` details with close and `<< n/m >>` (and arrow/Escape) navigation |
-| Writings index | `/writings/` | `layouts/writings/section.html` | List of writings, newest first |
-| Writing | `/writings/<slug>/` | `layouts/writings/single.html` | Title/date/description and a markdown body in a verse measure; no media, no metadata |
-| Standalone piece | `/pieces/<slug>/` | `layouts/pieces/single.html` | Title/date/description and the first media item as stage artwork (`.piece-flow`), no metadata; clicking opens a fullscreen detail with metadata and no previous/next |
+| View              | Route / action         | Main template                      | What it controls                                                                                                                                                     |
+| ----------------- | ---------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Home / top level  | `/`                    | `layouts/index.html`               | Tagline, Apex/sitemap/feed links, feed of cards, newest first                                                                                                        |
+| Collections index | `/collections/`        | `layouts/collections/section.html` | Collection archive/list                                                                                                                                              |
+| Pieces index      | `/pieces/`             | `layouts/pieces/section.html`      | List of standalone pieces, newest first                                                                                                                              |
+| Collection        | `/collections/<slug>/` | `layouts/collections/section.html` | Title/date/description, 1:√2 image/video grid, CSS `:target` details with close and `<< n/m >>` (and arrow/Escape) navigation                                        |
+| Writings index    | `/writings/`           | `layouts/writings/section.html`    | List of writings, newest first                                                                                                                                       |
+| Writing           | `/writings/<slug>/`    | `layouts/writings/single.html`     | Title/date/description and a markdown body in a verse measure; no media, no metadata                                                                                 |
+| Standalone piece  | `/pieces/<slug>/`      | `layouts/pieces/single.html`       | Title/date/description and the first media item as stage artwork (`.piece-flow`), no metadata; clicking opens a fullscreen detail with metadata and no previous/next |
 
 The shared document shell is in `layouts/_default/baseof.html`. Every page carries the global bar: `0xbf.ch` on the left; `/`, `/collections/`, `/pieces/`, `/writings/`, `sitemap`, `rss` and `atom` on the right. It is styled like the page chrome (Commit Mono, muted). The current view is marked with `aria-current="page"`.
 

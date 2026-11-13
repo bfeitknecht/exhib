@@ -1,1 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200"><rect width="900" height="1200" fill="#c8c5bb"/><path d="M90 120h720v850H90z" fill="#dedbd1"/><path d="M90 600h720v50H90zm0 170h720v50H90zm0 170h720v50H90z" fill="#6b6a62"/><path d="m110 598 210-200v202zm0 170 210-200v202zm0 170 210-200v202z" fill="#9a978e"/><path d="M520 120h290v850H520z" fill="#b4b2ab"/><circle cx="665" cy="378" r="110" fill="#ece9e0" opacity=".75"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200"><rect
+    width="900"
+    height="1200"
+    fill="#c8c5bb"
+  /><path d="M90 120h720v850H90z" fill="#dedbd1" /><path
+    d="M90 600h720v50H90zm0 170h720v50H90zm0 170h720v50H90z"
+    fill="#6b6a62"
+  /><path d="m110 598 210-200v202zm0 170 210-200v202zm0 170 210-200v202z" fill="#9a978e" /><path
+    d="M520 120h290v850H520z"
+    fill="#b4b2ab"
+  /><circle cx="665" cy="378" r="110" fill="#ece9e0" opacity=".75" /></svg>

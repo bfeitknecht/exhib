@@ -1,21 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 1600 1000"
+  role="img"
+  aria-labelledby="title desc"
+>
   <title id="title">Evening rooflines</title>
   <desc id="desc">A graphic placeholder of rooftops and windows against a muted dusk sky.</desc>
-  <rect width="1600" height="1000" fill="#c8d0ce"/>
-  <rect width="1600" height="610" fill="#d9d4c7"/>
-  <circle cx="1220" cy="220" r="92" fill="#eee3cc"/>
-  <path d="M0 560 260 310 520 555 790 260 1085 560 1325 340 1600 545v455H0z" fill="#999a90"/>
-  <path d="M0 675 245 455 470 675v325H0z" fill="#5d6666"/>
-  <path d="M430 595 720 355 1010 595v405H430z" fill="#3b4446"/>
-  <path d="m930 655 280-265 390 265v345H930z" fill="#73786f"/>
-  <path d="M245 455h225v220H245z" fill="#c8b89a"/>
-  <path d="M720 355h290v240H720z" fill="#cbbd9f"/>
-  <path d="M1210 390h390v265h-390z" fill="#d0c2a4"/>
+  <rect width="1600" height="1000" fill="#c8d0ce" />
+  <rect width="1600" height="610" fill="#d9d4c7" />
+  <circle cx="1220" cy="220" r="92" fill="#eee3cc" />
+  <path d="M0 560 260 310 520 555 790 260 1085 560 1325 340 1600 545v455H0z" fill="#999a90" />
+  <path d="M0 675 245 455 470 675v325H0z" fill="#5d6666" />
+  <path d="M430 595 720 355 1010 595v405H430z" fill="#3b4446" />
+  <path d="m930 655 280-265 390 265v345H930z" fill="#73786f" />
+  <path d="M245 455h225v220H245z" fill="#c8b89a" />
+  <path d="M720 355h290v240H720z" fill="#cbbd9f" />
+  <path d="M1210 390h390v265h-390z" fill="#d0c2a4" />
   <g fill="#333b3c">
-    <rect x="285" y="500" width="45" height="75"/><rect x="385" y="500" width="45" height="75"/>
-    <rect x="780" y="415" width="56" height="92"/><rect x="892" y="415" width="56" height="92"/>
-    <rect x="1270" y="455" width="65" height="105"/><rect x="1455" y="455" width="65" height="105"/>
+    <rect x="285" y="500" width="45" height="75" /><rect x="385" y="500" width="45" height="75" />
+    <rect x="780" y="415" width="56" height="92" /><rect x="892" y="415" width="56" height="92" />
+    <rect x="1270" y="455" width="65" height="105" /><rect
+      x="1455"
+      y="455"
+      width="65"
+      height="105"
+    />
   </g>
-  <path d="M0 860h1600v140H0z" fill="#252d31"/>
-  <path d="M0 915h1600" stroke="#eee3cc" stroke-width="8" stroke-opacity=".55"/>
+  <path d="M0 860h1600v140H0z" fill="#252d31" />
+  <path d="M0 915h1600" stroke="#eee3cc" stroke-width="8" stroke-opacity=".55" />
 </svg>
