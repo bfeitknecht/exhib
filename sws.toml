@@ -1,0 +1,19 @@
+# Static Web Server (SWS) configuration for the exhib gallery.
+# Baked into the exhib-sws image (sws.Dockerfile). The infra repo carries
+# no copy; it only references the image.
+#
+# 1. root is /data/public, the Hugo output on the shared PVC.
+# 2. health = true enables /livez and /readyz for the probes.
+# 3. no-cache everywhere. Clients revalidate with If-Modified-Since;
+#    unchanged files are answered 304. No file in this site carries a
+#    content hash in its name (css/site.css is the stable name), so an
+#    immutable rule would pin stale bytes in returning browsers.
+[general]
+root = "/data/public"
+health = true
+
+[advanced]
+
+[[advanced.headers]]
+source = "**"
+headers = { Cache-Control = "no-cache" }
