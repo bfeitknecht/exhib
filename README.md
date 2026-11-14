@@ -13,10 +13,12 @@ The design language is the site's original one, kept intact: Helvetica Neue (sys
 | Pieces index      | `/pieces/`             | `layouts/pieces/section.html`      | List of standalone pieces, newest first                                                                                                                              |
 | Collection        | `/collections/<slug>/` | `layouts/collections/section.html` | Title/date/description, 1:√2 image/video grid, CSS `:target` details with close and `<< n/m >>` (and arrow/Escape) navigation                                        |
 | Writings index    | `/writings/`           | `layouts/writings/section.html`    | List of writings, newest first                                                                                                                                       |
+| Tags (cloud)      | `/tags/`               | `layouts/_default/taxonomy.html`   | All tags sized by usage; the global nav's `/tags/` entry                                                                                                           |
+| Tag (filter)      | `/tags/<tag>/`         | `layouts/_default/term.html`       | Pieces, collections and writings carrying the tag, newest first; item cards like the archive views                                                                  |
 | Writing           | `/writings/<slug>/`    | `layouts/writings/single.html`     | Title/date/description and a markdown body in a verse measure; no media, no metadata                                                                                 |
 | Standalone piece  | `/pieces/<slug>/`      | `layouts/pieces/single.html`       | Title/date/description and the first media item as stage artwork (`.piece-flow`), no metadata; clicking opens a fullscreen detail with metadata and no previous/next |
 
-The shared document shell is in `layouts/_default/baseof.html`. Every page carries the global bar: `0xbf.ch` on the left; `/`, `/collections/`, `/pieces/`, `/writings/`, `sitemap`, `rss` and `atom` on the right. It is styled like the page chrome (Commit Mono, muted). The current view is marked with `aria-current="page"`.
+The shared document shell is in `layouts/_default/baseof.html`. Every page carries the global bar: `0xbf.ch` on the left; `/`, `/collections/`, `/pieces/`, `/writings/` and `/tags/` on the right. The feeds and sitemap live in the footer. It is styled like the page chrome (Commit Mono, muted). The current view is marked with `aria-current="page"`.
 
 - Home-page card markup: `layouts/partials/listing/item-card.html` (writings reuse it without the image block).
 - Collection image ordering: `layouts/partials/media/sorted-images.html` (images with an EXIF capture date first, oldest first, then `weight` order; generated video posters are excluded).
@@ -39,6 +41,10 @@ The shared document shell is in `layouts/_default/baseof.html`. Every page carri
 - **Fullscreen details:** `.photo-viewer`, `.viewer-unit`, `.viewer-image`, `.viewer-nav`, `.close-detail` and `.metadata-list`. Image dimensions are read from the resource itself (bitmap dimensions or an SVG `viewBox`), so the full image scales to the viewport. You do not need to duplicate dimensions in TOML.
 - **Motion:** pure CSS. Cropped tiles (`.item-preview`, `.preview-grid` cells, `.collection-photo`) and card titles (`.item-copy h2 a`, scale anchored left) ease to 1.03 on hover/focus over .7 s. Only the hovered mosaic tile zooms. Chrome links fade in color over .25 s. The fullscreen `:target` viewer opens instantly; there are no overlay transitions. No loops, no scroll effects. Everything is disabled under `prefers-reduced-motion`.
 - **Keyboard navigation:** `static/js/viewer-keys.js` (~20 lines, served `no-cache`). The left and right arrow keys move between open overlays. Escape closes back to the grid on collection pages. The script acts only while a `#photo-*` overlay is open. It clamps at the ends, like the disabled `<<` and `>>` controls. This is the only JavaScript on the site.
+
+## Tags
+
+Pieces, collections and writings carry an optional list of tags in front matter, e.g. `tags = ["evergrowing"]` for monthly snapshot collections or `["design"]` for posters. Uploads pass them in the manifest: `tags = ["evergrowing"]`. Hugo generates `/tags/` — a cloud with one sized entry per tag — and `/tags/<tag>/`, which lists the tagged items with the usual item cards, newest first. Tag chips render on the homepage feed, the archive lists, the per-tag pages and the page intros, and are clickable everywhere. Feeds carry the tags as `<category>` entries. Tag slugs are urlized, so use lowercase slug-like names (`evergrowing`, `design`, `essay`).
 
 ## Content model and TOML examples
 

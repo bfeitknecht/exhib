@@ -67,6 +67,15 @@ def build_front_matter(
     lines.append(f"date = {date.isoformat()}")
     if manifest.get("description"):
         lines.append(f"description = {toml_string(manifest['description'])}")
+    tags = manifest.get("tags")
+    if tags:
+        if not isinstance(tags, list) or not all(
+            isinstance(t, str) and t.strip() for t in tags
+        ):
+            raise ValueError("tags must be a list of non-empty strings")
+        lines.append(
+            "tags = [" + ", ".join(toml_string(t.strip()) for t in tags) + "]"
+        )
     if kind == "collection" and thumbnail:
         lines.append(f"thumbnail = {toml_string(thumbnail)}")
     for row in media_rows:

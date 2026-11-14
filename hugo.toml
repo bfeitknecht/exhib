@@ -3,7 +3,6 @@ title = "exhib"
 defaultContentLanguage = "en"
 
 locale = "en"
-disableKinds = ["taxonomy", "term"]
 enableRobotsTXT = true
 
 # Keep the default RSS media type. Pin baseName so the feed stays at /rss.xml.
@@ -26,9 +25,14 @@ enableRobotsTXT = true
   home = ["HTML", "RSS", "Atom"]
   section = ["HTML"]
   page = ["HTML"]
+  taxonomy = ["HTML"]
+  term = ["HTML"]
 
 [params]
   description = "A collection of pictures, videos, graphic designs, and writings."
+
+[taxonomies]
+  tag = "tags"
 
 [markup.goldmark.renderer]
   unsafe = false
