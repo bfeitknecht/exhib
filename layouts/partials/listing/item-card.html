@@ -5,14 +5,14 @@
 <article class="item-card">
   {{- if $isWriting }}
   {{/* Writings have no media. Title, date and description only. */}}
-  {{- else if $useMosaic }}{{/* Mosaic of up to nine images. Each cell links to the
-         fullscreen overlay of that image (#photo-NN). Images use
-         photo-01..photo-N, because videos come after the images. */}}
-    {{- $images := first 9 (partial "media/sorted-images.html" $page) }}
+  {{- else if $useMosaic }}{{/* Mosaic of the first nine images in gallery order.
+         Each cell links to the fullscreen overlay of that image. */}}
+    {{- $images := slice }}
+    {{- range partial "media/media-view.html" $page }}{{ if not .isVideo }}{{ $images = $images | append . }}{{ end }}{{ end }}
     <div class="item-preview">
       <div class="preview-grid">
-        {{- range $index, $image := $images }}
-        <a href="{{ $page.RelPermalink }}#{{ printf "photo-%02d" (add $index 1) }}"{{ with $image.Title }} aria-label="Open {{ $page.Title }}: {{ . }}"{{ end }}><img src="{{ partial "media/preview.html" (dict "image" $image) }}" alt="" loading="lazy"></a>
+        {{- range first 9 $images }}
+        <a href="{{ $page.RelPermalink }}#{{ .id }}"{{ with .title }} aria-label="Open {{ $page.Title }}: {{ . }}"{{ end }}><img src="{{ partial "media/preview.html" (dict "image" .item) }}" alt="" loading="lazy"></a>
         {{- end }}
       </div>
     </div>

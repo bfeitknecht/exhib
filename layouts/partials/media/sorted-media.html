@@ -1,15 +1,32 @@
-{{/* Gallery media of a bundle: images, then videos.
-     Images come in capture-date order, then `position`.
-     Videos come in `position`. Posters are excluded.
-     Bundles made before the rename carry `weight`; it is read as `position`.
-     Returns a slice of resources. Each resource has a `kind` param,
-     "image" or "video". */}}
-{{- $media := partial "media/sorted-images.html" . -}}
-{{- $videos := slice -}}
-{{- range .Resources.ByType "video" -}}
-  {{- $videos = append (dict "position" (or .Params.position .Params.weight 0) "video" .) $videos -}}
+{{/* Gallery media of a bundle in one order for every view: the grid, the
+     fullscreen navigation, the piece stage and the homepage mosaic.
+     sort = "position" (default): front-matter `position` only.
+     sort = "date": capture date, oldest first (image EXIF date, video
+     creation date in the `date` param); items without a date follow by
+     `position`.
+     Bundles from before the rename carry `weight`; it is read as `position`.
+     Generated posters and previews are excluded.
+     Returns a slice of resources. */}}
+{{- $byDate := eq .Params.sort "date" -}}
+{{- $dated := slice -}}
+{{- $rest := slice -}}
+{{- range .Resources -}}
+  {{- $isVideo := eq .ResourceType "video" -}}
+  {{- $isImage := and (eq .ResourceType "image") (ne .Params.role "poster") (ne .Params.role "preview") -}}
+  {{- if or $isVideo $isImage -}}
+    {{- $date := false -}}
+    {{- if $byDate -}}
+      {{- if $isImage -}}
+        {{- if reflect.IsImageResourceWithMeta . -}}{{- with .Meta.Date -}}{{- if gt .Year 1 -}}{{- $date = . -}}{{- end -}}{{- end -}}{{- end -}}
+      {{- else -}}
+        {{- with .Params.date -}}{{- $date = time.AsTime . -}}{{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if $date -}}{{- $dated = $dated | append (dict "date" $date "item" .) -}}
+    {{- else -}}{{- $rest = $rest | append (dict "position" (or .Params.position .Params.weight 0) "item" .) -}}{{- end -}}
+  {{- end -}}
 {{- end -}}
-{{- range sort $videos "position" "asc" -}}
-  {{- $media = append .video $media -}}
-{{- end -}}
+{{- $media := slice -}}
+{{- range sort $dated "date" "asc" -}}{{- $media = $media | append .item -}}{{- end -}}
+{{- range sort $rest "position" "asc" -}}{{- $media = $media | append .item -}}{{- end -}}
 {{- return $media -}}

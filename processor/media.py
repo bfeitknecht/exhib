@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 
 IMAGE_EXTS = {
@@ -134,38 +135,15 @@ def convert_video(source: Path, destination: Path) -> tuple[Path, Path]:
             str(output),
         ]
     )
+    # Poster: the frame at 1 s. A clip of 1 s or less has no frame there;
+    # ffmpeg then writes nothing but still exits 0. Fall back to frame 0.
+    grab = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"]
     try:
-        run(
-            [
-                "ffmpeg",
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-y",
-                "-ss",
-                "1",
-                "-i",
-                str(source),
-                "-frames:v",
-                "1",
-                str(poster_png),
-            ]
-        )
+        run([*grab, "-ss", "1", "-i", str(source), "-frames:v", "1", str(poster_png)])
     except subprocess.CalledProcessError:
-        run(
-            [
-                "ffmpeg",
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-y",
-                "-i",
-                str(source),
-                "-frames:v",
-                "1",
-                str(poster_png),
-            ]
-        )
+        pass
+    if not poster_png.is_file() or poster_png.stat().st_size == 0:
+        run([*grab, "-i", str(source), "-frames:v", "1", str(poster_png)])
     run(
         [
             "cwebp",
@@ -227,7 +205,29 @@ def _probe_from_ffprobe_json(data: dict) -> dict:
             info["duration"] = format_duration(duration)
     except TypeError, ValueError:
         pass
+    tags = (data.get("format") or {}).get("tags") or {}
+    # Phones write the local capture time with its offset in the Apple tag;
+    # creation_time is UTC. Either gives the capture moment.
+    for key in ("com.apple.quicktime.creationdate", "creation_time"):
+        captured = _parse_capture_date(tags.get(key))
+        if captured:
+            info["date"] = captured
+            break
     return info
+
+
+def _parse_capture_date(value: str | None) -> str | None:
+    if not value:
+        return None
+    try:
+        moment = datetime.fromisoformat(value.strip())
+    except ValueError:
+        return None
+    if moment.year <= 1970:  # Encoders write 1970/1904 for "unknown".
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+    return moment.isoformat(timespec="seconds")
 
 
 def _probe_from_ffmpeg_stderr(text: str) -> dict:
@@ -249,7 +249,7 @@ def _probe_from_ffmpeg_stderr(text: str) -> dict:
 
 
 def probe_video(source: Path) -> dict:
-    """Return resolution/framerate/duration for a video, or {} on failure.
+    """Return resolution/framerate/duration/date for a video, or {} on failure.
 
     Values describe the source; the conversion neither resizes nor
     changes the frame rate, so they match the WebM output. Prefers
@@ -267,6 +267,8 @@ def probe_video(source: Path) -> dict:
                 "stream=width,height,avg_frame_rate,r_frame_rate",
                 "-show_entries",
                 "format=duration",
+                "-show_entries",
+                "format_tags=creation_time,com.apple.quicktime.creationdate",
                 "-of",
                 "json",
                 str(source),

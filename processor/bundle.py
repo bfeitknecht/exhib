@@ -113,6 +113,13 @@ def build_front_matter(
         ):
             raise ValueError("tags must be a list of non-empty strings")
         lines.append("tags = [" + ", ".join(toml_string(t.strip()) for t in tags) + "]")
+    sort = manifest.get("sort", "position")
+    if sort not in {"position", "date"}:
+        raise ValueError("sort must be 'position' or 'date'")
+    if sort == "date" and manifest["kind"] != "writing":
+        # Media order on the page: capture date, then position. Default is
+        # position only.
+        lines.append('sort = "date"')
     if manifest["kind"] == "collection" and thumbnail:
         lines.append(f"thumbnail = {toml_string(thumbnail)}")
         focus = manifest.get("thumbnail_focus")
@@ -136,7 +143,15 @@ def build_front_matter(
             f"position = {int(row['position'])}",
             f"kind = {toml_string(row['kind'])}",
         ]
-        for key in ("format", "resolution", "framerate", "duration", "poster", "role"):
+        for key in (
+            "format",
+            "resolution",
+            "framerate",
+            "duration",
+            "date",
+            "poster",
+            "role",
+        ):
             if row.get(key):
                 lines.append(f"{key} = {toml_string(row[key])}")
     lines.append("+++")
