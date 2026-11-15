@@ -232,17 +232,13 @@ def _probe_from_ffprobe_json(data: dict) -> dict:
 
 def _probe_from_ffmpeg_stderr(text: str) -> dict:
     info: dict[str, str] = {}
-    duration = re.search(
-        r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", text
-    )
+    duration = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", text)
     if duration:
         hours, minutes, seconds = duration.groups()
         total = int(hours) * 3600 + int(minutes) * 60 + float(seconds)
         if total > 0:
             info["duration"] = format_duration(total)
-    video_line = next(
-        (line for line in text.splitlines() if "Video:" in line), ""
-    )
+    video_line = next((line for line in text.splitlines() if "Video:" in line), "")
     size = re.search(r"(\d{2,5})x(\d{2,5})", video_line)
     if size:
         info["resolution"] = f"{size.group(1)}×{size.group(2)}"

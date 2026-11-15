@@ -9,7 +9,14 @@ import tomllib
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .media import IMAGE_EXTS, VIDEO_EXTS, convert_image, convert_video, probe_video, run
+from .media import (
+    IMAGE_EXTS,
+    VIDEO_EXTS,
+    convert_image,
+    convert_video,
+    probe_video,
+    run,
+)
 from .paths import APP, CONTENT, DATA, ORIGINALS, PUBLIC
 
 
@@ -29,7 +36,10 @@ def safe_relative(root: Path, value: str) -> Path:
 
 def natural_key(name: str) -> list:
     # Numeric-aware sort so "2-a.jpg" comes before "10-b.jpg".
-    return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", name)]
+    return [
+        int(part) if part.isdigit() else part.lower()
+        for part in re.split(r"(\d+)", name)
+    ]
 
 
 def humanize_stem(stem: str) -> str:
@@ -73,9 +83,7 @@ def build_front_matter(
             isinstance(t, str) and t.strip() for t in tags
         ):
             raise ValueError("tags must be a list of non-empty strings")
-        lines.append(
-            "tags = [" + ", ".join(toml_string(t.strip()) for t in tags) + "]"
-        )
+        lines.append("tags = [" + ", ".join(toml_string(t.strip()) for t in tags) + "]")
     if kind == "collection" and thumbnail:
         lines.append(f"thumbnail = {toml_string(thumbnail)}")
     for row in media_rows:
