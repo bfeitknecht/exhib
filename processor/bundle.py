@@ -68,7 +68,7 @@ def is_media(path: Path) -> bool:
 def collect_media(package: Path) -> list[dict]:
     # No [[media]] tables in the manifest: every supported file in the
     # folder becomes an item, in natural filename order, titled after the
-    # filename. The order follows the position (set later from the index).
+    # filename. The position follows the index (set later).
     entries = [
         {"file": p.name, "title": humanize_stem(p.stem)}
         for p in visible_files(package)
@@ -115,6 +115,17 @@ def build_front_matter(
         lines.append("tags = [" + ", ".join(toml_string(t.strip()) for t in tags) + "]")
     if manifest["kind"] == "collection" and thumbnail:
         lines.append(f"thumbnail = {toml_string(thumbnail)}")
+        focus = manifest.get("thumbnail_focus")
+        if focus is not None:
+            # Crop of the cover on the homepage card: [x, y] in percent,
+            # used as CSS object-position. Default is the center.
+            if not (
+                isinstance(focus, list)
+                and len(focus) == 2
+                and all(isinstance(v, int | float) and 0 <= v <= 100 for v in focus)
+            ):
+                raise ValueError("thumbnail_focus must be [x, y] in percent (0-100)")
+            lines.append(f"thumbnail_focus = [{round(focus[0])}, {round(focus[1])}]")
     for row in media_rows:
         lines += [
             "",
@@ -122,7 +133,7 @@ def build_front_matter(
             f"src = {toml_string(row['file'])}",
             f"title = {toml_string(row['title'])}",
             "[resources.params]",
-            f"order = {int(row['order'])}",
+            f"position = {int(row['position'])}",
             f"kind = {toml_string(row['kind'])}",
         ]
         for key in ("format", "resolution", "framerate", "duration", "poster", "role"):
@@ -197,8 +208,9 @@ def write_media_bundle(package: Path, manifest: dict, bundle_dir: Path) -> None:
         media = collect_media(package)
     elif not isinstance(media, list) or not media:
         raise ValueError("manifest.toml: [[media]] must be a non-empty list")
-    if any("weight" in entry for entry in media):
-        raise ValueError("[[media]] weight is renamed to order")
+    for old in ("order", "weight"):
+        if any(old in entry for entry in media):
+            raise ValueError(f"[[media]] {old} is renamed to position")
 
     converted = bundle_dir / ".converted"
     converted.mkdir()
@@ -210,11 +222,16 @@ def write_media_bundle(package: Path, manifest: dict, bundle_dir: Path) -> None:
             raise ValueError(f"media file does not exist: {entry['file']}")
         ext = source.suffix.lower()
         title = str(entry.get("title") or humanize_stem(source.stem))
-        order = int(entry.get("order", index))
+        position = int(entry.get("position", index))
         if ext in IMAGE_EXTS:
             filename = convert_image(source, converted).name
             rows.append(
-                {"file": filename, "title": title, "order": order, "kind": "image"}
+                {
+                    "file": filename,
+                    "title": title,
+                    "position": position,
+                    "kind": "image",
+                }
             )
             source_to_output[source.name] = filename
         elif ext in VIDEO_EXTS:
@@ -223,7 +240,7 @@ def write_media_bundle(package: Path, manifest: dict, bundle_dir: Path) -> None:
                 {
                     "file": output.name,
                     "title": title,
-                    "order": order,
+                    "position": position,
                     "kind": "video",
                     "poster": poster.name,
                     "format": "WebM · VP9",
@@ -234,7 +251,7 @@ def write_media_bundle(package: Path, manifest: dict, bundle_dir: Path) -> None:
                 {
                     "file": poster.name,
                     "title": title,
-                    "order": order,
+                    "position": position,
                     "kind": "image",
                     "role": "poster",
                 }

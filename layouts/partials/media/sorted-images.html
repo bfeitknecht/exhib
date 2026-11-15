@@ -1,7 +1,7 @@
 {{/* Gallery images of a bundle, without generated video posters.
      Images with an EXIF capture date come first, oldest first.
-     The rest come next, in front-matter `order`.
-     Bundles made before the rename carry `weight`; it is read as `order`.
+     The rest come next, in front-matter `position`.
+     Bundles made before the rename carry `weight`; it is read as `position`.
      Returns a slice of image resources. */}}
 {{- $dated := slice }}
 {{- $undated := slice }}
@@ -10,10 +10,10 @@
     {{- $date := false }}
     {{- if reflect.IsImageResourceWithMeta . }}{{- with .Meta.Date }}{{- if gt .Year 1 -}}{{- $date = . -}}{{- end -}}{{- end -}}{{- end }}
     {{- if $date }}{{ $dated = append (dict "date" $date "image" .) $dated }}
-    {{- else }}{{ $undated = append (dict "order" (or .Params.order .Params.weight 0) "image" .) $undated }}{{- end }}
+    {{- else }}{{ $undated = append (dict "position" (or .Params.position .Params.weight 0) "image" .) $undated }}{{- end }}
   {{- end -}}
 {{- end -}}
 {{- $ordered := slice }}
 {{- range sort $dated "date" "asc" }}{{ $ordered = append .image $ordered }}{{ end }}
-{{- range sort $undated "order" "asc" }}{{ $ordered = append .image $ordered }}{{ end }}
+{{- range sort $undated "position" "asc" }}{{ $ordered = append .image $ordered }}{{ end }}
 {{- return $ordered -}}

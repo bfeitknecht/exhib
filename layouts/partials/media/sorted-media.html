@@ -1,15 +1,15 @@
 {{/* Gallery media of a bundle: images, then videos.
-     Images come in capture-date order, then `order`.
-     Videos come in `order`. Posters are excluded.
-     Bundles made before the rename carry `weight`; it is read as `order`.
+     Images come in capture-date order, then `position`.
+     Videos come in `position`. Posters are excluded.
+     Bundles made before the rename carry `weight`; it is read as `position`.
      Returns a slice of resources. Each resource has a `kind` param,
      "image" or "video". */}}
 {{- $media := partial "media/sorted-images.html" . -}}
 {{- $videos := slice -}}
 {{- range .Resources.ByType "video" -}}
-  {{- $videos = append (dict "order" (or .Params.order .Params.weight 0) "video" .) $videos -}}
+  {{- $videos = append (dict "position" (or .Params.position .Params.weight 0) "video" .) $videos -}}
 {{- end -}}
-{{- range sort $videos "order" "asc" -}}
+{{- range sort $videos "position" "asc" -}}
   {{- $media = append .video $media -}}
 {{- end -}}
 {{- return $media -}}
