@@ -54,26 +54,57 @@ Every item is one folder. The folder name is the URL slug. Use lowercase letters
 
 Do not convert media. The processor does that.
 
-### 2.1 Manifest editor
+### 2.1 Manifest editor (`just manifest`)
 
-You do not need to write `manifest.toml` by hand. Put the files in the folder, then:
+You do not need to write `manifest.toml` by hand. Put the source files in a slug folder under `uploads/`, then run the editor on it.
 
-```nu
-just manifest path/to/2026-11
+```
+just manifest <folder> [--port N] [--no-browser]
 ```
 
-This starts a local web page (127.0.0.1, any free port) and opens it in the browser. It needs [uv](https://docs.astral.sh/uv/). It runs on your machine only. It never talks to the cluster.
+| Argument       | Meaning                                                                        |
+| -------------- | ------------------------------------------------------------------------------ |
+| `<folder>`     | the slug folder, relative to where you run `just`. It must exist.              |
+| `--port N`     | serve on port `N`. Default: any free port.                                     |
+| `--no-browser` | do not open the browser. Open the printed URL yourself.                        |
+
+Examples:
+
+```nu
+just manifest uploads/bw                       # open the editor in the browser
+just manifest uploads/bw --port 4321           # fixed URL: http://127.0.0.1:4321/
+just manifest uploads/field-notes --no-browser # print the URL only
+```
+
+What it does:
+
+- Starts a web page on `127.0.0.1` only, and opens it in the browser. The terminal prints the folder and the URL.
+- Runs on your machine only. It never talks to the cluster. It needs [uv](https://docs.astral.sh/uv/); uv gets Python 3.15 on first run.
+- Reads `manifest.toml` if it exists, so you can run it again to change an item. A new folder starts with defaults: the title from the folder name, the date set to now, and every media file included.
+- Writes only `manifest.toml`, plus `body.md` for a writing. It never changes or deletes media files.
+- Warns if the folder name is not a lowercase slug. Rename the folder before upload.
+- Stops with Ctrl-C. It then prints the upload command.
 
 On the page:
 
-- **Kind**: collection, piece or writing (top right). The editor guesses from the folder contents.
-- **Title, date, description, tags.** Date is local time, saved as UTC. Description is markdown. It shows on the homepage card and under the page title. Type a tag and press Enter; Backspace removes the last one.
+- **Kind**: collection, piece or writing (top right). The editor guesses from the folder contents: no media and one `.md` file means writing, one media file means piece, otherwise collection.
+- **Title, date, description, tags.** Date is local time, saved as UTC. Description is markdown. It shows on the homepage card and under the page title. Type a tag and press Enter or a comma; Backspace in an empty tag field removes the last tag.
 - **Homepage card**: live preview of the feed card: thumbnail or mosaic, title, date, description, tags.
-- **Media grid** (collection, piece): one tile per file. The badge on each tile is its `order`. Drag tiles to reorder. Click a tile to set its caption, its `order` (type a position; 1 comes first), include or exclude it, move it, or make it the collection thumbnail. HEIC and TIFF previews use macOS `sips`.
+- **Media grid** (collection, piece): one tile per file. The badge on each tile is its `order`. Excluded tiles are dimmed. Drag tiles to reorder.
+- **Tile detail** (click a tile): large preview, caption (empty means the file name), `order` (type a position; 1 comes first; a number past the end means last), include, ← earlier / later →, and use as thumbnail (collection only; click again to clear). A piece shows its first included item.
 - **Body** (writing): the text of the writing, saved to `body.md` (or to the one `.md` file already in the folder).
-- **Save** (button or ⌘S): writes `manifest.toml`. It writes the smallest manifest that gives the result: `[[media]]` tables (`file`, `title`, `order`) appear only if you excluded a file, changed the order or set a caption.
+- **Save** (button or ⌘S): checks the values and writes `manifest.toml`. Errors show next to the button; nothing is written then. It writes the smallest manifest that gives the result: `[[media]]` tables (`file`, `title`, `order`) appear only if you excluded a file, changed the order or set a caption. The saved text shows below the button.
+- Leaving the page with unsaved changes asks for confirmation.
 
-Run it again on the same folder to change the manifest. It reads the existing values. Stop it with Ctrl-C.
+Previews: the browser shows PNG, JPEG, WebP, AVIF and most MP4/MOV/WebM directly. HEIC and TIFF previews use macOS `sips`. A file the browser cannot show appears as its file name; it still uploads.
+
+Full flow for one collection:
+
+```nu
+just manifest uploads/bw   # set title, date, description, tags, order; ⌘S; Ctrl-C
+just upload uploads/bw
+just logs                  # wait for "Published collection bw"
+```
 
 ### 2.2 Manifest keys
 

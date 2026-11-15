@@ -5,14 +5,14 @@
 default:
     @just --list
 
-# Open the local manifest editor for a slug folder (collection, piece or writing).
-manifest folder:
+# Open the local manifest editor for a slug folder (collection, piece or writing). Flags: --port N, --no-browser.
+manifest folder *flags:
     #!/usr/bin/env bash
     set -euo pipefail
     cd "{{invocation_directory()}}"
     [[ -d "{{folder}}" ]] || { echo "Not a folder: {{folder}}" >&2; exit 2; }
     exec uv run --quiet --project "{{justfile_directory()}}/tools/manifest" \
-      exhib-manifest "$(cd "{{folder}}" && pwd)"
+      exhib-manifest "$(cd "{{folder}}" && pwd)" {{flags}}
 
 # Upload a slug folder (manifest.toml plus media, or plus one .md body for a writing). Needs kubectl for the cluster.
 upload folder:
