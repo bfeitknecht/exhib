@@ -89,7 +89,8 @@ On the page:
 
 - **Kind**: collection, piece or writing (top right). The editor guesses from the folder contents: no media and one `.md` file means writing, one media file means piece, otherwise collection.
 - **Title, date, description, tags.** Date is `DD/MM/YYYY` (dots work too), time is 24h `HH:MM`, in the browser's local time zone (shown under the fields, e.g. `Europe/Zurich (UTC+01:00)`). **now** fills in the current minute. The manifest stores local time with its offset, e.g. `2026-11-15T18:30:00+01:00` (`+02:00` in summer). Description is markdown. It shows on the homepage card and under the page title. Type a tag and press Enter or a comma; Backspace in an empty tag field removes the last tag.
-- **Homepage card**: live preview of the feed card: thumbnail or mosaic, title, date, description, tags.
+- **Homepage card**: live preview of the feed card: cover, title, date, description (markdown rendered), tags.
+- **Cover** (collection only, under the card): `mosaic (first nine images)` or one included file. A single file is saved as `thumbnail`. It stays in the grid too. A video as cover shows its poster on the site. The tile detail button **use as thumbnail** does the same.
 - **Media grid** (collection, piece): one tile per file. The badge on each tile is its `order`. Excluded tiles are dimmed. Drag tiles to reorder.
 - **Tile detail** (click a tile): large preview, caption (empty means the file name), `order` (type a position; 1 comes first; a number past the end means last), include, ← earlier / later →, and use as thumbnail (collection only; click again to clear). A piece shows its first included item.
 - **Body** (writing): the text of the writing, saved to `body.md` (or to the one `.md` file already in the folder).

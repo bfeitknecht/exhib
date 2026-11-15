@@ -27,7 +27,7 @@
   .top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 2rem; }
   @media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
   label { display: block; margin: 1rem 0 .3rem; color: var(--muted); text-transform: lowercase; }
-  input[type=text], input[type=number], textarea {
+  input[type=text], input[type=number], select, textarea {
     width: 100%; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: 3px;
     background: var(--field); color: var(--fg); font: inherit;
   }
@@ -127,6 +127,11 @@
         <time id="cardDate" class="muted"></time>
         <div id="cardDesc" class="desc"></div>
         <div class="chips" id="cardTags"></div>
+      </div>
+      <div id="coverBox">
+        <label for="cover">cover</label>
+        <select id="cover"></select>
+        <p class="hint">What the homepage card shows. Mosaic: the first nine images. Or pick one file. Same as "use as thumbnail" on a tile.</p>
       </div>
     </aside>
   </section>
@@ -382,7 +387,14 @@ function renderDetail() {
   $("makeThumb").textContent = state.thumbnail === selected.name ? "clear thumbnail" : "use as thumbnail";
 }
 
-function render() { renderKind(); renderTags(); renderCardText(); renderCardArt(); renderGrid(); renderDetail(); }
+function renderCover() {
+  $("coverBox").hidden = state.kind !== "collection";
+  const options = [["", "mosaic (first nine images)"], ...included().map((i) => [i.name, `${shown(i)} (${i.name})`])];
+  $("cover").replaceChildren(...options.map(([value, text]) => Object.assign(document.createElement("option"), { value, textContent: text })));
+  $("cover").value = state.thumbnail || "";
+}
+
+function render() { renderKind(); renderTags(); renderCardText(); renderCardArt(); renderCover(); renderGrid(); renderDetail(); }
 
 function collect() {
   return {
@@ -464,6 +476,7 @@ function setOrder(n) {
 $("itemOrder").addEventListener("change", () => setOrder(Number($("itemOrder").value)));
 $("moveLeft").onclick = () => move(-1);
 $("moveRight").onclick = () => move(1);
+$("cover").addEventListener("change", () => { state.thumbnail = $("cover").value; touch(); });
 $("makeThumb").onclick = () => {
   state.thumbnail = state.thumbnail === selected.name ? "" : selected.name;
   if (state.thumbnail) selected.included = true;
