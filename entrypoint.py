@@ -11,8 +11,10 @@ import subprocess
 import sys
 import time
 
+from processor.paths import CONTENT, INCOMING, ORIGINALS, PUBLIC
+
 CHILDREN = [
-    ["python3", "-m", "processor"],
+    ["python", "-m", "processor"],
     ["static-web-server"],
 ]
 
@@ -33,6 +35,9 @@ def terminate_all(processes: list[subprocess.Popen]) -> None:
 
 
 def main() -> int:
+    # SWS exits at once if its root is missing. Create it before the start.
+    for path in (INCOMING, CONTENT, ORIGINALS, PUBLIC):
+        path.mkdir(parents=True, exist_ok=True)
     processes = [subprocess.Popen(cmd) for cmd in CHILDREN]
     shutting_down = {"flag": False}
 
@@ -51,7 +56,8 @@ def main() -> int:
             code = proc.poll()
             if code is not None:
                 terminate_all(processes)
-                return code
+                # A negative code is a signal. Report it as 128 + N, like a shell.
+                return 128 - code if code < 0 else code
         signal.pause()
 
 

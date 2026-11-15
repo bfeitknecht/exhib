@@ -2,14 +2,16 @@
 # and static-web-server. One image is the whole app, like the other tier-2
 # apps: the infra repo references this image and nothing else. The PVC at
 # /data holds the gallery media. This image does not contain media.
-FROM alpine:3.22
+# Python comes from the base image; uv runs it from the project venv.
+FROM python:3.15-alpine3.24
+COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /usr/local/bin/uv
 
 ARG HUGO_VERSION=0.169.0
 ARG SWS_VERSION=2.44.1
 # BuildKit sets TARGETARCH per platform. A default here overrides it.
 ARG TARGETARCH
 # Hugo extended is glibc-linked. gcompat and libstdc++ let it run on musl.
-RUN apk add --no-cache ca-certificates gcompat libstdc++ ffmpeg libheif-tools libwebp-tools exiftool python3 wget tar \
+RUN apk add --no-cache ca-certificates gcompat libstdc++ ffmpeg libheif-tools libwebp-tools exiftool wget tar \
  && case "${TARGETARCH}" in \
       amd64) HUGO_ARCH=amd64 SWS_ARCH=x86_64-unknown-linux-musl SWS_SHA256=8f94abd9bc9c6d11240301d7271b95f9ec05b1b3e8509087c86ca8fd0b56fb4e ;; \
       arm64) HUGO_ARCH=arm64 SWS_ARCH=aarch64-unknown-linux-musl SWS_SHA256=28e53e5979735309ec3de685330719a11a0ef339aa06d0f0cd8eff5d973b9dfc ;; \
@@ -25,7 +27,16 @@ RUN apk add --no-cache ca-certificates gcompat libstdc++ ffmpeg libheif-tools li
  && rm -rf /tmp/sws-extract /tmp/hugo.tar.gz /tmp/sws.tar.gz \
  && chmod 0755 /usr/local/bin/hugo /usr/local/bin/static-web-server
 
+# uv uses the base image Python only. It never downloads one.
+# No cache: build runs as root, runtime as 1000. A shared cache dir breaks.
+ENV UV_PYTHON_DOWNLOADS=never \
+    UV_PYTHON=/usr/local/bin/python3 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_NO_CACHE=1
 WORKDIR /app
+COPY pyproject.toml uv.lock .python-version ./
+RUN uv sync --frozen --no-dev
 COPY sws.toml /etc/sws/sws.toml
 COPY . /app
 RUN chown -R 1000:1000 /app
@@ -33,4 +44,5 @@ ENV EXHIB_APP=/app \
     EXHIB_DATA=/data \
     SERVER_CONFIG_FILE=/etc/sws/sws.toml
 USER 1000:1000
-ENTRYPOINT ["python3", "entrypoint.py"]
+# --no-sync: the venv is complete at build time. Runtime writes nothing.
+ENTRYPOINT ["uv", "run", "--frozen", "--no-sync", "python", "entrypoint.py"]
