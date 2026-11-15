@@ -21,8 +21,7 @@ The design language is the site's original one, kept intact: Helvetica Neue (sys
 The shared document shell is in `layouts/_default/baseof.html`. Every page carries the global bar: `0xbf.ch` on the left; `/`, `/collections/`, `/pieces/`, `/writings/` and `/tags/` on the right. The feeds and sitemap live in the footer. It is styled like the page chrome (Commit Mono, muted). The current view is marked with `aria-current="page"`.
 
 - Home-page card markup: `layouts/partials/listing/item-card.html` (writings reuse it without the image block).
-- Collection image ordering: `layouts/partials/media/sorted-images.html` (images with an EXIF capture date first, oldest first, then `position`; generated video posters are excluded).
-- Combined image/video ordering: `layouts/partials/media/sorted-media.html`.
+- Media ordering: `layouts/partials/media/sorted-media.html`. One order for grid, overlays, piece stage and homepage mosaic: `position` by default, or capture date first with `sort = "date"` (images and videos mixed; generated posters excluded).
 - Fullscreen viewer body: `layouts/partials/media/media-detail.html`.
 - Shared media slice (ordering, overlay ids, aspect ratios): `layouts/partials/media/media-view.html`.
 - Home/feed entry list: `layouts/partials/listing/feed-entries.html`.
@@ -114,7 +113,7 @@ position = 2
 +++
 ```
 
-`thumbnail` is only a presentation setting. The selected image stays in the collection grid. If embedded capture dates exist, image order comes from the image metadata. Images with no capture date follow in `position`. Videos follow in `position` after the images. Videos use their generated poster as the grid tile and as the detail poster. The poster is not listed as a gallery item. `title` is the human caption and alt text. It is not a substitute for EXIF.
+`thumbnail` is only a presentation setting. The selected image stays in the collection grid. Items appear in `position` order, images and videos mixed. With `sort = "date"` in front matter, items with a capture date (image EXIF, video creation date) come first, oldest first, then the rest by `position`. Videos use their generated poster as the grid tile and as the detail poster. The poster is not listed as a gallery item. `title` is the human caption and alt text. It is not a substitute for EXIF.
 
 ### Resource metadata is automatic
 

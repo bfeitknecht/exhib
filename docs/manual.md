@@ -87,7 +87,8 @@ On the page:
 - **Kind** (top right): collection, piece or writing. A new folder guesses: no media and one `.md` file is a writing, one media file a piece, else a collection.
 - **Title, date, description, tags.** Date is `DD/MM/YYYY` (dots work too), time is 24h `HH:MM`, in the browser time zone (shown below the fields). **now** fills in the current minute. The manifest stores local time with its offset, e.g. `2026-11-15T18:30:00+01:00`. Description is markdown. Tags: type and press Enter or comma; Backspace in the empty field removes the last one.
 - **Card**: live preview of the homepage card: cover or mosaic, title, date, rendered description, tags.
-- **Media grid** (collection, piece): one tile per file. Badges show the `position` and `cover`. Excluded tiles are dimmed. Drag tiles to reorder. Click a tile to edit it.
+- **Sort** (right of the media label): `position` or `date`. Saved as `sort`; `position` writes nothing.
+- **Media grid** (collection, piece): one tile per file, in position order. Badges show the `position` and `cover`. Excluded tiles are dimmed. Drag tiles to reorder. Click a tile to edit it.
 - **Item editor** (below the grid, after a click): large preview, caption (empty means the file name), `position` (1 comes first; a number past the end means last), include, ← / → to move, and **cover** (collection only).
 - **Cover**: press **cover** to make this item the homepage cover; press it again for the mosaic of the first nine images. Pressing it on another item moves the cover. A cover is always included. A video cover shows its poster on the site.
 - **Cover crop**: while the item is the cover, the large preview shows the card's 1:√2 frame. Drag it to choose the part shown on the card; the card preview follows. **center** resets it. An image with the card's aspect ratio has nothing to crop.
@@ -118,6 +119,7 @@ date = 2026-11-07T18:30:00Z
 | `description` | no       | markdown; shown in intro and cards, flattened in feeds and `<meta>`                           |
 | `tags`        | no       | list of strings, e.g. `["evergrowing"]`. Use slug-like names.                                 |
 | `thumbnail`   | no       | collection only. File name of one source file. Without it, the card shows a mosaic.          |
+| `sort`        | no       | collection and piece. `"position"` (default) or `"date"`. See below.                          |
 | `thumbnail_focus` | no   | collection only, with `thumbnail`. Crop of the cover on the card: `[x, y]` in percent, as CSS `object-position`. Default `[50, 50]`. |
 | `[[media]]`   | no       | collection and piece. Per-file overrides. Without it, every supported file is included.       |
 
@@ -141,13 +143,14 @@ file = "clip.mov"
 
 `position` sets the place in the grid: lower comes first. It was called `weight`, then `order`. A manifest with either fails with `[[media]] weight is renamed to position` (or `order`). The editor reads both and writes `position`. Bundles already on the PVC with `weight` still sort correctly.
 
-Display order on the page:
+Order on the page. One order for every view: the grid, the fullscreen navigation (`<< n/m >>`, arrow keys), the piece stage and the homepage mosaic. Images and videos mix.
 
-1. Images with an EXIF capture date, oldest first.
-2. Images without capture date, by `position`.
-3. Videos, by `position`.
+| `sort`                 | Order                                                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------------------ |
+| `"position"` (default) | `position` only. Capture dates are ignored.                                                            |
+| `"date"`               | capture date, oldest first: image EXIF date, video creation date. Items without a date follow by `position`. |
 
-So `position` is a fallback. EXIF capture date wins for images.
+Use `sort = "date"` for dumps (e.g. a month of phone photos): no `[[media]]` needed, everything sorts chronologically. PNG exports from design tools usually have no capture date, so `date` mode falls back to position for them.
 
 Supported media:
 
@@ -341,7 +344,7 @@ Upload path, step by step:
     - Collection or piece (`write_media_bundle`): converts each file (`processor/media.py`) into a scratch dir `.converted/`, then writes `_index.md` (collection) or `index.md` (piece).
         - Images: `cwebp -lossless -exact` to WebP. HEIC/HEIF decode first with `heif-convert`; AVIF via `ffmpeg`. Then `exiftool -TagsFromFile` copies all source metadata into the WebP, so Hugo can read EXIF.
         - Video: `ffmpeg` to WebM, lossless VP9 video, Opus 128k audio, metadata kept, no resize. Poster: frame at 1 s (falls back to frame 0), to lossless WebP, metadata copied.
-        - Video facts: `ffprobe` (JSON) for resolution, frame rate, duration. Falls back to parsing the `ffmpeg -i` banner. Format is fixed `WebM · VP9`.
+        - Video facts: `ffprobe` (JSON) for resolution, frame rate, duration, capture date (`com.apple.quicktime.creationdate`, else `creation_time`). Falls back to parsing the `ffmpeg -i` banner. Format is fixed `WebM · VP9`.
 5. **Front matter** (`build_front_matter`). TOML `+++` block: `title`, `date` (UTC offset), optional `description`, `tags`, `thumbnail` (mapped to the converted file; a video maps to its poster), `thumbnail_focus`. Media bundles get one `[[resources]]` per output file with `params.position` and `params.kind`. Videos also get `format`, `resolution`, `framerate`, `duration`, `poster`. Each poster is its own resource with `role = "poster"`, so templates hide it from the grid.
 6. **Keep original.** Copies the upload folder to `/data/originals/<kind>/.<slug>.pending`.
 7. **Build** (`build_and_publish`). `hugo --source /app --contentDir /data/content --destination /data/.public-next --minify`. Templates come from the image; content from the PVC. Hugo reads EXIF from the WebP files at build time for the metadata list and ordering.
@@ -352,7 +355,7 @@ Any error in steps 3 to 8 removes the bundle and pending original and parks the 
 
 `just rebuild` runs steps 7 and 8 only (`python -m processor rebuild`).
 
-Generated front matter for a collection with one image and one video:
+Generated front matter for a collection with one image and one video. With `sort = "date"` the block also has `sort = "date"`; a video with a capture date gets `date = "…"` in its params:
 
 ```toml
 +++

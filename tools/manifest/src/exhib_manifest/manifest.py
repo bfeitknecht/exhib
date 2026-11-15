@@ -165,6 +165,7 @@ def load_state(folder: Path) -> dict:
         "date": iso(date) if isinstance(date, datetime) else None,
         "description": manifest.get("description", ""),
         "tags": list(manifest.get("tags") or []),
+        "sort": "date" if manifest.get("sort") == "date" else "position",
         "thumbnail": manifest.get("thumbnail") or "",
         "thumbnail_focus": focus_of(manifest.get("thumbnail_focus")) or CENTER,
         "items": [
@@ -224,6 +225,8 @@ def render(folder: Path, data: dict) -> tuple[str, str | None]:
             raise ValueError("a writing takes no media; move the media files out")
         return "\n".join(lines) + "\n", body.rstrip("\n") + "\n"
 
+    if data.get("sort") == "date":
+        lines.append('sort = "date"')
     names = [p.name for p in media_files(folder)]
     items = [i for i in data.get("items") or [] if i.get("name") in names]
     chosen = [i for i in items if i.get("included")]

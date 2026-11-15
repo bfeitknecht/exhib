@@ -69,6 +69,8 @@
   .card .desc a { color: inherit; }
   .card .chips { display: flex; flex-wrap: wrap; gap: .3rem; }
   /* Media grid */
+  .mediahead { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; }
+  .mediahead label { margin: 0; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .8rem; margin-top: .6rem; }
   .tile { position: relative; padding: 0; border: 2px solid transparent; background: none; text-align: left; cursor: grab; }
   .tile.selected { border-color: var(--fg); }
@@ -151,7 +153,13 @@
   </section>
 
   <section id="mediaSection">
-    <label>media <span class="muted" id="mediaCount"></span></label>
+    <div class="mediahead">
+      <label>media <span class="muted" id="mediaCount"></span></label>
+      <div class="seg" id="sorts" aria-label="sort">
+        <button type="button" data-sort="position">position</button>
+        <button type="button" data-sort="date">date</button>
+      </div>
+    </div>
     <div class="grid" id="grid"></div>
     <div class="detail" id="detail" hidden>
       <div class="big" id="bigArt"></div>
@@ -262,6 +270,7 @@ function renderKind() {
   $("bodySection").hidden = !writing;
   $("cardArt").hidden = writing;
   $("mediaCount").textContent = `${included().length}/${state.items.length}`;
+  for (const b of $("sorts").children) b.setAttribute("aria-pressed", b.dataset.sort === state.sort);
 }
 
 function renderTags() {
@@ -468,6 +477,7 @@ function render() { renderKind(); renderTags(); renderCardText(); renderCardArt(
 function collect() {
   return {
     kind: state.kind,
+    sort: state.sort,
     title: $("title").value,
     date: isoLocal(readWhen()),
     description: $("description").value,
@@ -545,6 +555,7 @@ $("slugInput").addEventListener("change", () => open($("slugInput").value.trim()
 $("slugInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("slugInput").blur(); if (e.key === "Escape") { $("slugInput").value = slug; $("slugInput").blur(); } });
 window.addEventListener("popstate", () => open(new URLSearchParams(location.search).get("f") || "", false));
 for (const b of $("kinds").children) b.onclick = () => { state.kind = b.dataset.kind; touch(); };
+for (const b of $("sorts").children) b.onclick = () => { state.sort = b.dataset.sort; touch(); };
 $("now").onclick = () => { showWhen(nowMinute()); markDirty(); renderCardText(); };
 for (const id of ["title", "date", "time", "description", "body"]) $(id).addEventListener("input", () => { markDirty(); renderCardText(); });
 $("tagInput").addEventListener("keydown", (e) => {
