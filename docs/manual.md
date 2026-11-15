@@ -68,9 +68,9 @@ On the page:
 - **Kind**: collection, piece or writing (top right). The editor guesses from the folder contents.
 - **Title, date, description, tags.** Date is local time, saved as UTC. Description is markdown. It shows on the homepage card and under the page title. Type a tag and press Enter; Backspace removes the last one.
 - **Homepage card**: live preview of the feed card: thumbnail or mosaic, title, date, description, tags.
-- **Media grid** (collection, piece): one tile per file. Drag tiles to reorder. Click a tile to set its caption, include or exclude it, move it, or make it the collection thumbnail. HEIC and TIFF previews use macOS `sips`.
+- **Media grid** (collection, piece): one tile per file. The badge on each tile is its `order`. Drag tiles to reorder. Click a tile to set its caption, its `order` (type a position; 1 comes first), include or exclude it, move it, or make it the collection thumbnail. HEIC and TIFF previews use macOS `sips`.
 - **Body** (writing): the text of the writing, saved to `body.md` (or to the one `.md` file already in the folder).
-- **Save** (button or ⌘S): writes `manifest.toml`. It writes the smallest manifest that gives the result: `[[media]]` tables appear only if you excluded a file, changed the order or set a caption.
+- **Save** (button or ⌘S): writes `manifest.toml`. It writes the smallest manifest that gives the result: `[[media]]` tables (`file`, `title`, `order`) appear only if you excluded a file, changed the order or set a caption.
 
 Run it again on the same folder to change the manifest. It reads the existing values. Stop it with Ctrl-C.
 

@@ -3,7 +3,7 @@
 The rules mirror the processor (processor/bundle.py, processor/media.py).
 Keep the extension sets, the slug rule, natural_key and humanize_stem in
 step with it. The tool writes the smallest manifest that gives the
-result: [[media]] tables only when the selection, order or a title
+result: [[media]] tables (file, title, order) only when the selection, order or a title
 differs from the processor defaults.
 """
 
@@ -85,7 +85,13 @@ def load_state(folder: Path) -> dict:
     listed = manifest.get("media")
     titles: dict[str, str] = {}
     if isinstance(listed, list):
-        order = [str(e["file"]) for e in listed if str(e.get("file")) in names]
+        # Same rule as the processor: explicit order, else list position.
+        ranked = sorted(
+            (int(e.get("order", i)), i, str(e["file"]))
+            for i, e in enumerate(listed, 1)
+            if str(e.get("file")) in names
+        )
+        order = [name for _, _, name in ranked]
         titles = {str(e["file"]): str(e["title"]) for e in listed if e.get("title")}
         included = set(order)
         order += [n for n in names if n not in included]
@@ -188,10 +194,11 @@ def render(folder: Path, data: dict) -> tuple[str, str | None]:
     }
     defaults = [i["name"] for i in chosen] == names and not titled
     if not defaults:
-        for item in chosen:
+        for position, item in enumerate(chosen, 1):
             lines += ["", "[[media]]", f"file = {toml_string(item['name'])}"]
             if item["name"] in titled:
                 lines.append(f"title = {toml_string(titled[item['name']])}")
+            lines.append(f"order = {position}")
     return "\n".join(lines) + "\n", None
 
 

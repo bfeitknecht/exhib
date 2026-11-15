@@ -27,7 +27,7 @@
   .top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 2rem; }
   @media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
   label { display: block; margin: 1rem 0 .3rem; color: var(--muted); text-transform: lowercase; }
-  input[type=text], input[type=datetime-local], textarea {
+  input[type=text], input[type=number], input[type=datetime-local], textarea {
     width: 100%; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: 3px;
     background: var(--field); color: var(--fg); font: inherit;
   }
@@ -133,6 +133,9 @@
         <label for="itemTitle">caption</label>
         <input type="text" id="itemTitle">
         <p class="hint">Empty uses the file name.</p>
+        <label for="itemOrder">order</label>
+        <input type="number" id="itemOrder" min="1" step="1">
+        <p class="hint">Position in the grid; 1 comes first. Saved as <code>order</code>.</p>
         <label><input type="checkbox" id="itemIncluded"> include</label>
         <div class="row">
           <button type="button" id="moveLeft">← earlier</button>
@@ -299,6 +302,10 @@ function renderDetail() {
   $("detailName").textContent = selected.name;
   $("itemTitle").placeholder = selected.default_title;
   $("itemIncluded").checked = selected.included;
+  const rank = included().indexOf(selected);
+  $("itemOrder").disabled = !selected.included;
+  $("itemOrder").max = included().length;
+  if (document.activeElement !== $("itemOrder")) $("itemOrder").value = rank < 0 ? "" : rank + 1;
   $("makeThumb").textContent = state.thumbnail === selected.name ? "clear thumbnail" : "use as thumbnail";
 }
 
@@ -368,6 +375,19 @@ const move = (delta) => {
   [state.items[i], state.items[j]] = [state.items[j], state.items[i]];
   touch();
 };
+// Move the selected item to position n among the included items.
+function setOrder(n) {
+  const list = included();
+  const target = Math.min(Math.max(1, Math.round(n) || 1), list.length);
+  if (list.indexOf(selected) === target - 1) return;
+  state.items.splice(state.items.indexOf(selected), 1);
+  const rest = included();
+  const anchor = rest[target - 1];
+  if (anchor) state.items.splice(state.items.indexOf(anchor), 0, selected);
+  else state.items.splice(state.items.indexOf(rest[rest.length - 1]) + 1, 0, selected);
+  touch();
+}
+$("itemOrder").addEventListener("change", () => setOrder(Number($("itemOrder").value)));
 $("moveLeft").onclick = () => move(-1);
 $("moveRight").onclick = () => move(1);
 $("makeThumb").onclick = () => {
