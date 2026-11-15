@@ -11,3 +11,4 @@ justfile
 docs/
 tools/
 uploads/
+.ruff_cache/
