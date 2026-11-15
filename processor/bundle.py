@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import tomllib
@@ -17,7 +18,7 @@ from .media import (
     probe_video,
     run,
 )
-from .paths import APP, CONTENT, DATA, ORIGINALS, PUBLIC
+from .paths import APP, CONTENT, DATA, ORIGINALS, PUBLIC, RESOURCES
 
 # Upload kind -> Hugo section directory.
 SECTIONS = {"piece": "pieces", "collection": "collections", "writing": "writings"}
@@ -131,6 +132,16 @@ def build_front_matter(
     return "\n".join(lines) + "\n"
 
 
+# Hugo resizes images in parallel. Large posters (35 Mpx RGBA) then pass the
+# 2 GiB pod limit and the kernel kills Hugo. Fewer threads and a Go soft
+# memory limit keep the build inside the limit. Override from the pod env.
+HUGO_ENV = {
+    "HUGO_RESOURCEDIR": str(RESOURCES),
+    "GOMAXPROCS": os.environ.get("EXHIB_HUGO_THREADS", "2"),
+    "GOMEMLIMIT": os.environ.get("EXHIB_HUGO_MEMLIMIT", "1GiB"),
+}
+
+
 def build_and_publish() -> None:
     staging = DATA / ".public-next"
     backup = DATA / ".public-previous"
@@ -147,7 +158,10 @@ def build_and_publish() -> None:
             "--destination",
             str(staging),
             "--minify",
-        ]
+            # Drop resized images that no page uses any more.
+            "--gc",
+        ],
+        env=os.environ | HUGO_ENV,
     )
     if PUBLIC.exists():
         PUBLIC.rename(backup)

@@ -1,0 +1,15 @@
+{{/* URL of a smaller lossy copy of an image, for tiles, cards and stages.
+     Expects a dict:
+       image - the image resource
+       width - target width in px (default 1200)
+     SVGs and images not wider than the target come back unchanged.
+     The fullscreen detail view keeps the lossless original. */}}
+{{- $img := .image -}}
+{{- $width := .width | default 1200 -}}
+{{- $url := $img.RelPermalink -}}
+{{- if and (eq $img.ResourceType "image") (ne $img.MediaType.SubType "svg") -}}
+  {{- if gt $img.Width $width -}}
+    {{- $url = ($img.Resize (printf "%dx webp q85 picture" $width)).RelPermalink -}}
+  {{- end -}}
+{{- end -}}
+{{- return $url -}}

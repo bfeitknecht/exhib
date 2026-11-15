@@ -17,6 +17,6 @@
     {{ with $item.Params.framerate }}<div class="metadata-row"><dt>Frame rate</dt><dd>{{ . }}</dd></div>{{ end }}
     {{ with $item.Params.duration }}<div class="metadata-row"><dt>Duration</dt><dd>{{ . }}</dd></div>{{ end }}</dl></div>
 {{- else -}}
-  <div class="viewer-image"><img src="{{ $item.RelPermalink }}" alt="{{ $item.Title }}"></div>
+  <div class="viewer-image"><img src="{{ $item.RelPermalink }}" alt="{{ $item.Title }}" loading="lazy" decoding="async"></div>
   <div class="viewer-metadata">{{ partial "metadata/metadata-list.html" (dict "image" $item) }}</div>
 {{- end -}}
