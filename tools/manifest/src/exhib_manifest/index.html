@@ -55,6 +55,8 @@
   .card .mosaic > * { width: 100%; height: 100%; object-fit: cover; min-height: 0; }
   .card h2 { margin: .7rem 0 .1rem; font: 600 1.15rem var(--sans); }
   .card p { margin: .4rem 0; }
+  .card code { font-family: var(--mono); font-size: .9em; }
+  .card .desc a { color: inherit; }
   .card .chips { display: flex; flex-wrap: wrap; gap: .3rem; }
   /* Media grid */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .8rem; margin-top: .6rem; }
@@ -112,7 +114,7 @@
       <p class="hint"><span id="tz"></span> 24h. Saved in local time with its offset. Sets feed order, newest first. A future date stays hidden until then.</p>
       <label for="description">description</label>
       <textarea id="description" placeholder="Optional. Markdown."></textarea>
-      <p class="hint">Shown on the homepage card and under the page title.</p>
+      <p class="hint">Shown on the homepage card and under the page title. Markdown; the card previews it.</p>
       <label for="tagInput">tags</label>
       <div class="tags" id="tags"><input type="text" id="tagInput" placeholder="type, then Enter"></div>
       <p class="hint">Lowercase slug words, e.g. evergrowing, design, essay.</p>
@@ -123,7 +125,7 @@
         <div class="art" id="cardArt"></div>
         <h2 id="cardTitle"></h2>
         <time id="cardDate" class="muted"></time>
-        <p id="cardDesc"></p>
+        <div id="cardDesc" class="desc"></div>
         <div class="chips" id="cardTags"></div>
       </div>
     </aside>
@@ -262,12 +264,45 @@ function renderTags() {
   });
 }
 
+// Preview of Hugo's `markdownify` (goldmark: unsafe = false, typographer,
+// linkify, strikethrough). Inline markdown and paragraphs only. HTML is
+// escaped first; raw tags are dropped like Hugo does, their text stays.
+function markdownify(src) {
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const attr = (s) => esc(s).replace(/"/g, "&quot;");
+  const safeUrl = (u) => /^(https?:|mailto:|\/|#)/i.test(u) ? u : "#";
+  const inline = (text) => {
+    const held = [];
+    const hold = (html) => `\u0000${held.push(html) - 1}\u0000`;
+    let s = text.replace(/<!--[\s\S]*?-->|<\/?[A-Za-z][^>]*>/g, "");
+    s = esc(s);
+    s = s.replace(/`([^`]+)`/g, (_, c) => hold(`<code>${c}</code>`));
+    s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label, url) =>
+      hold(`<a href="${attr(safeUrl(url.replace(/&amp;/g, "&")))}">`) + label + hold("</a>"));
+    s = s.replace(/https?:\/\/[^\s<\u0000]*[^\s<\u0000.,;:!?)'"]/g, (url) =>
+      hold(`<a href="${attr(url.replace(/&amp;/g, "&"))}">${url}</a>`));
+    s = s.replace(/---/g, "&mdash;").replace(/--/g, "&ndash;").replace(/\.\.\./g, "&hellip;")
+      .replace(/"([^"]*)"/g, "&ldquo;$1&rdquo;")
+      .replace(/(\w)'(\w)/g, "$1&rsquo;$2")
+      .replace(/'([^']*)'/g, "&lsquo;$1&rsquo;");
+    s = s.replace(/~~(?=\S)(.+?)(?<=\S)~~/g, "<del>$1</del>")
+      .replace(/\*\*(?=\S)(.+?)(?<=\S)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^\w])__(?=\S)(.+?)(?<=\S)__(?!\w)/g, "$1<strong>$2</strong>")
+      .replace(/\*(?=\S)(.+?)(?<=\S)\*/g, "<em>$1</em>")
+      .replace(/(^|[^\w])_(?=\S)(.+?)(?<=\S)_(?!\w)/g, "$1<em>$2</em>");
+    while (s.includes("\u0000")) s = s.replace(/\u0000(\d+)\u0000/g, (_, i) => held[+i]);
+    return s;
+  };
+  const paras = src.trim().split(/\n\s*\n/).filter((p) => p.trim());
+  return paras.map((p) => `<p>${inline(p.trim())}</p>`).join("");
+}
+
 function renderCardText() {
   $("cardTitle").textContent = $("title").value || "(no title)";
   const d = readWhen();
   renderTz();
   $("cardDate").textContent = d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : "";
-  $("cardDesc").textContent = $("description").value;
+  $("cardDesc").innerHTML = markdownify($("description").value);
   $("cardTags").replaceChildren(...state.tags.map((t) => Object.assign(document.createElement("span"), { className: "chip", textContent: t })));
 }
 
