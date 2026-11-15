@@ -24,12 +24,12 @@ The library is the PVC `exhib-site`, mounted at `/data` in the pod. The image ho
 
 What lives where:
 
-| Thing                                   | Lives in                  | Goes live by                         |
-| --------------------------------------- | ------------------------- | ------------------------------------ |
-| Templates, CSS, JS, processor, sws.toml | this repo, baked in image | `v*` tag, CI push, Keel restart      |
-| Pieces and collections                  | PVC `/data/content`       | `just upload` (no tag, no image)     |
-| Writings                                | PVC `/data/content`       | manual copy + rebuild (see §5)       |
-| Originals                               | PVC `/data/originals`     | never served                         |
+| Thing                                   | Lives in                  | Goes live by                     |
+| --------------------------------------- | ------------------------- | -------------------------------- |
+| Templates, CSS, JS, processor, sws.toml | this repo, baked in image | `v*` tag, CI push, Keel restart  |
+| Pieces and collections                  | PVC `/data/content`       | `just upload` (no tag, no image) |
+| Writings                                | PVC `/data/content`       | `kubectl cp` + rebuild (see §5)  |
+| Originals                               | PVC `/data/originals`     | never served                     |
 
 Important: the repo `content/` directory seeds `/data/content` **only on first boot, when `/data/content` is empty**. After that, edits to repo `content/` do not reach production. The PVC is the source of truth for content.
 
@@ -49,15 +49,15 @@ date = 2026-11-07T18:30:00Z
 
 All keys:
 
-| Key           | Required | Meaning                                                                                 |
-| ------------- | -------- | --------------------------------------------------------------------------------------- |
-| `kind`        | yes      | `"collection"` or `"piece"`                                                             |
-| `title`       | yes      | page title                                                                              |
-| `date`        | yes      | TOML datetime (not a string). No zone means UTC. Sets feed order, newest first.          |
-| `description` | no       | markdown; shown in intro and cards, flattened in feeds and `<meta>`                     |
-| `tags`        | no       | list of strings, e.g. `["evergrowing"]`. Use slug-like names.                           |
-| `thumbnail`   | no       | file name of one source file (`"cover.jpg"`). Without it, the card shows a mosaic.      |
-| `[[media]]`   | no       | per-file overrides. Without it, every supported file is included.                       |
+| Key           | Required | Meaning                                                                            |
+| ------------- | -------- | ---------------------------------------------------------------------------------- |
+| `kind`        | yes      | `"collection"` or `"piece"`                                                        |
+| `title`       | yes      | page title                                                                         |
+| `date`        | yes      | TOML datetime (not a string). No zone means UTC. Sets feed order, newest first.    |
+| `description` | no       | markdown; shown in intro and cards, flattened in feeds and `<meta>`                |
+| `tags`        | no       | list of strings, e.g. `["evergrowing"]`. Use slug-like names.                      |
+| `thumbnail`   | no       | file name of one source file (`"cover.jpg"`). Without it, the card shows a mosaic. |
+| `[[media]]`   | no       | per-file overrides. Without it, every supported file is included.                  |
 
 Without `[[media]]`:
 
@@ -147,16 +147,85 @@ Conversion is slow for video (lossless VP9 on the Pi). A minute of video can tak
 
 ## 5. Writings
 
-There is no upload path for writings. The processor accepts only `piece` and `collection`. Copy the bundle into the content tree, then rebuild:
+Writings are text-only pages at `/writings/<slug>/`. They have no media, no grid and no metadata. They show in the home feed (no image), in `/writings/`, in `/tags/` and in the RSS and Atom feeds.
+
+`just upload` does not accept writings. The processor accepts only `piece` and `collection`. You write the Hugo page directly into the live content tree, then rebuild.
+
+### 5.1 Write the page
+
+Make a folder named after the slug (lowercase, digits, hyphens). Put one file `index.md` in it:
+
+```
+field-notes/
+└── index.md
+```
+
+```toml
++++
+title = "Field notes"
+date = 2026-11-08T12:00:00Z
+description = "Optional summary. *Markdown* is supported."
+tags = ["essay"]
++++
+
+First line
+Second line
+
+A new stanza.
+```
+
+Front matter (TOML, `+++`):
+
+| Key           | Required | Meaning                                                                    |
+| ------------- | -------- | -------------------------------------------------------------------------- |
+| `title`       | yes      | page title                                                                 |
+| `date`        | yes      | TOML datetime. Sets feed order. A future date hides the page (see below).  |
+| `description` | no       | markdown; shown under the title and on cards; plain text in feeds          |
+| `tags`        | no       | list of slug-like strings                                                  |
+| `draft`       | no       | `true` hides the page from the build                                       |
+
+Body rules:
+
+- Markdown.
+- A single newline breaks the line. The body uses `white-space: pre-line`. Verse keeps its shape.
+- A blank line starts a new paragraph or stanza.
+- Raw HTML is dropped (`markup.goldmark.renderer.unsafe = false`).
+- Do not add images. The template shows none.
+
+Hugo does not build pages with a date in the future. If you set a future date, the page appears only on the first rebuild after that date. Rebuilds happen only on upload, exec rebuild or pod restart.
+
+Preview locally before you publish. Put the folder in repo `content/writings/` and run:
 
 ```nu
+hugo server --bind 0.0.0.0 --port 4173
+```
+
+### 5.2 Publish
+
+```nu
+let slug = "field-notes"
 let pod = (kubectl -n exhib get pods -l app.kubernetes.io/name=exhib -o jsonpath='{.items[0].metadata.name}')
-kubectl -n exhib exec $pod -- mkdir -p /data/content/writings/field-notes
-kubectl -n exhib cp ./field-notes/index.md $"exhib/($pod):/data/content/writings/field-notes/index.md"
+kubectl -n exhib exec $pod -- mkdir -p $"/data/content/writings/($slug)"
+kubectl -n exhib cp $"./($slug)/index.md" $"exhib/($pod):/data/content/writings/($slug)/index.md"
 kubectl -n exhib exec $pod -- python3 -c "from processor.bundle import build_and_publish; build_and_publish()"
 ```
 
-Format of `index.md` is in the README ("Writings").
+The rebuild prints Hugo's page counts. A Hugo error means the old site stays live. Fix the file and run the rebuild again. The page is then live at `https://gallery.0xbf.ch/writings/field-notes/`.
+
+### 5.3 Edit
+
+Copy the changed `index.md` over the old one with the same `kubectl cp` line, then rebuild. To change the slug, delete the old folder (5.4) and publish under the new slug. The old URL then returns 404.
+
+### 5.4 Delete
+
+```nu
+kubectl -n exhib exec $pod -- rm -rf $"/data/content/writings/($slug)"
+kubectl -n exhib exec $pod -- python3 -c "from processor.bundle import build_and_publish; build_and_publish()"
+```
+
+### 5.5 Keep a copy in git
+
+The PVC copy is the live one. There is no copy in `/data/originals` and no backup. Commit each writing to repo `content/writings/<slug>/index.md` too. This gives history, and it seeds a fresh, empty PVC. Repo content does **not** update a PVC that already has content, so always do 5.2 as well.
 
 ## 6. Change, replace or delete an item
 
@@ -208,9 +277,9 @@ Upload path, step by step:
 2. **Detect** (`processor/__main__.py`). Every 3 s, takes non-hidden folders in `/data/incoming`, sorted, one at a time.
 3. **Validate** (`processor/bundle.py: publish_bundle`). Slug format, `kind`, `title`, TOML datetime `date`, media list, no path escape (`../`), no existing `/data/originals/<kind>/<slug>`.
 4. **Convert** (`processor/media.py`), into a scratch dir `.converted/` inside the new bundle:
-   - Images: `cwebp -lossless -exact` to WebP. HEIC/HEIF decode first with `heif-convert`; AVIF via `ffmpeg`. Then `exiftool -TagsFromFile` copies all source metadata into the WebP, so Hugo can read EXIF.
-   - Video: `ffmpeg` to WebM, lossless VP9 video, Opus 128k audio, metadata kept, no resize. Poster: frame at 1 s (falls back to frame 0), to lossless WebP, metadata copied.
-   - Video facts: `ffprobe` (JSON) for resolution, frame rate, duration. Falls back to parsing the `ffmpeg -i` banner. Format is fixed `WebM · VP9`.
+    - Images: `cwebp -lossless -exact` to WebP. HEIC/HEIF decode first with `heif-convert`; AVIF via `ffmpeg`. Then `exiftool -TagsFromFile` copies all source metadata into the WebP, so Hugo can read EXIF.
+    - Video: `ffmpeg` to WebM, lossless VP9 video, Opus 128k audio, metadata kept, no resize. Poster: frame at 1 s (falls back to frame 0), to lossless WebP, metadata copied.
+    - Video facts: `ffprobe` (JSON) for resolution, frame rate, duration. Falls back to parsing the `ffmpeg -i` banner. Format is fixed `WebM · VP9`.
 5. **Front matter** (`build_front_matter`). Writes `_index.md` (collection) or `index.md` (piece) in `/data/content/<section>/<slug>/`. TOML `+++` block: `title`, `date` (normalized to UTC offset), optional `description`, `tags`, `thumbnail` (mapped to the converted file; a video maps to its poster). One `[[resources]]` per output file with `params.weight` and `params.kind`. Videos also get `format`, `resolution`, `framerate`, `duration`, `poster`. Each poster is its own resource with `role = "poster"`, so templates hide it from the grid.
 6. **Keep original.** Copies the upload folder to `/data/originals/<kind>/.<slug>.pending`.
 7. **Build** (`build_and_publish`). `hugo --source /app --contentDir /data/content --destination /data/.public-next --minify`. Templates come from the image; content from the PVC. Hugo reads EXIF from the WebP files at build time for the metadata list and ordering.
@@ -275,6 +344,6 @@ Between step 1 and 2, `just upload` also fails. `kubectl exec` without `-c` targ
 ## 10. Known gaps
 
 - Uploaded videos get no animated `preview` WebP. Grid tiles fall back to an autoplaying `<video>`. The placeholder previews were made by hand.
-- No upload path for writings (§5).
+- No upload path for writings; they use `kubectl cp` and no backup covers them (§5).
 - No in-place update of an uploaded item; delete and re-upload (§6).
 - No k8up Schedule for exhib. `/data/originals` holds the only copy of uploaded originals.
