@@ -3,8 +3,11 @@
 The rules mirror the processor (processor/bundle.py, processor/media.py).
 Keep the extension sets, the slug rule, natural_key and humanize_stem in
 step with it. The tool writes the smallest manifest that gives the
-result: [[media]] tables (file, title, order) only when the selection, order or a title
-differs from the processor defaults.
+result: [[media]] tables (file, title, position) only when the selection,
+the order or a caption differs from the processor defaults.
+
+The editor works on one root folder (uploads/) and its direct child
+folders, one per slug. No other path is reachable.
 """
 
 from __future__ import annotations
@@ -30,6 +33,8 @@ VIDEO_EXTS = {".mov", ".mp4", ".m4v", ".3gp", ".mkv", ".webm"}
 KINDS = ("collection", "piece", "writing")
 SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 BODY_FILE = "body.md"
+# Default crop of the cover: centered. Not written to the manifest.
+CENTER = [50, 50]
 
 
 def natural_key(name: str) -> list:
@@ -70,6 +75,41 @@ def body_file(folder: Path) -> Path:
     return bodies[0] if len(bodies) == 1 else folder / BODY_FILE
 
 
+def child(root: Path, name: str) -> Path:
+    """Return root/name if it is a direct, visible child folder of root."""
+    if not name or name in {".", ".."} or "/" in name or "\\" in name:
+        raise ValueError(f"not a folder name: {name!r}")
+    if name.startswith("."):
+        raise ValueError(f"hidden folder: {name}")
+    folder = root / name
+    if folder.resolve().parent != root.resolve() or not folder.is_dir():
+        raise ValueError(f"no folder {name} in {root}")
+    return folder
+
+
+def list_folders(root: Path) -> list[dict]:
+    return [
+        {
+            "name": p.name,
+            "slug_ok": bool(SLUG.fullmatch(p.name)),
+            "has_manifest": (p / "manifest.toml").is_file(),
+        }
+        for p in sorted(root.iterdir(), key=lambda p: natural_key(p.name))
+        if p.is_dir() and not p.name.startswith(".")
+    ]
+
+
+def focus_of(value: object) -> list[int] | None:
+    """[x, y] in percent (0-100), or None if value is not such a pair."""
+    if (
+        isinstance(value, list)
+        and len(value) == 2
+        and all(isinstance(v, int | float) and 0 <= v <= 100 for v in value)
+    ):
+        return [round(v) for v in value]
+    return None
+
+
 def iso(value: datetime) -> str:
     # Keep the offset the date was written with (local time). A date with
     # no offset is UTC, as in the processor.
@@ -87,9 +127,14 @@ def load_state(folder: Path) -> dict:
     listed = manifest.get("media")
     titles: dict[str, str] = {}
     if isinstance(listed, list):
-        # Same rule as the processor: explicit order, else list position.
+        # Same rule as the processor: explicit position, else list index.
+        # Manifests from before the rename may say order or weight.
         ranked = sorted(
-            (int(e.get("order", i)), i, str(e["file"]))
+            (
+                int(e.get("position", e.get("order", e.get("weight", i)))),
+                i,
+                str(e["file"]),
+            )
             for i, e in enumerate(listed, 1)
             if str(e.get("file")) in names
         )
@@ -121,6 +166,7 @@ def load_state(folder: Path) -> dict:
         "description": manifest.get("description", ""),
         "tags": list(manifest.get("tags") or []),
         "thumbnail": manifest.get("thumbnail") or "",
+        "thumbnail_focus": focus_of(manifest.get("thumbnail_focus")) or CENTER,
         "items": [
             {
                 "name": name,
@@ -188,6 +234,9 @@ def render(folder: Path, data: dict) -> tuple[str, str | None]:
         if thumbnail not in {i["name"] for i in chosen}:
             raise ValueError("the thumbnail must be an included file")
         lines.append(f"thumbnail = {toml_string(thumbnail)}")
+        focus = focus_of(data.get("thumbnail_focus"))
+        if focus and focus != CENTER:
+            lines.append(f"thumbnail_focus = [{focus[0]}, {focus[1]}]")
 
     titled = {
         i["name"]: str(i.get("title") or "").strip()
@@ -196,11 +245,11 @@ def render(folder: Path, data: dict) -> tuple[str, str | None]:
     }
     defaults = [i["name"] for i in chosen] == names and not titled
     if not defaults:
-        for position, item in enumerate(chosen, 1):
+        for index, item in enumerate(chosen, 1):
             lines += ["", "[[media]]", f"file = {toml_string(item['name'])}"]
             if item["name"] in titled:
                 lines.append(f"title = {toml_string(titled[item['name']])}")
-            lines.append(f"order = {position}")
+            lines.append(f"position = {index}")
     return "\n".join(lines) + "\n", None
 
 

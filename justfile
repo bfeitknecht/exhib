@@ -8,14 +8,17 @@ export KUBECONFIG := justfile_directory() / ".." / "infra" / "kubeconfig"
 default:
     @just --list
 
-# Open the local manifest editor for a slug folder (collection, piece or writing). Flags: --port N, --no-browser.
-manifest folder *flags:
+# Open the manifest editor on uploads/ (or on one slug folder in it). Flags: --port N, --no-browser.
+manifest folder="uploads" *flags:
     #!/usr/bin/env bash
     set -euo pipefail
     cd "{{invocation_directory()}}"
-    [[ -d "{{folder}}" ]] || { echo "Not a folder: {{folder}}" >&2; exit 2; }
+    FOLDER="{{folder}}"
+    # Run from anywhere: fall back to uploads/ next to this justfile.
+    [[ -d "$FOLDER" ]] || FOLDER="{{justfile_directory()}}/{{folder}}"
+    [[ -d "$FOLDER" ]] || { echo "Not a folder: {{folder}}" >&2; exit 2; }
     exec uv run --quiet --project "{{justfile_directory()}}/tools/manifest" \
-      exhib-manifest "$(cd "{{folder}}" && pwd)" {{flags}}
+      exhib-manifest "$(cd "$FOLDER" && pwd)" {{flags}}
 
 # Upload a slug folder (manifest.toml plus media, or plus one .md body for a writing). Needs kubectl for the cluster.
 upload folder:

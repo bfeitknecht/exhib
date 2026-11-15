@@ -55,53 +55,49 @@ Do not convert media. The processor does that.
 
 ### 2.1 Manifest editor (`just manifest`)
 
-You do not need to write `manifest.toml` by hand. Put the source files in a slug folder under `uploads/`, then run the editor on it.
+You do not need to write `manifest.toml` by hand. Put the source files in a slug folder under `uploads/`, then run the editor.
 
 ```
-just manifest <folder> [--port N] [--no-browser]
+just manifest [folder] [--port N] [--no-browser]
 ```
 
-| Argument       | Meaning                                                                        |
-| -------------- | ------------------------------------------------------------------------------ |
-| `<folder>`     | the slug folder, relative to where you run `just`. It must exist.              |
-| `--port N`     | serve on port `N`. Default: any free port.                                     |
-| `--no-browser` | do not open the browser. Open the printed URL yourself.                        |
-
-Examples:
+| Argument       | Meaning                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------ |
+| `[folder]`     | `uploads` (default) or one slug folder in it. Relative to where you run `just`.            |
+| `--port N`     | serve on port `N`. Default: any free port.                                                 |
+| `--no-browser` | do not open the browser. Open the printed URL yourself.                                    |
 
 ```nu
-just manifest uploads/bw                       # open the editor in the browser
-just manifest uploads/bw --port 4321           # fixed URL: http://127.0.0.1:4321/
-just manifest uploads/field-notes --no-browser # print the URL only
+just manifest                        # folder list of uploads/
+just manifest uploads/bw             # opens bw directly
+just manifest uploads --port 4321    # fixed URL: http://127.0.0.1:4321/
 ```
 
-What it does:
+One server serves all of `uploads/`:
 
-- Starts a web page on `127.0.0.1` only, and opens it in the browser. The terminal prints the folder and the URL.
-- Runs on your machine only. It never talks to the cluster. It needs [uv](https://docs.astral.sh/uv/); uv gets Python 3.15 on first run.
-- Reads `manifest.toml` if it exists, so you can run it again to change an item. A new folder starts with defaults: the title from the folder name, the date set to now (to the minute), and every media file included.
-- Writes only `manifest.toml`, plus `body.md` for a writing. It never changes or deletes media files.
-- Warns if the folder name is not a lowercase slug. Rename the folder before upload.
-- Stops with Ctrl-C. It then prints the upload command.
+- **Path bar** (top left, `uploads/<slug>`): type or pick another folder and press Enter. The browser back button works. With unsaved changes it asks first.
+- Only direct child folders of `uploads/` open. No other path is reachable (no `..`, no `/`, no hidden folders).
+- A folder name that is not a lowercase slug opens with a warning. Rename it before upload.
+- Starting on a slug folder (`just manifest uploads/bw`) uses its parent as the root.
+
+It runs on your machine only and never talks to the cluster. It needs [uv](https://docs.astral.sh/uv/). It writes only `manifest.toml`, plus `body.md` for a writing. It never changes media files. Stop it with Ctrl-C.
 
 On the page:
 
-- **Kind**: collection, piece or writing (top right). The editor guesses from the folder contents: no media and one `.md` file means writing, one media file means piece, otherwise collection.
-- **Title, date, description, tags.** Date is `DD/MM/YYYY` (dots work too), time is 24h `HH:MM`, in the browser's local time zone (shown under the fields, e.g. `Europe/Zurich (UTC+01:00)`). **now** fills in the current minute. The manifest stores local time with its offset, e.g. `2026-11-15T18:30:00+01:00` (`+02:00` in summer). Description is markdown. It shows on the homepage card and under the page title. Type a tag and press Enter or a comma; Backspace in an empty tag field removes the last tag.
-- **Homepage card**: live preview of the feed card: cover, title, date, description (markdown rendered), tags.
-- **Cover** (collection only): hover a tile and click its **cover** toggle. That file becomes the homepage cover: the toggle stays filled and the tile gets a double border. Toggle another tile to move the cover; toggle the same tile off for the mosaic of the first nine images. The line under the card says which is active. The cover is saved as `thumbnail`, stays in the grid, and is included if it was excluded. A video as cover shows its poster on the site.
-- **Media grid** (collection, piece): one tile per file. The badge on each tile is its `order`. Excluded tiles are dimmed. Drag tiles to reorder.
-- **Tile detail** (click a tile): large preview, caption (empty means the file name), `order` (type a position; 1 comes first; a number past the end means last), include, and ← earlier / later →. A piece shows its first included item.
-- **Body** (writing): the text of the writing, saved to `body.md` (or to the one `.md` file already in the folder).
-- **Save** (button or ⌘S): checks the values and writes `manifest.toml`. Errors show next to the button; nothing is written then. It writes the smallest manifest that gives the result: `[[media]]` tables (`file`, `title`, `order`) appear only if you excluded a file, changed the order or set a caption. The saved text shows below the button.
-- Leaving the page with unsaved changes asks for confirmation.
-
-Previews: the browser shows PNG, JPEG, WebP, AVIF and most MP4/MOV/WebM directly. HEIC and TIFF previews use macOS `sips`. A file the browser cannot show appears as its file name; it still uploads.
+- **Kind** (top right): collection, piece or writing. A new folder guesses: no media and one `.md` file is a writing, one media file a piece, else a collection.
+- **Title, date, description, tags.** Date is `DD/MM/YYYY` (dots work too), time is 24h `HH:MM`, in the browser time zone (shown below the fields). **now** fills in the current minute. The manifest stores local time with its offset, e.g. `2026-11-15T18:30:00+01:00`. Description is markdown. Tags: type and press Enter or comma; Backspace in the empty field removes the last one.
+- **Card**: live preview of the homepage card: cover or mosaic, title, date, rendered description, tags.
+- **Media grid** (collection, piece): one tile per file. Badges show the `position` and `cover`. Excluded tiles are dimmed. Drag tiles to reorder. Click a tile to edit it.
+- **Item editor** (below the grid, after a click): large preview, caption (empty means the file name), `position` (1 comes first; a number past the end means last), include, ← / → to move, and **cover** (collection only).
+- **Cover**: press **cover** to make this item the homepage cover; press it again for the mosaic of the first nine images. Pressing it on another item moves the cover. A cover is always included. A video cover shows its poster on the site.
+- **Cover crop**: while the item is the cover, the large preview shows the card's 1:√2 frame. Drag it to choose the part shown on the card; the card preview follows. **center** resets it. An image with the card's aspect ratio has nothing to crop.
+- **Body** (writing): the text, saved to `body.md` (or to the one `.md` file already in the folder).
+- **save** (button or ⌘S): checks the values and writes `manifest.toml`. Errors show next to the button; nothing is written then. The saved text shows below. `[[media]]` tables (`file`, `title`, `position`) appear only if you excluded a file, changed the order or set a caption. `thumbnail_focus` appears only if the crop is not centered.
 
 Full flow for one collection:
 
 ```nu
-just manifest uploads/bw   # set title, date, description, tags, order; ⌘S; Ctrl-C
+just manifest              # open bw from the list; set fields, cover, crop; ⌘S
 just upload uploads/bw
 just logs                  # wait for "Published collection bw"
 ```
@@ -122,6 +118,7 @@ date = 2026-11-07T18:30:00Z
 | `description` | no       | markdown; shown in intro and cards, flattened in feeds and `<meta>`                           |
 | `tags`        | no       | list of strings, e.g. `["evergrowing"]`. Use slug-like names.                                 |
 | `thumbnail`   | no       | collection only. File name of one source file. Without it, the card shows a mosaic.          |
+| `thumbnail_focus` | no   | collection only, with `thumbnail`. Crop of the cover on the card: `[x, y]` in percent, as CSS `object-position`. Default `[50, 50]`. |
 | `[[media]]`   | no       | collection and piece. Per-file overrides. Without it, every supported file is included.       |
 
 Without `[[media]]`:
@@ -136,21 +133,21 @@ With `[[media]]`, only the listed files are included:
 [[media]]
 file = "IMG_4012.HEIC"
 title = "Street after rain"   # optional; falls back to the file name
-order = 1                     # optional; falls back to list position
+position = 1                  # optional; falls back to list index
 
 [[media]]
 file = "clip.mov"
 ```
 
-`order` sets position in the grid: lower comes first. It was called `weight` before. A manifest with `weight` fails with `[[media]] weight is renamed to order`. Bundles already on the PVC with `weight` still sort correctly.
+`position` sets the place in the grid: lower comes first. It was called `weight`, then `order`. A manifest with either fails with `[[media]] weight is renamed to position` (or `order`). The editor reads both and writes `position`. Bundles already on the PVC with `weight` still sort correctly.
 
 Display order on the page:
 
 1. Images with an EXIF capture date, oldest first.
-2. Images without capture date, by `order`.
-3. Videos, by `order`.
+2. Images without capture date, by `position`.
+3. Videos, by `position`.
 
-So `order` is a fallback. EXIF capture date wins for images.
+So `position` is a fallback. EXIF capture date wins for images.
 
 Supported media:
 
@@ -321,7 +318,7 @@ Common reasons:
 - `thumbnail` names a file not in the upload.
 - No supported media in a collection or piece folder.
 - Writing: zero or several `.md` files, extra files, or front matter in the body.
-- `[[media]]` uses `weight` instead of `order`.
+- `[[media]]` uses `weight` or `order` instead of `position`.
 
 ## 9. How the pipeline works
 
@@ -345,7 +342,7 @@ Upload path, step by step:
         - Images: `cwebp -lossless -exact` to WebP. HEIC/HEIF decode first with `heif-convert`; AVIF via `ffmpeg`. Then `exiftool -TagsFromFile` copies all source metadata into the WebP, so Hugo can read EXIF.
         - Video: `ffmpeg` to WebM, lossless VP9 video, Opus 128k audio, metadata kept, no resize. Poster: frame at 1 s (falls back to frame 0), to lossless WebP, metadata copied.
         - Video facts: `ffprobe` (JSON) for resolution, frame rate, duration. Falls back to parsing the `ffmpeg -i` banner. Format is fixed `WebM · VP9`.
-5. **Front matter** (`build_front_matter`). TOML `+++` block: `title`, `date` (UTC offset), optional `description`, `tags`, `thumbnail` (mapped to the converted file; a video maps to its poster). Media bundles get one `[[resources]]` per output file with `params.order` and `params.kind`. Videos also get `format`, `resolution`, `framerate`, `duration`, `poster`. Each poster is its own resource with `role = "poster"`, so templates hide it from the grid.
+5. **Front matter** (`build_front_matter`). TOML `+++` block: `title`, `date` (UTC offset), optional `description`, `tags`, `thumbnail` (mapped to the converted file; a video maps to its poster), `thumbnail_focus`. Media bundles get one `[[resources]]` per output file with `params.position` and `params.kind`. Videos also get `format`, `resolution`, `framerate`, `duration`, `poster`. Each poster is its own resource with `role = "poster"`, so templates hide it from the grid.
 6. **Keep original.** Copies the upload folder to `/data/originals/<kind>/.<slug>.pending`.
 7. **Build** (`build_and_publish`). `hugo --source /app --contentDir /data/content --destination /data/.public-next --minify`. Templates come from the image; content from the PVC. Hugo reads EXIF from the WebP files at build time for the metadata list and ordering.
 8. **Swap.** Renames `public` to `.public-previous`, `.public-next` to `public`, deletes the old one. SWS never serves a half-written site. On a failed rename it restores the old one.
@@ -368,14 +365,14 @@ thumbnail = "IMG_4002.webp"
 src = "IMG_4002.webp"
 title = "IMG 4002"
 [resources.params]
-order = 1
+position = 1
 kind = "image"
 
 [[resources]]
 src = "IMG_4003.webm"
 title = "IMG 4003"
 [resources.params]
-order = 2
+position = 2
 kind = "video"
 format = "WebM · VP9"
 resolution = "1920×1080"
@@ -387,7 +384,7 @@ poster = "IMG_4003-poster.webp"
 src = "IMG_4003-poster.webp"
 title = "IMG 4003"
 [resources.params]
-order = 2
+position = 2
 kind = "image"
 role = "poster"
 +++

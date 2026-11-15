@@ -21,7 +21,7 @@ The design language is the site's original one, kept intact: Helvetica Neue (sys
 The shared document shell is in `layouts/_default/baseof.html`. Every page carries the global bar: `0xbf.ch` on the left; `/`, `/collections/`, `/pieces/`, `/writings/` and `/tags/` on the right. The feeds and sitemap live in the footer. It is styled like the page chrome (Commit Mono, muted). The current view is marked with `aria-current="page"`.
 
 - Home-page card markup: `layouts/partials/listing/item-card.html` (writings reuse it without the image block).
-- Collection image ordering: `layouts/partials/media/sorted-images.html` (images with an EXIF capture date first, oldest first, then `order`; generated video posters are excluded).
+- Collection image ordering: `layouts/partials/media/sorted-images.html` (images with an EXIF capture date first, oldest first, then `position`; generated video posters are excluded).
 - Combined image/video ordering: `layouts/partials/media/sorted-media.html`.
 - Fullscreen viewer body: `layouts/partials/media/media-detail.html`.
 - Shared media slice (ordering, overlay ids, aspect ratios): `layouts/partials/media/media-view.html`.
@@ -104,17 +104,17 @@ thumbnail = "cover.jpg" # omit or set to "" for the mosaic
 src = "cover.jpg"
 title = "Evening light"
 [resources.params]
-order = 1 # display-order fallback only; not image metadata
+position = 1 # display-order fallback only; not image metadata
 
 [[resources]]
 src = "street.jpg"
 title = "Street after rain"
 [resources.params]
-order = 2
+position = 2
 +++
 ```
 
-`thumbnail` is only a presentation setting. The selected image stays in the collection grid. If embedded capture dates exist, image order comes from the image metadata. Images with no capture date follow in `order`. Videos follow in `order` after the images. Videos use their generated poster as the grid tile and as the detail poster. The poster is not listed as a gallery item. `title` is the human caption and alt text. It is not a substitute for EXIF.
+`thumbnail` is only a presentation setting. The selected image stays in the collection grid. If embedded capture dates exist, image order comes from the image metadata. Images with no capture date follow in `position`. Videos follow in `position` after the images. Videos use their generated poster as the grid tile and as the detail poster. The poster is not listed as a gallery item. `title` is the human caption and alt text. It is not a substitute for EXIF.
 
 ### Resource metadata is automatic
 
@@ -179,7 +179,7 @@ title = "Evening walks"
 date = 2026-11-07T18:30:00Z
 ```
 
-The folder name becomes the URL slug. Every supported media file in the folder is included automatically, in numeric-aware filename order, titled after the filename (`01-paper-light.jpg` → “Paper light”). Still images with an EXIF capture date are shown oldest first; the rest follow in filename order. Per-file `[[media]]` tables (`file`, optional `title`, optional `order`) are only needed to override those defaults — `title` falls back to the filename and `order` to the position. `order` was called `weight` before; manifests with `weight` are rejected. Optional extras in the manifest: `description` and `thumbnail` (the name of one media file; without it, the feed card uses a mosaic of the first items).
+The folder name becomes the URL slug. Every supported media file in the folder is included automatically, in numeric-aware filename order, titled after the filename (`01-paper-light.jpg` → “Paper light”). Still images with an EXIF capture date are shown oldest first; the rest follow in filename order. Per-file `[[media]]` tables (`file`, optional `title`, optional `position`) are only needed to override those defaults — `title` falls back to the filename and `position` to the list index. It was called `weight`, then `order`; manifests with either are rejected. `thumbnail_focus = [x, y]` (percent) crops the cover on the card. Optional extras in the manifest: `description` and `thumbnail` (the name of one media file; without it, the feed card uses a mosaic of the first items).
 
 With [`just`](https://just.systems) installed and `kubectl` configured for the Talos cluster, run:
 

@@ -10,6 +10,7 @@
     --line: oklch(85% 0 0); --field: oklch(99% 0 0); --bad: oklch(50% 0.17 25);
     --sans: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
     --mono: "Commit Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --card: 1.41421356;
     color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark) {
@@ -19,11 +20,15 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--sans); }
   header, main, footer { max-width: 1200px; margin: 0 auto; padding: 1rem 1.5rem; }
-  header { display: flex; flex-wrap: wrap; gap: 1rem; align-items: baseline; justify-content: space-between; }
-  h1 { margin: 0; font: 600 1.4rem var(--sans); }
+  header { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; }
   .mono, label, .chip, button, .badge, time { font-family: var(--mono); font-size: .8rem; }
   .muted { color: var(--muted); }
   .bad { color: var(--bad); }
+  .path { display: flex; align-items: baseline; gap: .1rem; font: 600 1.4rem var(--sans); }
+  .path .root { color: var(--muted); font-weight: 400; }
+  .path input { font: inherit; color: var(--fg); background: transparent; border: 0;
+                border-bottom: 1px dashed var(--line); padding: 0 .1rem; width: 14ch; outline: none; }
+  .path input:focus { border-bottom-color: var(--fg); }
   .top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 2rem; }
   @media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
   label { display: block; margin: 1rem 0 .3rem; color: var(--muted); text-transform: lowercase; }
@@ -40,16 +45,21 @@
   button { padding: .4rem .8rem; border: 1px solid var(--line); border-radius: 3px;
            background: var(--field); color: var(--fg); cursor: pointer; }
   button:hover { border-color: var(--fg); }
-  button.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  button.primary, button[aria-pressed=true] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
   .tags { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; padding: .35rem;
           border: 1px solid var(--line); border-radius: 3px; background: var(--field); }
   .tags input { flex: 1; min-width: 8rem; border: 0; padding: .2rem; background: transparent; color: var(--fg); font: inherit; outline: none; }
   .chip { display: inline-flex; gap: .3rem; align-items: center; padding: .1rem .5rem;
           border: 1px solid var(--line); border-radius: 999px; }
-  .chip button { padding: 0 .2rem; border: 0; background: none; line-height: 1; }
+  .chip button { padding: 0 .2rem; border: 0; background: none; color: inherit; line-height: 1; }
+  /* Folder list */
+  .folders { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .5rem; }
+  .folders a { display: block; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 3px;
+               color: var(--fg); text-decoration: none; font-family: var(--mono); }
+  .folders a:hover { border-color: var(--fg); }
   /* Homepage card preview */
   .card { border-top: 1px solid var(--line); padding-top: 1rem; }
-  .card .art { aspect-ratio: 1.41421356 / 1; background: var(--line); overflow: hidden; }
+  .card .art { aspect-ratio: var(--card) / 1; background: var(--line); overflow: hidden; }
   .card .art > * { width: 100%; height: 100%; object-fit: cover; display: block; }
   .card .mosaic { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: 2px; background: var(--bg); }
   .card .mosaic > * { width: 100%; height: 100%; object-fit: cover; min-height: 0; }
@@ -64,24 +74,22 @@
   .tile.selected { border-color: var(--fg); }
   .tile.off { opacity: .35; }
   .tile.drop { border-style: dashed; border-color: var(--muted); }
-  .tile .art { aspect-ratio: 1.41421356 / 1; background: var(--line); overflow: hidden; display: grid; place-items: center; }
+  .tile .art { aspect-ratio: var(--card) / 1; background: var(--line); overflow: hidden; display: grid; place-items: center; }
   .tile .art img, .tile .art video { width: 100%; height: 100%; object-fit: cover; display: block; }
   .tile .cap { display: block; padding: .3rem .1rem 0; font: .85rem var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .badges { position: absolute; top: .3rem; left: .3rem; display: flex; gap: .25rem; }
   .badge { padding: 0 .35rem; background: var(--fg); color: var(--bg); border-radius: 2px; }
-  .cover-toggle { position: absolute; top: .3rem; right: .3rem; padding: .05rem .45rem; font-size: .75rem;
-                  background: var(--bg); color: var(--fg); border: 1px solid var(--fg); border-radius: 999px;
-                  opacity: 0; transition: opacity .15s; }
-  .tile:hover .cover-toggle, .tile:focus-within .cover-toggle, .cover-toggle:focus-visible { opacity: .9; }
-  .cover-toggle[aria-pressed=true] { opacity: 1; background: var(--fg); color: var(--bg); }
-  .tile.cover { border-color: var(--fg); border-style: double; border-width: 4px; }
-  .tile:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
   .fallback { padding: .5rem; font: .75rem var(--mono); color: var(--muted); word-break: break-all; }
+  /* Item editor */
   .detail { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.5rem; margin-top: 1.5rem;
             padding-top: 1rem; border-top: 1px solid var(--line); }
   @media (max-width: 860px) { .detail { grid-template-columns: 1fr; } }
-  .detail .big { max-height: 60vh; display: grid; place-items: center; background: var(--line); }
-  .detail .big img, .detail .big video { max-width: 100%; max-height: 60vh; display: block; }
+  .detail .big { display: grid; place-items: center; background: var(--line); min-height: 8rem; }
+  .stage { position: relative; display: inline-block; line-height: 0; overflow: hidden; touch-action: none; }
+  .stage img, .stage video { max-width: 100%; max-height: 60vh; display: block; user-select: none; -webkit-user-drag: none; }
+  /* Cover crop frame: the card's 1:√2 window over the image. The shadow dims the rest. */
+  .frame { position: absolute; box-shadow: 0 0 0 9999px oklch(0% 0 0 / .55); outline: 2px solid #fff; cursor: grab; }
+  .frame:active { cursor: grabbing; }
   .row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
   footer { position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); }
   footer .bar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
@@ -96,38 +104,42 @@
 <body>
 <header>
   <div>
-    <h1 id="slug"></h1>
-    <div class="mono muted" id="folder"></div>
-    <div class="mono bad" id="slugWarn" hidden>Folder name is not a lowercase slug. Rename it before upload.</div>
+    <div class="path">
+      <span class="root" id="rootName"></span>/<input id="slugInput" list="folderList" spellcheck="false" autocomplete="off" aria-label="folder">
+      <datalist id="folderList"></datalist>
+    </div>
+    <div class="mono bad" id="pathWarn" hidden></div>
   </div>
-  <div class="seg" id="kinds">
+  <div class="seg" id="kinds" hidden>
     <button type="button" data-kind="collection">collection</button>
     <button type="button" data-kind="piece">piece</button>
     <button type="button" data-kind="writing">writing</button>
   </div>
 </header>
 
-<main>
+<main id="picker" hidden>
+  <ul class="folders" id="folders"></ul>
+</main>
+
+<main id="editor" hidden>
   <section class="top">
     <div>
       <label for="title">title</label>
       <input type="text" id="title">
       <label for="date">date</label>
       <div class="when">
-        <input type="text" id="date" placeholder="DD/MM/YYYY" inputmode="numeric" autocomplete="off" aria-label="date, DD/MM/YYYY">
-        <input type="text" id="time" placeholder="HH:MM" inputmode="numeric" autocomplete="off" aria-label="time, 24h HH:MM">
+        <input type="text" id="date" placeholder="DD/MM/YYYY" inputmode="numeric" autocomplete="off" aria-label="date">
+        <input type="text" id="time" placeholder="HH:MM" inputmode="numeric" autocomplete="off" aria-label="time">
         <button type="button" id="now">now</button>
       </div>
-      <p class="hint"><span id="tz"></span> 24h. Saved in local time with its offset. Sets feed order, newest first. A future date stays hidden until then.</p>
+      <p class="hint" id="tz"></p>
       <label for="description">description</label>
-      <textarea id="description" placeholder="Optional. Markdown."></textarea>
-      <p class="hint">Shown on the homepage card and under the page title. Markdown; the card previews it.</p>
+      <textarea id="description"></textarea>
       <label for="tagInput">tags</label>
-      <div class="tags" id="tags"><input type="text" id="tagInput" placeholder="type, then Enter"></div>
-      <p class="hint">Lowercase slug words, e.g. evergrowing, design, essay.</p>
+      <div class="tags" id="tags"><input type="text" id="tagInput" aria-label="add tag"></div>
     </div>
     <aside>
-      <label>homepage card</label>
+      <label>card</label>
       <div class="card">
         <div class="art" id="cardArt"></div>
         <h2 id="cardTitle"></h2>
@@ -135,28 +147,26 @@
         <div id="cardDesc" class="desc"></div>
         <div class="chips" id="cardTags"></div>
       </div>
-      <p class="hint" id="coverHint"></p>
     </aside>
   </section>
 
   <section id="mediaSection">
-    <label>media <span class="muted" id="mediaHint"></span></label>
+    <label>media <span class="muted" id="mediaCount"></span></label>
     <div class="grid" id="grid"></div>
-    <p class="hint">Click a tile to edit it. Drag tiles to reorder. Hover a tile and toggle "cover" to make it the homepage cover (collections). Images with an EXIF capture date still show oldest first on the site; this order applies to the rest.</p>
     <div class="detail" id="detail" hidden>
       <div class="big" id="bigArt"></div>
       <div>
         <div class="mono muted" id="detailName"></div>
         <label for="itemTitle">caption</label>
         <input type="text" id="itemTitle">
-        <p class="hint">Empty uses the file name.</p>
-        <label for="itemOrder">order</label>
-        <input type="number" id="itemOrder" min="1" step="1">
-        <p class="hint">Position in the grid; 1 comes first. Saved as <code>order</code>.</p>
+        <label for="itemPosition">position</label>
+        <input type="number" id="itemPosition" min="1" step="1">
         <label><input type="checkbox" id="itemIncluded"> include</label>
         <div class="row">
-          <button type="button" id="moveLeft">← earlier</button>
-          <button type="button" id="moveRight">later →</button>
+          <button type="button" id="moveLeft">←</button>
+          <button type="button" id="moveRight">→</button>
+          <button type="button" id="coverToggle" aria-pressed="false">cover</button>
+          <button type="button" id="centerCrop" hidden>center</button>
         </div>
       </div>
     </div>
@@ -164,13 +174,13 @@
 
   <section id="bodySection" hidden>
     <label for="body">body <span class="muted" id="bodyFile"></span></label>
-    <textarea class="body" id="body" placeholder="Markdown. One newline breaks the line. A blank line starts a stanza."></textarea>
+    <textarea class="body" id="body"></textarea>
   </section>
 </main>
 
-<footer>
+<footer id="footer" hidden>
   <div class="bar">
-    <button type="button" class="primary" id="save">Save manifest (⌘S)</button>
+    <button type="button" class="primary" id="save">save ⌘S</button>
     <span class="mono" id="status"></span>
   </div>
   <pre id="output" hidden></pre>
@@ -178,13 +188,18 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
+let folders = [];
+let slug = "";
 let state = null;
 let selected = null;
 let dirty = false;
 
-const media = (name) => "/media/" + encodeURIComponent(name);
+const media = (name) => `/media/${encodeURIComponent(slug)}/${encodeURIComponent(name)}`;
 const shown = (item) => item.title || item.default_title;
 const included = () => state.items.filter((i) => i.included);
+const coverItem = () => state.kind === "collection" && state.items.find((i) => i.name === state.thumbnail && i.included);
+const focusCss = () => `${state.thumbnail_focus[0]}% ${state.thumbnail_focus[1]}%`;
+const CARD = Math.SQRT2;
 
 function pad(n) { return String(n).padStart(2, "0"); }
 // Swiss convention: DD/MM/YYYY (also DD.MM.YYYY), 24h HH:MM[:SS], local time zone.
@@ -216,12 +231,7 @@ function offsetOf(d) {
 function isoLocal(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${offsetOf(d)}`;
 }
-// Now, to the minute.
 function nowMinute() { const d = new Date(); d.setSeconds(0, 0); return d; }
-function renderTz() {
-  const d = readWhen() || new Date();
-  $("tz").textContent = `${TZ} (UTC${offsetOf(d)}).`;
-}
 
 function artFor(item, opts = {}) {
   const fallback = () => { const d = document.createElement("div"); d.className = "fallback"; d.textContent = item.name; return d; };
@@ -234,14 +244,16 @@ function artFor(item, opts = {}) {
   } else {
     el = document.createElement("img");
     el.src = media(item.name);
-    el.loading = "lazy";
+    el.loading = opts.eager ? "eager" : "lazy";
     el.alt = "";
+    el.draggable = false;
   }
   el.addEventListener("error", () => el.replaceWith(fallback()), { once: true });
   return el;
 }
 
-function touch() { dirty = true; $("status").textContent = "unsaved"; render(); }
+function markDirty() { dirty = true; $("status").textContent = "unsaved"; }
+function touch() { markDirty(); render(); }
 
 function renderKind() {
   for (const b of $("kinds").children) b.setAttribute("aria-pressed", b.dataset.kind === state.kind);
@@ -249,10 +261,7 @@ function renderKind() {
   $("mediaSection").hidden = writing;
   $("bodySection").hidden = !writing;
   $("cardArt").hidden = writing;
-  const n = included().length;
-  $("mediaHint").textContent = state.kind === "piece"
-    ? `(${n} included; a piece shows the first one)`
-    : `(${n} of ${state.items.length} included)`;
+  $("mediaCount").textContent = `${included().length}/${state.items.length}`;
 }
 
 function renderTags() {
@@ -304,9 +313,9 @@ function markdownify(src) {
 }
 
 function renderCardText() {
-  $("cardTitle").textContent = $("title").value || "(no title)";
+  $("cardTitle").textContent = $("title").value;
   const d = readWhen();
-  renderTz();
+  $("tz").textContent = `${TZ} UTC${offsetOf(d || new Date())}`;
   $("cardDate").textContent = d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : "";
   $("cardDesc").innerHTML = markdownify($("description").value);
   $("cardTags").replaceChildren(...state.tags.map((t) => Object.assign(document.createElement("span"), { className: "chip", textContent: t })));
@@ -314,33 +323,32 @@ function renderCardText() {
 
 let cardKey = null;
 function renderCardArt() {
-  const key = JSON.stringify([state.kind, state.thumbnail, included().map((i) => i.name)]);
-  if (key === cardKey) return;
-  cardKey = key;
-  const art = $("cardArt");
-  art.replaceChildren();
-  art.classList.remove("mosaic");
-  const items = included();
-  const thumb = state.kind === "collection" && items.find((i) => i.name === state.thumbnail);
-  if (state.kind === "piece" || thumb) {
-    const first = thumb || items[0];
-    if (first) art.append(artFor(first, { autoplay: true }));
-  } else {
-    art.classList.add("mosaic");
-    items.slice(0, 9).forEach((i) => art.append(artFor(i, { autoplay: true })));
+  const cover = coverItem();
+  const key = JSON.stringify([slug, state.kind, state.thumbnail, included().map((i) => i.name)]);
+  if (key !== cardKey) {
+    cardKey = key;
+    const art = $("cardArt");
+    art.replaceChildren();
+    art.classList.remove("mosaic");
+    const items = included();
+    if (state.kind === "piece" || cover) {
+      const first = cover || items[0];
+      if (first) art.append(artFor(first, { autoplay: true, eager: true }));
+    } else {
+      art.classList.add("mosaic");
+      items.slice(0, 9).forEach((i) => art.append(artFor(i, { autoplay: true })));
+    }
   }
+  const single = cover && $("cardArt").firstElementChild;
+  if (single) single.style.objectPosition = focusCss();
 }
 
 function renderGrid() {
   const grid = $("grid");
   grid.replaceChildren();
-  if (!state.items.length) {
-    grid.append(Object.assign(document.createElement("p"), { className: "hint", textContent: "No supported media in this folder." }));
-  }
   state.items.forEach((item, index) => {
-    const tile = document.createElement("div");
-    tile.setAttribute("role", "button");
-    tile.tabIndex = 0;
+    const tile = document.createElement("button");
+    tile.type = "button";
     tile.className = "tile" + (item.included ? "" : " off") + (item === selected ? " selected" : "");
     tile.draggable = true;
     const art = document.createElement("span");
@@ -351,21 +359,10 @@ function renderGrid() {
     const add = (t) => badges.append(Object.assign(document.createElement("span"), { className: "badge", textContent: t }));
     if (item.included) add(String(included().indexOf(item) + 1));
     if (item.type === "video") add("video");
+    if (item === coverItem()) add("cover");
     const cap = Object.assign(document.createElement("span"), { className: "cap", textContent: shown(item) });
     tile.append(art, badges, cap);
-    if (state.kind === "collection") {
-      const isCover = item.name === state.thumbnail;
-      const toggle = Object.assign(document.createElement("button"), {
-        type: "button", className: "cover-toggle", textContent: "cover",
-        title: isCover ? "Homepage cover. Click for the mosaic." : "Use as homepage cover",
-      });
-      toggle.setAttribute("aria-pressed", isCover);
-      toggle.onclick = (e) => { e.stopPropagation(); toggleCover(item); };
-      tile.append(toggle);
-      tile.classList.toggle("cover", isCover);
-    }
     tile.onclick = () => { selected = item; render(); };
-    tile.onkeydown = (e) => { if (e.target === tile && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); tile.click(); } };
     tile.ondragstart = (e) => { e.dataTransfer.setData("text/plain", String(index)); };
     tile.ondragover = (e) => { e.preventDefault(); tile.classList.add("drop"); };
     tile.ondragleave = () => tile.classList.remove("drop");
@@ -381,40 +378,92 @@ function renderGrid() {
   });
 }
 
-let detailFor = null;
+// Crop frame over the big preview of the cover. object-fit: cover crops one
+// axis only. object-position p% puts the frame at p% of the free travel,
+// so the frame offset maps 1:1 to the stored focus.
+let detailKey = null;
+function frameGeometry(stage) {
+  const el = stage.querySelector("img, video");
+  const w = el.clientWidth, h = el.clientHeight;
+  const nw = el.naturalWidth || el.videoWidth, nh = el.naturalHeight || el.videoHeight;
+  if (!w || !h || !nw || !nh) return null;
+  const wide = nw / nh > CARD;
+  const fw = wide ? h * CARD : w, fh = wide ? h : w / CARD;
+  return { w, h, fw, fh, travelX: w - fw, travelY: h - fh };
+}
+function placeFrame() {
+  const stage = $("bigArt").querySelector(".stage");
+  const frame = stage && stage.querySelector(".frame");
+  if (!frame) return;
+  const g = frameGeometry(stage);
+  if (!g) return;
+  const [fx, fy] = state.thumbnail_focus;
+  Object.assign(frame.style, {
+    width: `${g.fw}px`, height: `${g.fh}px`,
+    left: `${(fx / 100) * g.travelX}px`, top: `${(fy / 100) * g.travelY}px`,
+  });
+}
+function bindFrame(stage, frame) {
+  let start = null;
+  frame.addEventListener("pointerdown", (e) => {
+    const g = frameGeometry(stage);
+    if (!g) return;
+    frame.setPointerCapture(e.pointerId);
+    start = { x: e.clientX, y: e.clientY, focus: [...state.thumbnail_focus], g };
+  });
+  frame.addEventListener("pointermove", (e) => {
+    if (!start) return;
+    const { g } = start;
+    const clamp = (v) => Math.min(100, Math.max(0, Math.round(v)));
+    const fx = g.travelX > 0.5 ? clamp(start.focus[0] + ((e.clientX - start.x) / g.travelX) * 100) : 50;
+    const fy = g.travelY > 0.5 ? clamp(start.focus[1] + ((e.clientY - start.y) / g.travelY) * 100) : 50;
+    if (fx === state.thumbnail_focus[0] && fy === state.thumbnail_focus[1]) return;
+    state.thumbnail_focus = [fx, fy];
+    markDirty();
+    placeFrame();
+    renderCardArt();
+  });
+  const end = () => { start = null; };
+  frame.addEventListener("pointerup", end);
+  frame.addEventListener("pointercancel", end);
+}
+
 function renderDetail() {
   $("detail").hidden = !selected;
   if (!selected) return;
-  if (detailFor !== selected) {
-    detailFor = selected;
-    $("bigArt").replaceChildren(artFor(selected, { controls: true }));
+  const isCover = selected === coverItem();
+  const key = `${slug}/${selected.name}/${isCover}`;
+  if (detailKey !== key) {
+    detailKey = key;
+    const stage = document.createElement("span");
+    stage.className = "stage";
+    const el = artFor(selected, { controls: !isCover, eager: true });
+    stage.append(el);
+    if (isCover) {
+      const frame = document.createElement("span");
+      frame.className = "frame";
+      stage.append(frame);
+      bindFrame(stage, frame);
+      el.addEventListener("load", placeFrame);
+      el.addEventListener("loadedmetadata", placeFrame);
+    }
+    $("bigArt").replaceChildren(stage);
     $("itemTitle").value = selected.title;
   }
+  placeFrame();
   $("detailName").textContent = selected.name;
   $("itemTitle").placeholder = selected.default_title;
   $("itemIncluded").checked = selected.included;
   const rank = included().indexOf(selected);
-  $("itemOrder").disabled = !selected.included;
-  $("itemOrder").max = included().length;
-  if (document.activeElement !== $("itemOrder")) $("itemOrder").value = rank < 0 ? "" : rank + 1;
+  $("itemPosition").disabled = !selected.included;
+  $("itemPosition").max = included().length;
+  if (document.activeElement !== $("itemPosition")) $("itemPosition").value = rank < 0 ? "" : rank + 1;
+  $("coverToggle").hidden = state.kind !== "collection";
+  $("coverToggle").setAttribute("aria-pressed", isCover);
+  $("centerCrop").hidden = !isCover;
 }
 
-function renderCover() {
-  const cover = state.kind === "collection" && state.items.find((i) => i.name === state.thumbnail);
-  $("coverHint").hidden = state.kind !== "collection";
-  $("coverHint").textContent = cover
-    ? `Cover: ${shown(cover)}. Toggle "cover" on its tile off for the mosaic.`
-    : 'Cover: mosaic of the first nine images. Toggle "cover" on a tile to use one file.';
-}
-
-// One cover at most. Toggling a tile on moves the cover there; off means mosaic.
-function toggleCover(item) {
-  state.thumbnail = state.thumbnail === item.name ? "" : item.name;
-  if (state.thumbnail) item.included = true;
-  touch();
-}
-
-function render() { renderKind(); renderTags(); renderCardText(); renderCardArt(); renderCover(); renderGrid(); renderDetail(); }
+function render() { renderKind(); renderTags(); renderCardText(); renderCardArt(); renderGrid(); renderDetail(); }
 
 function collect() {
   return {
@@ -424,21 +473,25 @@ function collect() {
     description: $("description").value,
     tags: state.tags,
     thumbnail: state.thumbnail,
+    thumbnail_focus: state.thumbnail_focus,
     items: state.items.map(({ name, title, included }) => ({ name, title, included })),
     body: $("body").value,
   };
 }
 
 async function save() {
-  if (!readWhen()) { $("status").textContent = "date must be DD/MM/YYYY and time HH:MM (24h)"; return; }
+  if (!state) return;
+  if (!readWhen()) { $("status").textContent = "invalid date"; return; }
   $("status").textContent = "saving…";
-  const res = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(collect()) });
+  const res = await fetch(`/api/save?f=${encodeURIComponent(slug)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(collect()) });
   const data = await res.json();
-  if (!res.ok) { $("status").innerHTML = ""; $("status").append(Object.assign(document.createElement("span"), { className: "bad", textContent: data.error })); return; }
+  if (!res.ok) { $("status").replaceChildren(Object.assign(document.createElement("span"), { className: "bad", textContent: data.error })); return; }
   dirty = false;
-  $("status").textContent = `saved. next: just upload ${state.folder}`;
+  $("status").textContent = "saved";
   $("output").hidden = false;
   $("output").textContent = data.manifest;
+  const entry = folders.find((f) => f.name === slug);
+  if (entry) entry.has_manifest = true;
 }
 
 function addTag() {
@@ -447,23 +500,53 @@ function addTag() {
   if (raw && !state.tags.includes(raw)) { state.tags.push(raw); touch(); }
 }
 
-async function init() {
-  state = await (await fetch("/api/state")).json();
-  document.title = `${state.slug} · exhib manifest`;
-  $("slug").textContent = state.slug;
-  $("folder").textContent = state.folder + (state.has_manifest ? "" : "  (new manifest)");
-  $("slugWarn").hidden = state.slug_ok;
+// Navigation: the path input names one child folder of the root.
+async function loadFolders() {
+  const data = await (await fetch("/api/folders")).json();
+  folders = data.folders;
+  $("rootName").textContent = data.root;
+  $("folderList").replaceChildren(...folders.map((f) => Object.assign(document.createElement("option"), { value: f.name })));
+  $("folders").replaceChildren(...folders.map((f) => {
+    const li = document.createElement("li");
+    const a = Object.assign(document.createElement("a"), { href: `?f=${encodeURIComponent(f.name)}`, textContent: f.name });
+    if (f.has_manifest) a.append(Object.assign(document.createElement("span"), { className: "muted", textContent: " ✓" }));
+    a.onclick = (e) => { e.preventDefault(); open(f.name); };
+    li.append(a);
+    return li;
+  }));
+}
+
+async function open(name, push = true) {
+  if (name === slug && state) return;
+  if (dirty && !confirm(`Discard unsaved changes in ${slug}?`)) { $("slugInput").value = slug; return; }
+  const entry = folders.find((f) => f.name === name);
+  if (name && !entry) { $("pathWarn").textContent = `no folder ${name}`; $("pathWarn").hidden = false; return; }
+  $("pathWarn").hidden = true;
+  slug = name; state = null; selected = null; dirty = false;
+  detailKey = null; cardKey = null;
+  $("slugInput").value = name;
+  $("output").hidden = true; $("status").textContent = "";
+  if (push) history.pushState(null, "", name ? `?f=${encodeURIComponent(name)}` : "/");
+  document.title = name ? `${name} · exhib manifest` : "exhib manifest";
+  $("picker").hidden = !!name;
+  for (const id of ["editor", "footer", "kinds"]) $(id).hidden = !name;
+  if (!name) return;
+  if (!entry.slug_ok) { $("pathWarn").textContent = "not a slug"; $("pathWarn").hidden = false; }
+  state = await (await fetch(`/api/state?f=${encodeURIComponent(name)}`)).json();
   $("title").value = state.title;
   showWhen(state.date ? new Date(state.date) : nowMinute());
   $("description").value = state.description;
   $("body").value = state.body;
-  $("bodyFile").textContent = `(${state.body_file})`;
+  $("bodyFile").textContent = state.body_file;
   render();
 }
 
+$("slugInput").addEventListener("change", () => open($("slugInput").value.trim()));
+$("slugInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("slugInput").blur(); if (e.key === "Escape") { $("slugInput").value = slug; $("slugInput").blur(); } });
+window.addEventListener("popstate", () => open(new URLSearchParams(location.search).get("f") || "", false));
 for (const b of $("kinds").children) b.onclick = () => { state.kind = b.dataset.kind; touch(); };
-$("now").onclick = () => { showWhen(nowMinute()); dirty = true; $("status").textContent = "unsaved"; renderCardText(); };
-for (const id of ["title", "date", "time", "description", "body"]) $(id).addEventListener("input", () => { dirty = true; $("status").textContent = "unsaved"; renderCardText(); });
+$("now").onclick = () => { showWhen(nowMinute()); markDirty(); renderCardText(); };
+for (const id of ["title", "date", "time", "description", "body"]) $(id).addEventListener("input", () => { markDirty(); renderCardText(); });
 $("tagInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(); }
   else if (e.key === "Backspace" && !$("tagInput").value && state.tags.length) { state.tags.pop(); touch(); }
@@ -482,7 +565,7 @@ const move = (delta) => {
   touch();
 };
 // Move the selected item to position n among the included items.
-function setOrder(n) {
+function setPosition(n) {
   const list = included();
   const target = Math.min(Math.max(1, Math.round(n) || 1), list.length);
   if (list.indexOf(selected) === target - 1) return;
@@ -493,13 +576,22 @@ function setOrder(n) {
   else state.items.splice(state.items.indexOf(rest[rest.length - 1]) + 1, 0, selected);
   touch();
 }
-$("itemOrder").addEventListener("change", () => setOrder(Number($("itemOrder").value)));
+$("itemPosition").addEventListener("change", () => setPosition(Number($("itemPosition").value)));
 $("moveLeft").onclick = () => move(-1);
 $("moveRight").onclick = () => move(1);
+// One cover at most. On moves the cover to this item; off means mosaic.
+$("coverToggle").onclick = () => {
+  if (state.thumbnail === selected.name) state.thumbnail = "";
+  else { state.thumbnail = selected.name; state.thumbnail_focus = [50, 50]; selected.included = true; }
+  touch();
+};
+$("centerCrop").onclick = () => { state.thumbnail_focus = [50, 50]; touch(); };
+window.addEventListener("resize", placeFrame);
 $("save").onclick = save;
 document.addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); save(); } });
 window.addEventListener("beforeunload", (e) => { if (dirty) e.preventDefault(); });
-init();
+
+loadFolders().then(() => open(new URLSearchParams(location.search).get("f") || "", false));
 </script>
 </body>
 </html>

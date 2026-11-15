@@ -1,4 +1,8 @@
-"""CLI: ``exhib-manifest <folder> [--port N] [--no-browser]``."""
+"""CLI: ``exhib-manifest [folder] [--port N] [--no-browser]``.
+
+folder is the uploads root, or one slug folder in it. The editor can
+switch between all slug folders of the root.
+"""
 
 from __future__ import annotations
 
@@ -6,16 +10,25 @@ import argparse
 import sys
 import webbrowser
 from pathlib import Path
+from urllib.parse import quote
 
-from .manifest import SLUG
+from .manifest import media_files
 from .server import Editor
+
+
+def is_slug_folder(folder: Path) -> bool:
+    return (
+        (folder / "manifest.toml").is_file()
+        or bool(media_files(folder))
+        or any(folder.glob("*.md"))
+    )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="exhib-manifest", description="Edit an exhib upload manifest."
+        prog="exhib-manifest", description="Edit exhib upload manifests."
     )
-    parser.add_argument("folder", type=Path, help="slug folder with the media files")
+    parser.add_argument("folder", type=Path, nargs="?", default=Path("uploads"))
     parser.add_argument("--port", type=int, default=0, help="default: any free port")
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
@@ -23,16 +36,15 @@ def main() -> None:
     folder = args.folder.expanduser().resolve()
     if not folder.is_dir():
         sys.exit(f"Not a folder: {folder}")
-    if not SLUG.fullmatch(folder.name):
-        print(
-            f"Warning: '{folder.name}' is not a lowercase slug. Rename the folder"
-            " before upload.",
-            file=sys.stderr,
-        )
+    root, start = (
+        (folder.parent, folder.name) if is_slug_folder(folder) else (folder, "")
+    )
 
-    server = Editor(folder, args.port)
+    server = Editor(root, args.port)
     url = f"http://127.0.0.1:{server.server_address[1]}/"
-    print(f"Editing {folder}\nOpen {url}\nPress Ctrl-C to stop.", flush=True)
+    if start:
+        url += f"?f={quote(start)}"
+    print(f"Editing {root}\nOpen {url}\nPress Ctrl-C to stop.", flush=True)
     if not args.no_browser:
         webbrowser.open(url)
     try:
@@ -41,7 +53,6 @@ def main() -> None:
         pass
     finally:
         server.server_close()
-    print(f"\nUpload with: just upload {args.folder}")
 
 
 if __name__ == "__main__":
