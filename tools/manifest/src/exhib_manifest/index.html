@@ -204,6 +204,8 @@ let dirty = false;
 
 const media = (name) => `/media/${encodeURIComponent(slug)}/${encodeURIComponent(name)}`;
 const shown = (item) => item.title || item.default_title;
+// Older servers or manifests may omit fields; never show "undefined".
+const clean = (items) => items.map((i) => ({ title: "", caption: "", ...i }));
 const included = () => state.items.filter((i) => i.included);
 const coverItem = () => state.kind === "collection" && state.items.find((i) => i.name === state.thumbnail && i.included);
 const focusCss = () => `${state.thumbnail_focus[0]}% ${state.thumbnail_focus[1]}%`;
@@ -457,8 +459,8 @@ function renderDetail() {
       el.addEventListener("loadedmetadata", placeFrame);
     }
     $("bigArt").replaceChildren(stage);
-    $("itemTitle").value = selected.title;
-    $("itemCaption").value = selected.caption;
+    $("itemTitle").value = selected.title || "";
+    $("itemCaption").value = selected.caption || "";
   }
   placeFrame();
   $("detailName").textContent = selected.name;
@@ -543,6 +545,7 @@ async function open(name, push = true) {
   if (!name) return;
   if (!entry.slug_ok) { $("pathWarn").textContent = "not a slug"; $("pathWarn").hidden = false; }
   state = await (await fetch(`/api/state?f=${encodeURIComponent(name)}`)).json();
+  state.items = clean(state.items);
   $("title").value = state.title;
   showWhen(state.date ? new Date(state.date) : nowMinute());
   $("description").value = state.description;
