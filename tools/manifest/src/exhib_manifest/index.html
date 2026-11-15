@@ -129,8 +129,8 @@
       <input type="text" id="title">
       <label for="date">date</label>
       <div class="when">
-        <input type="text" id="date" placeholder="DD/MM/YYYY" inputmode="numeric" autocomplete="off" aria-label="date">
-        <input type="text" id="time" placeholder="HH:MM" inputmode="numeric" autocomplete="off" aria-label="time">
+        <input type="text" id="date" maxlength="10" placeholder="DD/MM/YYYY" inputmode="numeric" autocomplete="off" aria-label="date">
+        <input type="text" id="time" maxlength="8" placeholder="HH:MM" inputmode="numeric" autocomplete="off" aria-label="time">
         <button type="button" id="now">now</button>
       </div>
       <p class="hint" id="tz"></p>
@@ -494,6 +494,7 @@ function collect() {
 
 async function save() {
   if (!state) return;
+  normalizeWhen();
   if (!readWhen()) { $("status").textContent = "invalid date"; return; }
   $("status").textContent = "saving…";
   const res = await fetch(`/api/save?f=${encodeURIComponent(slug)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(collect()) });
@@ -559,6 +560,74 @@ $("slugInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("sl
 window.addEventListener("popstate", () => open(new URLSearchParams(location.search).get("f") || "", false));
 for (const b of $("kinds").children) b.onclick = () => { state.kind = b.dataset.kind; touch(); };
 for (const b of $("sorts").children) b.onclick = () => { state.sort = b.dataset.sort; touch(); };
+// Date and time entry: a click or tab selects the whole field, so typing
+// overwrites it. Separators insert themselves: 15112026 -> 15/11/2026,
+// 1830 -> 18:30. A first digit that cannot start a two-digit day, month or
+// hour ends that part at once (5 then 3 -> 5/3). A complete date moves on
+// to the time. Leaving a field pads it (5/3/26 -> 05/03/2026, 930 -> 09:30).
+// Up/Down step one day or one minute (Shift: month or hour).
+const WHEN = {
+  date: { sep: "/", seps: /[\/.]/, max: [2, 2, 4], single: [/^[4-9]$/, /^[2-9]$/] },
+  time: { sep: ":", seps: /:/, max: [2, 2], single: [/^[3-9]$/] },
+};
+function autoSeparate(el, spec) {
+  const parts = el.value.split(spec.seps);
+  for (let i = 0; i < parts.length && i < spec.max.length; i++) {
+    parts[i] = parts[i].replace(/\D/g, "");
+    const last = i === spec.max.length - 1;
+    const full = parts[i].length > spec.max[i] || (spec.single[i] && spec.single[i].test(parts[i][0] || "") && parts[i].length > 1);
+    if (!last && full) {
+      const cut = spec.single[i] && spec.single[i].test(parts[i][0]) ? 1 : spec.max[i];
+      parts.splice(i + 1, 0, parts[i].slice(cut));
+      parts[i] = parts[i].slice(0, cut);
+    }
+  }
+  const out = parts.slice(0, spec.max.length);
+  out[out.length - 1] = out[out.length - 1].slice(0, spec.max[out.length - 1]);
+  el.value = out.join(spec.sep);
+}
+function normalizeWhen() {
+  const dm = $("date").value.trim().match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2}|\d{4})$/);
+  if (dm) $("date").value = `${pad(dm[1])}/${pad(dm[2])}/${dm[3].length === 2 ? "20" + dm[3] : dm[3]}`;
+  const raw = $("time").value.trim();
+  const tm = raw.match(/^(\d{1,2}):(\d{1,2})$/) || raw.match(/^(\d{1,2})(\d{2})$/) || raw.match(/^(\d{1,2})$/);
+  if (tm) $("time").value = `${pad(tm[1])}:${pad(tm[2] || 0)}`;
+  renderCardText();
+}
+for (const [id, spec] of Object.entries(WHEN)) {
+  const el = $(id);
+  // The first click after the field gets focus (by click, tab or the
+  // jump from date to time) selects all. A second click places the caret.
+  let fresh = false;
+  el.addEventListener("focus", () => { fresh = true; el.select(); });
+  el.addEventListener("mousedown", (e) => {
+    if (document.activeElement === el && !fresh) return;
+    e.preventDefault();
+    if (document.activeElement !== el) el.focus();
+    el.select();
+    fresh = false;
+  });
+  el.addEventListener("keydown", () => { fresh = false; }, true);
+  el.addEventListener("input", (e) => {
+    if (e.inputType && e.inputType.startsWith("insert") && el.selectionStart === el.value.length) autoSeparate(el, spec);
+    if (id === "date" && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(el.value) && readWhen()) $("time").focus();
+  });
+  el.addEventListener("blur", normalizeWhen);
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); id === "date" ? $("time").focus() : el.blur(); return; }
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    normalizeWhen();
+    const d = readWhen() || nowMinute();
+    const step = e.key === "ArrowUp" ? 1 : -1;
+    if (id === "date") e.shiftKey ? d.setMonth(d.getMonth() + step) : d.setDate(d.getDate() + step);
+    else e.shiftKey ? d.setHours(d.getHours() + step) : d.setMinutes(d.getMinutes() + step);
+    showWhen(d);
+    el.select();
+    markDirty();
+    renderCardText();
+  });
+}
 $("now").onclick = () => { showWhen(nowMinute()); markDirty(); renderCardText(); };
 for (const id of ["title", "date", "time", "description", "body"]) $(id).addEventListener("input", () => { markDirty(); renderCardText(); });
 $("tagInput").addEventListener("keydown", (e) => {

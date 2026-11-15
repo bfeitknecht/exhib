@@ -85,7 +85,7 @@ It runs on your machine only and never talks to the cluster. It needs [uv](https
 On the page:
 
 - **Kind** (top right): collection, piece or writing. A new folder guesses: no media and one `.md` file is a writing, one media file a piece, else a collection.
-- **Title, date, description, tags.** Date is `DD/MM/YYYY` (dots work too), time is 24h `HH:MM`, in the browser time zone (shown below the fields). **now** fills in the current minute. The manifest stores local time with its offset, e.g. `2026-11-15T18:30:00+01:00`. Description is markdown. Tags: type and press Enter or comma; Backspace in the empty field removes the last one.
+- **Title, date, description, tags.** Date is `DD/MM/YYYY` (dots work too), time is 24h `HH:MM`, in the browser time zone (shown below the fields). **now** fills in the current minute. A click or Tab selects the whole field, so typing overwrites it; a second click places the caret. Type digits only: `15112026` gives `15/11/2026` and jumps to the time, `1830` gives `18:30`. Leaving a field pads it (`5/3/26` → `05/03/2026`, `930` → `09:30`). ↑/↓ step one day or minute; with Shift, one month or hour. Enter moves from date to time. The manifest stores local time with its offset, e.g. `2026-11-15T18:30:00+01:00`. Description is markdown. Tags: type and press Enter or comma; Backspace in the empty field removes the last one.
 - **Card**: live preview of the homepage card: cover or mosaic, title, date, rendered description, tags.
 - **Sort** (right of the media label): `position` or `date`. Saved as `sort`; `position` writes nothing.
 - **Media grid** (collection, piece): one tile per file, in position order. Badges show the `position` and `cover`. Excluded tiles are dimmed. Drag tiles to reorder. Click a tile to edit it.
