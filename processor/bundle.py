@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import tomllib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .media import (
@@ -17,7 +18,11 @@ from .media import (
     probe_video,
     run,
 )
-from .paths import APP, CONTENT, DATA, ORIGINALS, PUBLIC
+from .paths import APP, CONTENT, DATA, ORIGINALS, PUBLIC, RESOURCES
+
+# Upload kind -> Hugo section directory.
+SECTIONS = {"piece": "pieces", "collection": "collections", "writing": "writings"}
+SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 
 
 def toml_string(value: str) -> str:
@@ -49,31 +54,55 @@ def humanize_stem(stem: str) -> str:
     return (text[:1].upper() + text[1:]) if text else stem
 
 
+def visible_files(package: Path) -> list[Path]:
+    return sorted(
+        (p for p in package.iterdir() if p.is_file() and not p.name.startswith(".")),
+        key=lambda p: natural_key(p.name),
+    )
+
+
+def is_media(path: Path) -> bool:
+    return path.suffix.lower() in IMAGE_EXTS | VIDEO_EXTS
+
+
 def collect_media(package: Path) -> list[dict]:
     # No [[media]] tables in the manifest: every supported file in the
     # folder becomes an item, in natural filename order, titled after the
-    # filename. Weights follow the order (set later from the index).
-    entries = []
-    for path in sorted(package.iterdir(), key=lambda p: natural_key(p.name)):
-        if not path.is_file() or path.name.startswith("."):
-            continue
-        if path.suffix.lower() in IMAGE_EXTS | VIDEO_EXTS:
-            entries.append({"file": path.name, "title": humanize_stem(path.stem)})
+    # filename. The order follows the position (set later from the index).
+    entries = [
+        {"file": p.name, "title": humanize_stem(p.stem)}
+        for p in visible_files(package)
+        if is_media(p)
+    ]
     if not entries:
         raise ValueError("no supported media files in the folder")
     return entries
 
 
+def read_manifest(package: Path) -> dict:
+    slug = package.name
+    if not SLUG.fullmatch(slug):
+        raise ValueError(f"upload folder name must be a lowercase slug: {slug}")
+    manifest_path = package / "manifest.toml"
+    if not manifest_path.is_file():
+        raise ValueError("manifest.toml is missing")
+    manifest = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("kind") not in SECTIONS:
+        raise ValueError("kind must be 'piece', 'collection' or 'writing'")
+    if not manifest.get("title"):
+        raise ValueError("manifest.toml must include a title")
+    if not isinstance(manifest.get("date"), datetime):
+        raise ValueError("date must be a TOML datetime, e.g. 2026-11-07T12:00:00Z")
+    return manifest
+
+
 def build_front_matter(
     manifest: dict, media_rows: list[dict], thumbnail: str | None
 ) -> str:
-    kind = manifest["kind"]
     lines = ["+++", f"title = {toml_string(manifest['title'])}"]
     date = manifest["date"]
-    if not isinstance(date, datetime):
-        raise ValueError("date must be a TOML datetime, e.g. 2026-11-07T12:00:00Z")
     if date.tzinfo is None:
-        date = date.replace(tzinfo=timezone.utc)
+        date = date.replace(tzinfo=UTC)
     lines.append(f"date = {date.isoformat()}")
     if manifest.get("description"):
         lines.append(f"description = {toml_string(manifest['description'])}")
@@ -84,7 +113,7 @@ def build_front_matter(
         ):
             raise ValueError("tags must be a list of non-empty strings")
         lines.append("tags = [" + ", ".join(toml_string(t.strip()) for t in tags) + "]")
-    if kind == "collection" and thumbnail:
+    if manifest["kind"] == "collection" and thumbnail:
         lines.append(f"thumbnail = {toml_string(thumbnail)}")
     for row in media_rows:
         lines += [
@@ -93,23 +122,24 @@ def build_front_matter(
             f"src = {toml_string(row['file'])}",
             f"title = {toml_string(row['title'])}",
             "[resources.params]",
-            f"weight = {int(row['weight'])}",
+            f"order = {int(row['order'])}",
             f"kind = {toml_string(row['kind'])}",
         ]
-        if row.get("format"):
-            lines.append(f"format = {toml_string(row['format'])}")
-        if row.get("resolution"):
-            lines.append(f"resolution = {toml_string(row['resolution'])}")
-        if row.get("framerate"):
-            lines.append(f"framerate = {toml_string(row['framerate'])}")
-        if row.get("duration"):
-            lines.append(f"duration = {toml_string(row['duration'])}")
-        if row.get("poster"):
-            lines.append(f"poster = {toml_string(row['poster'])}")
-        if row.get("role"):
-            lines.append(f"role = {toml_string(row['role'])}")
+        for key in ("format", "resolution", "framerate", "duration", "poster", "role"):
+            if row.get(key):
+                lines.append(f"{key} = {toml_string(row[key])}")
     lines.append("+++")
     return "\n".join(lines) + "\n"
+
+
+# Hugo resizes images in parallel. Large posters (35 Mpx RGBA) then pass the
+# 2 GiB pod limit and the kernel kills Hugo. Fewer threads and a Go soft
+# memory limit keep the build inside the limit. Override from the pod env.
+HUGO_ENV = {
+    "HUGO_RESOURCEDIR": str(RESOURCES),
+    "GOMAXPROCS": os.environ.get("EXHIB_HUGO_THREADS", "2"),
+    "GOMEMLIMIT": os.environ.get("EXHIB_HUGO_MEMLIMIT", "1GiB"),
+}
 
 
 def build_and_publish() -> None:
@@ -128,7 +158,10 @@ def build_and_publish() -> None:
             "--destination",
             str(staging),
             "--minify",
-        ]
+            # Drop resized images that no page uses any more.
+            "--gc",
+        ],
+        env=os.environ | HUGO_ENV,
     )
     if PUBLIC.exists():
         PUBLIC.rename(backup)
@@ -141,114 +174,116 @@ def build_and_publish() -> None:
     shutil.rmtree(backup, ignore_errors=True)
 
 
-def publish_bundle(package: Path) -> None:
-    slug = package.name
-    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", slug):
-        raise ValueError(f"upload folder name must be a lowercase slug: {slug}")
-    manifest_path = package / "manifest.toml"
-    if not manifest_path.is_file():
-        raise ValueError("manifest.toml is missing")
-    manifest = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
-    kind = manifest.get("kind")
-    if kind not in {"piece", "collection"}:
-        raise ValueError("kind must be 'piece' or 'collection'")
-    if not manifest.get("title") or not isinstance(manifest.get("date"), datetime):
-        raise ValueError("manifest.toml must include title and a TOML datetime date")
+def write_writing(package: Path, manifest: dict, bundle_dir: Path) -> None:
+    # A writing upload is manifest.toml plus exactly one markdown body.
+    files = [p for p in visible_files(package) if p.name != "manifest.toml"]
+    bodies = [p for p in files if p.suffix.lower() == ".md"]
+    if len(bodies) != 1:
+        raise ValueError("a writing needs exactly one .md file for the body")
+    extra = [p.name for p in files if p != bodies[0]]
+    if extra:
+        raise ValueError(f"a writing takes no other files: {', '.join(extra)}")
+    body = bodies[0].read_text(encoding="utf-8")
+    if body.lstrip().startswith(("+++", "---")):
+        raise ValueError("the body must not have front matter; put it in manifest.toml")
+    page = build_front_matter(manifest, [], None) + "\n" + body.lstrip("\n")
+    (bundle_dir / "index.md").write_text(page, encoding="utf-8")
+
+
+def write_media_bundle(package: Path, manifest: dict, bundle_dir: Path) -> None:
+    kind = manifest["kind"]
     media = manifest.get("media")
     if media is None:
         media = collect_media(package)
     elif not isinstance(media, list) or not media:
         raise ValueError("manifest.toml: [[media]] must be a non-empty list")
+    if any("weight" in entry for entry in media):
+        raise ValueError("[[media]] weight is renamed to order")
+
+    converted = bundle_dir / ".converted"
+    converted.mkdir()
+    rows: list[dict] = []
+    source_to_output: dict[str, str] = {}
+    for index, entry in enumerate(media, 1):
+        source = safe_relative(package, str(entry["file"]))
+        if not source.is_file():
+            raise ValueError(f"media file does not exist: {entry['file']}")
+        ext = source.suffix.lower()
+        title = str(entry.get("title") or humanize_stem(source.stem))
+        order = int(entry.get("order", index))
+        if ext in IMAGE_EXTS:
+            filename = convert_image(source, converted).name
+            rows.append(
+                {"file": filename, "title": title, "order": order, "kind": "image"}
+            )
+            source_to_output[source.name] = filename
+        elif ext in VIDEO_EXTS:
+            output, poster = convert_video(source, converted)
+            rows.append(
+                {
+                    "file": output.name,
+                    "title": title,
+                    "order": order,
+                    "kind": "video",
+                    "poster": poster.name,
+                    "format": "WebM · VP9",
+                    **probe_video(source),
+                }
+            )
+            rows.append(
+                {
+                    "file": poster.name,
+                    "title": title,
+                    "order": order,
+                    "kind": "image",
+                    "role": "poster",
+                }
+            )
+            source_to_output[source.name] = poster.name
+        else:
+            raise ValueError(f"unsupported media type: {source.suffix}")
+    for file in converted.iterdir():
+        shutil.move(str(file), bundle_dir / file.name)
+    converted.rmdir()
+
+    thumbnail_source = manifest.get("thumbnail")
+    thumbnail = None
+    if thumbnail_source:
+        thumbnail = source_to_output.get(Path(str(thumbnail_source)).name)
+        if not thumbnail:
+            raise ValueError("thumbnail must refer to a listed media file")
+    page_file = bundle_dir / ("index.md" if kind == "piece" else "_index.md")
+    page_file.write_text(
+        build_front_matter(manifest, rows, thumbnail), encoding="utf-8"
+    )
+
+
+def publish_bundle(package: Path) -> None:
+    manifest = read_manifest(package)
+    kind = manifest["kind"]
+    slug = package.name
 
     original_dir = ORIGINALS / kind / slug
     if original_dir.exists():
         raise ValueError(f"an item with this slug already exists: {slug}")
-
     original_dir.parent.mkdir(parents=True, exist_ok=True)
     original_pending = original_dir.parent / ("." + slug + ".pending")
     if original_pending.exists():
         raise ValueError(
             f"a previous processing attempt left a pending original for {slug}"
         )
-    bundle_dir = CONTENT / ("pieces" if kind == "piece" else "collections") / slug
+    bundle_dir = CONTENT / SECTIONS[kind] / slug
     if bundle_dir.exists():
-        # The previous attempt stopped before cleanup. The bundle holds
-        # generated output, so discard it before re-processing.
+        # No upload original owns this bundle: it is left over from a
+        # stopped attempt, seeded from the repo or added by hand. The
+        # upload replaces it.
         shutil.rmtree(bundle_dir)
-    bundle_dir.mkdir(parents=True, exist_ok=False)
-    converted = bundle_dir / ".converted"
-    converted.mkdir()
-    rows: list[dict] = []
-    source_to_output: dict[str, str] = {}
-    video_rows: list[dict] = []
+    bundle_dir.mkdir(parents=True)
     try:
-        for index, entry in enumerate(media, 1):
-            source = safe_relative(package, str(entry["file"]))
-            if not source.is_file():
-                raise ValueError(f"media file does not exist: {entry['file']}")
-            ext = source.suffix.lower()
-            title = str(entry.get("title") or source.stem)
-            weight = int(entry.get("weight", index))
-            if ext in IMAGE_EXTS:
-                filename = convert_image(source, converted).name
-                row = {
-                    "file": filename,
-                    "title": title,
-                    "weight": weight,
-                    "kind": "image",
-                }
-                rows.append(row)
-                source_to_output[Path(str(entry["file"])).name] = filename
-            elif ext in VIDEO_EXTS:
-                output, poster = convert_video(source, converted)
-                filename = output.name
-                poster_name = poster.name
-                row = {
-                    "file": filename,
-                    "title": title,
-                    "weight": weight,
-                    "kind": "video",
-                    "poster": poster_name,
-                    "format": "WebM · VP9",
-                    **probe_video(source),
-                }
-                video_rows.append(row)
-                rows.append(row)
-                rows.append(
-                    {
-                        "file": poster_name,
-                        "title": title,
-                        "weight": weight,
-                        "kind": "image",
-                        "role": "poster",
-                    }
-                )
-                source_to_output[Path(str(entry["file"])).name] = poster_name
-            else:
-                raise ValueError(f"unsupported media type: {source.suffix}")
-        for file in converted.iterdir():
-            shutil.move(str(file), bundle_dir / file.name)
-        converted.rmdir()
-        thumbnail_source = manifest.get("thumbnail")
-        thumbnail = (
-            source_to_output.get(Path(str(thumbnail_source)).name)
-            if thumbnail_source
-            else None
-        )
-        if thumbnail_source and not thumbnail:
-            raise ValueError("thumbnail must refer to a listed media file")
-        if (
-            kind == "piece"
-            and not any(
-                row["kind"] == "image" and row.get("role") != "poster" for row in rows
-            )
-            and not video_rows
-        ):
-            raise ValueError("piece must contain at least one supported image or video")
-        page_file = bundle_dir / ("index.md" if kind == "piece" else "_index.md")
-        page_file.write_text(
-            build_front_matter(manifest, rows, thumbnail), encoding="utf-8"
-        )
+        if kind == "writing":
+            write_writing(package, manifest, bundle_dir)
+        else:
+            write_media_bundle(package, manifest, bundle_dir)
         shutil.copytree(package, original_pending)
         build_and_publish()
         original_pending.rename(original_dir)

@@ -1,8 +1,16 @@
 # exhib manual
 
-How to use the gallery library, make pieces and collections, and make them go live.
+How to use the gallery library, make collections, pieces and writings, and make them go live.
 Commands are nushell. `kubectl` must point at the cluster
 (`kubectl --kubeconfig kubeconfig` from the infra repo root, or `$env.KUBECONFIG`).
+
+Short form:
+
+```nu
+just manifest uploads/2026-11   # edit manifest.toml in the browser
+just upload uploads/2026-11     # send it to the gallery
+just logs                       # watch it publish
+```
 
 ## 1. The library
 
@@ -18,8 +26,10 @@ The library is the PVC `exhib-site`, mounted at `/data` in the pod. The image ho
 │   └── writings/<slug>/index.md
 ├── originals/     private copies of every upload, never served
 │   ├── collection/<slug>/
-│   └── piece/<slug>/
-└── public/        Hugo output; SWS serves this at gallery.0xbf.ch
+│   ├── piece/<slug>/
+│   └── writing/<slug>/
+├── public/        Hugo output; SWS serves this at gallery.0xbf.ch
+└── .hugo-resources/  Hugo resized previews; cache, safe to delete
 ```
 
 What lives where:
@@ -27,19 +37,76 @@ What lives where:
 | Thing                                   | Lives in                  | Goes live by                     |
 | --------------------------------------- | ------------------------- | -------------------------------- |
 | Templates, CSS, JS, processor, sws.toml | this repo, baked in image | `v*` tag, CI push, Keel restart  |
-| Pieces and collections                  | PVC `/data/content`       | `just upload` (no tag, no image) |
-| Writings                                | PVC `/data/content`       | `kubectl cp` + rebuild (see §5)  |
+| Collections, pieces, writings           | PVC `/data/content`       | `just upload` (no tag, no image) |
 | Originals                               | PVC `/data/originals`     | never served                     |
 
 Important: the repo `content/` directory seeds `/data/content` **only on first boot, when `/data/content` is empty**. After that, edits to repo `content/` do not reach production. The PVC is the source of truth for content.
 
-## 2. Make a collection
+## 2. The upload folder
 
-1. Make a folder. The folder name is the URL slug. Use lowercase letters, digits and hyphens (`evening-walks`, `2026-11`).
-2. Put the source media files in it. Do not convert them. The processor does that.
-3. Add `manifest.toml`.
+Every item is one folder. The folder name is the URL slug. Use lowercase letters, digits and hyphens (`evening-walks`, `2026-11`). The folder holds `manifest.toml` and the source files:
 
-Minimal manifest:
+| Kind         | Source files                        | URL                    |
+| ------------ | ----------------------------------- | ---------------------- |
+| `collection` | images and videos                   | `/collections/<slug>/` |
+| `piece`      | one image or video                  | `/pieces/<slug>/`      |
+| `writing`    | exactly one `.md` file (the body)   | `/writings/<slug>/`    |
+
+Do not convert media. The processor does that.
+
+### 2.1 Manifest editor (`just manifest`)
+
+You do not need to write `manifest.toml` by hand. Put the source files in a slug folder under `uploads/`, then run the editor on it.
+
+```
+just manifest <folder> [--port N] [--no-browser]
+```
+
+| Argument       | Meaning                                                                        |
+| -------------- | ------------------------------------------------------------------------------ |
+| `<folder>`     | the slug folder, relative to where you run `just`. It must exist.              |
+| `--port N`     | serve on port `N`. Default: any free port.                                     |
+| `--no-browser` | do not open the browser. Open the printed URL yourself.                        |
+
+Examples:
+
+```nu
+just manifest uploads/bw                       # open the editor in the browser
+just manifest uploads/bw --port 4321           # fixed URL: http://127.0.0.1:4321/
+just manifest uploads/field-notes --no-browser # print the URL only
+```
+
+What it does:
+
+- Starts a web page on `127.0.0.1` only, and opens it in the browser. The terminal prints the folder and the URL.
+- Runs on your machine only. It never talks to the cluster. It needs [uv](https://docs.astral.sh/uv/); uv gets Python 3.15 on first run.
+- Reads `manifest.toml` if it exists, so you can run it again to change an item. A new folder starts with defaults: the title from the folder name, the date set to now, and every media file included.
+- Writes only `manifest.toml`, plus `body.md` for a writing. It never changes or deletes media files.
+- Warns if the folder name is not a lowercase slug. Rename the folder before upload.
+- Stops with Ctrl-C. It then prints the upload command.
+
+On the page:
+
+- **Kind**: collection, piece or writing (top right). The editor guesses from the folder contents: no media and one `.md` file means writing, one media file means piece, otherwise collection.
+- **Title, date, description, tags.** Date is local time, saved as UTC. Description is markdown. It shows on the homepage card and under the page title. Type a tag and press Enter or a comma; Backspace in an empty tag field removes the last tag.
+- **Homepage card**: live preview of the feed card: thumbnail or mosaic, title, date, description, tags.
+- **Media grid** (collection, piece): one tile per file. The badge on each tile is its `order`. Excluded tiles are dimmed. Drag tiles to reorder.
+- **Tile detail** (click a tile): large preview, caption (empty means the file name), `order` (type a position; 1 comes first; a number past the end means last), include, ← earlier / later →, and use as thumbnail (collection only; click again to clear). A piece shows its first included item.
+- **Body** (writing): the text of the writing, saved to `body.md` (or to the one `.md` file already in the folder).
+- **Save** (button or ⌘S): checks the values and writes `manifest.toml`. Errors show next to the button; nothing is written then. It writes the smallest manifest that gives the result: `[[media]]` tables (`file`, `title`, `order`) appear only if you excluded a file, changed the order or set a caption. The saved text shows below the button.
+- Leaving the page with unsaved changes asks for confirmation.
+
+Previews: the browser shows PNG, JPEG, WebP, AVIF and most MP4/MOV/WebM directly. HEIC and TIFF previews use macOS `sips`. A file the browser cannot show appears as its file name; it still uploads.
+
+Full flow for one collection:
+
+```nu
+just manifest uploads/bw   # set title, date, description, tags, order; ⌘S; Ctrl-C
+just upload uploads/bw
+just logs                  # wait for "Published collection bw"
+```
+
+### 2.2 Manifest keys
 
 ```toml
 kind = "collection"
@@ -47,48 +114,50 @@ title = "Evening walks"
 date = 2026-11-07T18:30:00Z
 ```
 
-All keys:
-
-| Key           | Required | Meaning                                                                            |
-| ------------- | -------- | ---------------------------------------------------------------------------------- |
-| `kind`        | yes      | `"collection"` or `"piece"`                                                        |
-| `title`       | yes      | page title                                                                         |
-| `date`        | yes      | TOML datetime (not a string). No zone means UTC. Sets feed order, newest first.    |
-| `description` | no       | markdown; shown in intro and cards, flattened in feeds and `<meta>`                |
-| `tags`        | no       | list of strings, e.g. `["evergrowing"]`. Use slug-like names.                      |
-| `thumbnail`   | no       | file name of one source file (`"cover.jpg"`). Without it, the card shows a mosaic. |
-| `[[media]]`   | no       | per-file overrides. Without it, every supported file is included.                  |
+| Key           | Required | Meaning                                                                                       |
+| ------------- | -------- | --------------------------------------------------------------------------------------------- |
+| `kind`        | yes      | `"collection"`, `"piece"` or `"writing"`                                                      |
+| `title`       | yes      | page title                                                                                    |
+| `date`        | yes      | TOML datetime (not a string). No zone means UTC. Sets feed order, newest first.               |
+| `description` | no       | markdown; shown in intro and cards, flattened in feeds and `<meta>`                           |
+| `tags`        | no       | list of strings, e.g. `["evergrowing"]`. Use slug-like names.                                 |
+| `thumbnail`   | no       | collection only. File name of one source file. Without it, the card shows a mosaic.          |
+| `[[media]]`   | no       | collection and piece. Per-file overrides. Without it, every supported file is included.       |
 
 Without `[[media]]`:
 
 - Every supported file in the folder becomes one item. Hidden files and unknown types are skipped.
-- Order is numeric-aware filename order (`2-a.jpg` before `10-b.jpg`). This order sets `weight`.
-- Title comes from the file name: `01-paper-light.jpg` becomes "Paper light".
+- Order is numeric-aware filename order (`2-a.jpg` before `10-b.jpg`).
+- Caption comes from the file name: `01-paper-light.jpg` becomes "Paper light".
 
-With `[[media]]`, only the listed files are included, in list order:
+With `[[media]]`, only the listed files are included:
 
 ```toml
 [[media]]
 file = "IMG_4012.HEIC"
-title = "Street after rain"   # optional; falls back to file stem
-weight = 1                    # optional; falls back to list position
+title = "Street after rain"   # optional; falls back to the file name
+order = 1                     # optional; falls back to list position
 
 [[media]]
 file = "clip.mov"
 ```
 
+`order` sets position in the grid: lower comes first. It was called `weight` before. A manifest with `weight` fails with `[[media]] weight is renamed to order`. Bundles already on the PVC with `weight` still sort correctly.
+
 Display order on the page:
 
 1. Images with an EXIF capture date, oldest first.
-2. Images without capture date, by `weight`.
-3. Videos, by `weight`.
+2. Images without capture date, by `order`.
+3. Videos, by `order`.
 
-So `weight` is a fallback. EXIF capture date wins for images.
+So `order` is a fallback. EXIF capture date wins for images.
 
-Supported input:
+Supported media:
 
 - Images: `jpg jpeg png webp avif tif tiff heic heif`
 - Video: `mov mp4 m4v 3gp mkv webm`
+
+## 3. Collections
 
 Example, a monthly snapshot:
 
@@ -108,9 +177,9 @@ tags = ["evergrowing"]
 thumbnail = "IMG_4002.HEIC"
 ```
 
-## 3. Make a piece
+## 4. Pieces
 
-Same as a collection, with `kind = "piece"`. The page shows the **first ordered** media item only. A piece needs at least one image or video. Use one file per piece folder.
+Same as a collection, with `kind = "piece"`. The page shows the **first ordered** media item only. Use one file per piece folder.
 
 ```toml
 kind = "piece"
@@ -120,7 +189,41 @@ description = "A short note about this work."
 tags = ["design"]
 ```
 
-## 4. Make it go live
+## 5. Writings
+
+Writings are text-only pages. They have no media, no grid and no metadata. They show in the home feed (no image), in `/writings/`, in `/tags/` and in the RSS and Atom feeds.
+
+```
+field-notes/
+├── manifest.toml
+└── body.md
+```
+
+```toml
+kind = "writing"
+title = "Field notes"
+date = 2026-11-08T12:00:00Z
+description = "Optional summary. *Markdown* is supported."
+tags = ["essay"]
+```
+
+```markdown
+First line
+Second line
+
+A new stanza.
+```
+
+Rules:
+
+- The folder holds `manifest.toml` and exactly one `.md` file. Any name works; the editor uses `body.md`. Other files fail the upload.
+- The body has no front matter. All metadata is in `manifest.toml`. A body that starts with `+++` or `---` fails the upload.
+- Markdown. A single newline breaks the line (`white-space: pre-line`), so verse keeps its shape. A blank line starts a new paragraph or stanza.
+- Raw HTML is dropped (`markup.goldmark.renderer.unsafe = false`).
+
+The editor (`just manifest`) has a body text area for writings. You can write the whole piece there.
+
+## 6. Make it go live
 
 Before upload, strip metadata you do not want public. **All EXIF/IPTC/XMP is published, including GPS.** The processor copies all metadata into the served WebP.
 
@@ -129,121 +232,74 @@ exiftool -G1 -a -s path/to/2026-11/IMG_4001.HEIC          # inspect
 exiftool -GPS:all= -overwrite_original path/to/2026-11/*  # drop GPS
 ```
 
-Upload:
+Upload and watch:
 
 ```nu
 just upload path/to/2026-11
+just logs
 ```
 
-Watch the processor:
+Success prints `Published collection 2026-11` (or `piece`, `writing`). The page is live at `https://gallery.0xbf.ch/collections/2026-11/`. No commit, tag or image build is needed.
+
+Video conversion is slow (lossless VP9 on the Pi). A minute of video can take many minutes. The site keeps serving the old build until the new build is complete.
+
+### 6.1 Staging folder and size limits
+
+Keep upload folders in `uploads/` at the repo root. Git and Docker ignore it. Do **not** put upload folders in `content/`: that only seeds an empty PVC, and it puts the files into git and the image.
 
 ```nu
-kubectl -n exhib logs deploy/exhib -f
+just manifest uploads/bw
+just upload uploads/bw
 ```
 
-Success prints `Published collection 2026-11`. The page is live at `https://gallery.0xbf.ch/collections/2026-11/`. No commit, tag or image build is needed.
+The pod has 2 GiB. Measured with a 2 GiB cap:
 
-Conversion is slow for video (lossless VP9 on the Pi). A minute of video can take many minutes. The site keeps serving the old build until the new build is complete.
+| Step                                    | Peak memory                      |
+| --------------------------------------- | -------------------------------- |
+| `cwebp` on 4961×7016 RGBA (35 Mpx)      | 0.6–0.8 GB                       |
+| `cwebp` on 7016×9921 RGBA (70 Mpx)      | 1.5 GB (too close; do not use)   |
+| Hugo cold build with 35 Mpx posters     | 1.5 GB (2 threads, `GOMEMLIMIT`) |
 
-## 5. Writings
-
-Writings are text-only pages at `/writings/<slug>/`. They have no media, no grid and no metadata. They show in the home feed (no image), in `/writings/`, in `/tags/` and in the RSS and Atom feeds.
-
-`just upload` does not accept writings. The processor accepts only `piece` and `collection`. You write the Hugo page directly into the live content tree, then rebuild.
-
-### 5.1 Write the page
-
-Make a folder named after the slug (lowercase, digits, hyphens). Put one file `index.md` in it:
-
-```
-field-notes/
-└── index.md
-```
-
-```toml
-+++
-title = "Field notes"
-date = 2026-11-08T12:00:00Z
-description = "Optional summary. *Markdown* is supported."
-tags = ["essay"]
-+++
-
-First line
-Second line
-
-A new stanza.
-```
-
-Front matter (TOML, `+++`):
-
-| Key           | Required | Meaning                                                                    |
-| ------------- | -------- | -------------------------------------------------------------------------- |
-| `title`       | yes      | page title                                                                 |
-| `date`        | yes      | TOML datetime. Sets feed order. A future date hides the page (see below).  |
-| `description` | no       | markdown; shown under the title and on cards; plain text in feeds          |
-| `tags`        | no       | list of slug-like strings                                                  |
-| `draft`       | no       | `true` hides the page from the build                                       |
-
-Body rules:
-
-- Markdown.
-- A single newline breaks the line. The body uses `white-space: pre-line`. Verse keeps its shape.
-- A blank line starts a new paragraph or stanza.
-- Raw HTML is dropped (`markup.goldmark.renderer.unsafe = false`).
-- Do not add images. The template shows none.
-
-Hugo does not build pages with a date in the future. If you set a future date, the page appears only on the first rebuild after that date. Rebuilds happen only on upload, exec rebuild or pod restart.
-
-Preview locally before you publish. Put the folder in repo `content/writings/` and run:
+Keep images at or below about 35 Mpx (A2 at 300 dpi, 4961×7016). Downscale larger ones before upload:
 
 ```nu
-hugo server --bind 0.0.0.0 --port 4173
+sips --resampleHeightWidth 7016 4961 uploads/bw/abriss.png
 ```
 
-### 5.2 Publish
+If a step is killed for memory, the upload fails like any other (§8), and the site stays up. `EXHIB_HUGO_THREADS` (default `2`) and `EXHIB_HUGO_MEMLIMIT` (default `1GiB`) in the pod env tune the Hugo build.
+
+Avoid `?`, `*`, `[` and `]` in file names. Hugo reads a resource `src` as a glob, so `??.png` matches other files and the image drops off the page.
+
+### 6.2 Previews
+
+The grid, the homepage cards and the piece stage show resized lossy WebP previews (1200 px wide; 2400 px for the piece stage) that Hugo makes at build time. The fullscreen view shows the lossless original and loads it only when opened. Previews are cached in `/data/.hugo-resources`, so a rebuild or pod restart reuses them. The first build after a new image makes all missing previews once.
+
+Hugo does not build pages with a date in the future. A future-dated item appears only at the first rebuild after that date. Rebuilds happen on upload, `just rebuild` or pod restart.
+
+Preview templates or a writing locally with repo content:
 
 ```nu
-let slug = "field-notes"
-let pod = (kubectl -n exhib get pods -l app.kubernetes.io/name=exhib -o jsonpath='{.items[0].metadata.name}')
-kubectl -n exhib exec $pod -- mkdir -p $"/data/content/writings/($slug)"
-kubectl -n exhib cp $"./($slug)/index.md" $"exhib/($pod):/data/content/writings/($slug)/index.md"
-kubectl -n exhib exec $pod -- python3 -c "from processor.bundle import build_and_publish; build_and_publish()"
+just serve   # http://localhost:4173
 ```
 
-The rebuild prints Hugo's page counts. A Hugo error means the old site stays live. Fix the file and run the rebuild again. The page is then live at `https://gallery.0xbf.ch/writings/field-notes/`.
-
-### 5.3 Edit
-
-Copy the changed `index.md` over the old one with the same `kubectl cp` line, then rebuild. To change the slug, delete the old folder (5.4) and publish under the new slug. The old URL then returns 404.
-
-### 5.4 Delete
-
-```nu
-kubectl -n exhib exec $pod -- rm -rf $"/data/content/writings/($slug)"
-kubectl -n exhib exec $pod -- python3 -c "from processor.bundle import build_and_publish; build_and_publish()"
-```
-
-### 5.5 Keep a copy in git
-
-The PVC copy is the live one. There is no copy in `/data/originals` and no backup. Commit each writing to repo `content/writings/<slug>/index.md` too. This gives history, and it seeds a fresh, empty PVC. Repo content does **not** update a PVC that already has content, so always do 5.2 as well.
-
-## 6. Change, replace or delete an item
+## 7. Change, replace or delete an item
 
 A slug can be uploaded once. A second upload with the same slug fails with `an item with this slug already exists`. To replace or delete, remove the bundle and the original, then rebuild:
 
 ```nu
-let pod = (kubectl -n exhib get pods -l app.kubernetes.io/name=exhib -o jsonpath='{.items[0].metadata.name}')
-kubectl -n exhib exec $pod -- rm -rf /data/content/collections/2026-11 /data/originals/collection/2026-11
-kubectl -n exhib exec $pod -- python3 -c "from processor.bundle import build_and_publish; build_and_publish()"
+kubectl -n exhib exec deploy/exhib -- rm -rf /data/content/collections/2026-11 /data/originals/collection/2026-11
+just rebuild
 ```
 
-Then re-upload with `just upload` if you replace it.
+Sections and original folders: `collections` / `collection`, `pieces` / `piece`, `writings` / `writing`. Then `just upload` the corrected folder if you replace it. Your local folder still holds `manifest.toml`, so `just manifest` reopens it with the old values.
 
-For a text-only fix (title, description, tags), edit the front matter of `/data/content/<section>/<slug>/_index.md` (or `index.md`) in place and rebuild. Keep the `[[resources]]` blocks. They are generated.
+A bundle with no upload original (seeded from the repo or added by hand) is replaced by an upload with the same slug.
 
-A pod restart also rebuilds (the processor builds on boot), but `Recreate` strategy gives a short outage. Prefer the exec rebuild.
+For a text-only fix (title, description, tags), you can also edit the front matter of `/data/content/<section>/<slug>/_index.md` (or `index.md`) in place, then `just rebuild`. Keep the `[[resources]]` blocks. They are generated.
 
-## 7. When an upload fails
+A pod restart also rebuilds (the processor builds on boot), but the `Recreate` strategy gives a short outage. Prefer `just rebuild`.
+
+## 8. When an upload fails
 
 The processor logs `Upload <slug> failed: <reason>` and renames the folder to `/data/incoming/.failed-<slug>`. It removes the partial bundle and the pending original. The live site is not changed.
 
@@ -258,35 +314,46 @@ kubectl -n exhib exec deploy/exhib -- rm -rf /data/incoming/.failed-2026-11
 just upload path/to/2026-11
 ```
 
-Common reasons: `date` written as a string (`"2026-11-07"`), slug with uppercase or underscores, `thumbnail` that names a file not in the upload, no supported media in the folder.
+Common reasons:
 
-## 8. How the pipeline works (no uploader sidecar)
+- `date` written as a string (`"2026-11-07"`).
+- Slug with uppercase or underscores.
+- `thumbnail` names a file not in the upload.
+- No supported media in a collection or piece folder.
+- Writing: zero or several `.md` files, extra files, or front matter in the body.
+- `[[media]]` uses `weight` instead of `order`.
 
-The uploader sidecar was a busybox container that slept. Its only job was to be an `exec` target with a writable `/data` mount (the SWS container mounts `/data` read-only). It did no conversion. Conversion, Hugo and front matter were always in the processor. PR #8 merges SWS and processor into one container, so the exec target is now that container. Nothing else moved.
+## 9. How the pipeline works
 
-The single container runs `entrypoint.py`, which starts two children and supervises them:
+There is no uploader sidecar. It was a busybox container that slept. Its only job was to be an `exec` target with a writable `/data`. It did no conversion. Conversion, Hugo and front matter are in the processor. The pod is now one container, and `just upload` execs into it.
+
+The container runs `uv run python entrypoint.py` (Python 3.15). The supervisor creates the `/data` directories, then starts two children:
 
 - `static-web-server`: serves `/data/public` on `8080`, `/health` for probes, `Cache-Control: no-cache` on all responses.
-- `python3 -m processor`: the ingest loop.
+- `python -m processor`: the ingest loop.
 
-If one child exits, the supervisor stops the other and exits with the same code. Kubernetes then restarts the pod.
+If one child exits, the supervisor stops the other and exits with its code (a signal N gives `128 + N`). Kubernetes then restarts the pod.
 
 Upload path, step by step:
 
-1. **Transfer** (`just upload`, on your machine). Checks slug and `manifest.toml`. Refuses if `/data/incoming/<slug>` is already queued. Streams the folder as tar through `kubectl exec` into `/data/incoming/.upload-<slug>-<epoch>`. Then `mv` to `/data/incoming/<slug>`. The hidden name hides the partial copy from the processor. The `mv` is atomic, so the processor sees only complete folders.
+1. **Transfer** (`just upload`, on your machine). Checks slug and `manifest.toml`. Refuses if `/data/incoming/<slug>` is already queued. Streams the folder as tar (no macOS xattrs, no `.DS_Store`) through `kubectl exec` into `/data/incoming/.upload-<slug>-<epoch>`. Then `mv` to `/data/incoming/<slug>`. The hidden name hides the partial copy from the processor. The `mv` is atomic, so the processor sees only complete folders.
 2. **Detect** (`processor/__main__.py`). Every 3 s, takes non-hidden folders in `/data/incoming`, sorted, one at a time.
-3. **Validate** (`processor/bundle.py: publish_bundle`). Slug format, `kind`, `title`, TOML datetime `date`, media list, no path escape (`../`), no existing `/data/originals/<kind>/<slug>`.
-4. **Convert** (`processor/media.py`), into a scratch dir `.converted/` inside the new bundle:
-    - Images: `cwebp -lossless -exact` to WebP. HEIC/HEIF decode first with `heif-convert`; AVIF via `ffmpeg`. Then `exiftool -TagsFromFile` copies all source metadata into the WebP, so Hugo can read EXIF.
-    - Video: `ffmpeg` to WebM, lossless VP9 video, Opus 128k audio, metadata kept, no resize. Poster: frame at 1 s (falls back to frame 0), to lossless WebP, metadata copied.
-    - Video facts: `ffprobe` (JSON) for resolution, frame rate, duration. Falls back to parsing the `ffmpeg -i` banner. Format is fixed `WebM · VP9`.
-5. **Front matter** (`build_front_matter`). Writes `_index.md` (collection) or `index.md` (piece) in `/data/content/<section>/<slug>/`. TOML `+++` block: `title`, `date` (normalized to UTC offset), optional `description`, `tags`, `thumbnail` (mapped to the converted file; a video maps to its poster). One `[[resources]]` per output file with `params.weight` and `params.kind`. Videos also get `format`, `resolution`, `framerate`, `duration`, `poster`. Each poster is its own resource with `role = "poster"`, so templates hide it from the grid.
+3. **Validate** (`processor/bundle.py: read_manifest`, `publish_bundle`). Slug format, `kind`, `title`, TOML datetime `date`, no existing `/data/originals/<kind>/<slug>`.
+4. **Write the bundle** in `/data/content/<section>/<slug>/`:
+    - Writing (`write_writing`): checks the one `.md` body, then writes `index.md` = front matter from the manifest + body.
+    - Collection or piece (`write_media_bundle`): converts each file (`processor/media.py`) into a scratch dir `.converted/`, then writes `_index.md` (collection) or `index.md` (piece).
+        - Images: `cwebp -lossless -exact` to WebP. HEIC/HEIF decode first with `heif-convert`; AVIF via `ffmpeg`. Then `exiftool -TagsFromFile` copies all source metadata into the WebP, so Hugo can read EXIF.
+        - Video: `ffmpeg` to WebM, lossless VP9 video, Opus 128k audio, metadata kept, no resize. Poster: frame at 1 s (falls back to frame 0), to lossless WebP, metadata copied.
+        - Video facts: `ffprobe` (JSON) for resolution, frame rate, duration. Falls back to parsing the `ffmpeg -i` banner. Format is fixed `WebM · VP9`.
+5. **Front matter** (`build_front_matter`). TOML `+++` block: `title`, `date` (UTC offset), optional `description`, `tags`, `thumbnail` (mapped to the converted file; a video maps to its poster). Media bundles get one `[[resources]]` per output file with `params.order` and `params.kind`. Videos also get `format`, `resolution`, `framerate`, `duration`, `poster`. Each poster is its own resource with `role = "poster"`, so templates hide it from the grid.
 6. **Keep original.** Copies the upload folder to `/data/originals/<kind>/.<slug>.pending`.
 7. **Build** (`build_and_publish`). `hugo --source /app --contentDir /data/content --destination /data/.public-next --minify`. Templates come from the image; content from the PVC. Hugo reads EXIF from the WebP files at build time for the metadata list and ordering.
 8. **Swap.** Renames `public` to `.public-previous`, `.public-next` to `public`, deletes the old one. SWS never serves a half-written site. On a failed rename it restores the old one.
 9. **Commit.** Renames the pending original to `/data/originals/<kind>/<slug>` and deletes the inbox folder.
 
-Any error in steps 3 to 8 removes the bundle and pending original and parks the upload as `.failed-<slug>` (§7).
+Any error in steps 3 to 8 removes the bundle and pending original and parks the upload as `.failed-<slug>` (§8).
+
+`just rebuild` runs steps 7 and 8 only (`python -m processor rebuild`).
 
 Generated front matter for a collection with one image and one video:
 
@@ -301,14 +368,14 @@ thumbnail = "IMG_4002.webp"
 src = "IMG_4002.webp"
 title = "IMG 4002"
 [resources.params]
-weight = 1
+order = 1
 kind = "image"
 
 [[resources]]
 src = "IMG_4003.webm"
 title = "IMG 4003"
 [resources.params]
-weight = 2
+order = 2
 kind = "video"
 format = "WebM · VP9"
 resolution = "1920×1080"
@@ -320,30 +387,52 @@ poster = "IMG_4003-poster.webp"
 src = "IMG_4003-poster.webp"
 title = "IMG 4003"
 [resources.params]
-weight = 2
+order = 2
 kind = "image"
 role = "poster"
 +++
 ```
 
-## 9. Release code changes
+Generated `index.md` for a writing:
 
-Templates, CSS, JS, processor, `sws.toml`, `Dockerfile`: commit, then push a `v*` tag. CI publishes `ghcr.io/bfeitknecht/exhib:latest` and `:<tag>`. Keel sees the new digest and restarts the pod. On boot the processor rebuilds `/data/public` with the new templates. Content on the PVC is untouched.
+```markdown
++++
+title = "Field notes"
+date = 2026-11-08T12:00:00+00:00
+description = "Optional summary. *Markdown* is supported."
+tags = ["essay"]
++++
 
-### Rollout of PR #8 (one-time)
+First line
+Second line
 
-PR #8 changes the image entrypoint to run SWS too. Production infra still runs 3 containers (`sws`, `uploader`, `processor`). Order matters:
+A new stanza.
+```
 
-1. Merge PR #8, tag exhib. Keel rolls the `processor` container to the new image. Its SWS cannot bind `8080` (the `sws` container holds it), so the supervisor exits and `processor` crash-loops. The `sws` container keeps serving the old site. Uploads stop.
-2. Tag infra with the single-container Deployment right after: one `exhib` container, port `8080`, probes `/health`, memory limit from the old processor (`2Gi`), `/data` mounted read-write. Delete `sws.toml`, the `exhib-sws` `configMapGenerator`, the `sws-config` volume and the `uploader` container.
+## 10. Develop and release
 
-Do not tag infra first. The old image does not run SWS, so the site would go down.
+Python is 3.15, managed by uv. Two uv projects:
 
-Between step 1 and 2, `just upload` also fails. `kubectl exec` without `-c` targets the first container, `sws`, which mounts `/data` read-only.
+| Project        | Path              | Runs where     | Purpose                              |
+| -------------- | ----------------- | -------------- | ------------------------------------ |
+| `exhib`        | repo root         | image + local  | `entrypoint.py`, `processor/`        |
+| `exhib-manifest` | `tools/manifest/` | your machine | manifest editor (`just manifest`)    |
 
-## 10. Known gaps
+Both have no third-party dependencies. `tools/` and `docs/` are not in the image (`.dockerignore`).
+
+```nu
+uv run python -m processor rebuild   # needs hugo; uses $env.EXHIB_DATA (default /data)
+uvx ruff format processor entrypoint.py tools/manifest/src
+```
+
+The image is `python:3.15-alpine3.24` plus uv, Hugo extended, SWS, FFmpeg, libwebp, libheif and exiftool. `uv sync --frozen` builds the venv at build time. At runtime `uv run --no-sync` only starts it.
+
+Release: commit, then push a `v*` tag. CI publishes `ghcr.io/bfeitknecht/exhib:latest` and `:<tag>`. Keel sees the new digest and restarts the pod. On boot the processor rebuilds `/data/public` with the new templates. Content on the PVC is untouched.
+
+Infra contract (`bfeitknecht/infra`, `kubernetes/applications/exhib/`): one container, image `ENTRYPOINT` (no `command`), port `8080`, probes on `/health`, `/data` read-write. Keep these stable, or change infra in step.
+
+## 11. Known gaps
 
 - Uploaded videos get no animated `preview` WebP. Grid tiles fall back to an autoplaying `<video>`. The placeholder previews were made by hand.
-- No upload path for writings; they use `kubectl cp` and no backup covers them (§5).
-- No in-place update of an uploaded item; delete and re-upload (§6).
-- No k8up Schedule for exhib. `/data/originals` holds the only copy of uploaded originals.
+- No in-place update of an uploaded item; delete and re-upload (§7).
+- No k8up Schedule for exhib. `/data/originals` holds the only copy of uploaded originals and writings.

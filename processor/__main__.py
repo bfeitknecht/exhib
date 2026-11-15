@@ -1,4 +1,8 @@
-"""Entrypoint. Watch the incoming queue and publish uploads as they arrive."""
+"""Entrypoint.
+
+``python -m processor``         watch the incoming queue and publish uploads.
+``python -m processor rebuild`` rebuild the public site once and exit.
+"""
 
 from __future__ import annotations
 
@@ -40,4 +44,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["rebuild"]:
+        build_and_publish()
+    elif sys.argv[1:]:
+        sys.exit("usage: python -m processor [rebuild]")
+    else:
+        main()

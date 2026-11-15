@@ -21,8 +21,8 @@ IMAGE_EXTS = {
 VIDEO_EXTS = {".mov", ".mp4", ".m4v", ".3gp", ".mkv", ".webm"}
 
 
-def run(args: list[str]) -> None:
-    subprocess.run(args, check=True)
+def run(args: list[str], env: dict[str, str] | None = None) -> None:
+    subprocess.run(args, check=True, env=env)
 
 
 def copy_metadata(source: Path, output: Path) -> None:
@@ -191,7 +191,7 @@ def _parse_rate(rate: str | None) -> float | None:
         num, den = rate.split("/", 1)
         num_f, den_f = float(num), float(den)
         return num_f / den_f if den_f else None
-    except (ValueError, ZeroDivisionError):
+    except ValueError, ZeroDivisionError:
         return None
 
 
@@ -225,7 +225,7 @@ def _probe_from_ffprobe_json(data: dict) -> dict:
         duration = float((data.get("format") or {}).get("duration", "nan"))
         if duration == duration and duration > 0:  # NaN check
             info["duration"] = format_duration(duration)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         pass
     return info
 

@@ -7,3 +7,7 @@
 README.md
 __pycache__/
 justfile
+.venv/
+docs/
+tools/
+uploads/

@@ -1,0 +1,11 @@
+[project]
+name = "exhib"
+version = "0.2.0"
+description = "Gallery ingest processor and serving supervisor."
+requires-python = ">=3.15"
+dependencies = []
+
+[tool.uv]
+# Not an installable package. `uv run` runs entrypoint.py and the
+# processor module from the project root.
+package = false

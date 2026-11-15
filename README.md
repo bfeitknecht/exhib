@@ -21,7 +21,7 @@ The design language is the site's original one, kept intact: Helvetica Neue (sys
 The shared document shell is in `layouts/_default/baseof.html`. Every page carries the global bar: `0xbf.ch` on the left; `/`, `/collections/`, `/pieces/`, `/writings/` and `/tags/` on the right. The feeds and sitemap live in the footer. It is styled like the page chrome (Commit Mono, muted). The current view is marked with `aria-current="page"`.
 
 - Home-page card markup: `layouts/partials/listing/item-card.html` (writings reuse it without the image block).
-- Collection image ordering: `layouts/partials/media/sorted-images.html` (images with an EXIF capture date first, oldest first, then `weight` order; generated video posters are excluded).
+- Collection image ordering: `layouts/partials/media/sorted-images.html` (images with an EXIF capture date first, oldest first, then `order`; generated video posters are excluded).
 - Combined image/video ordering: `layouts/partials/media/sorted-media.html`.
 - Fullscreen viewer body: `layouts/partials/media/media-detail.html`.
 - Shared media slice (ordering, overlay ids, aspect ratios): `layouts/partials/media/media-view.html`.
@@ -70,7 +70,7 @@ Clicking the image opens a fullscreen `:target` detail. `X` closes back to the s
 
 ### Writings
 
-Create `content/writings/<slug>/index.md`. Writings are text only. There is no media, no grid and no metadata. The body is markdown. A single newline breaks the line; a blank line separates paragraphs and stanzas. This suits verse. Descriptions are optional.
+On the live site, publish writings with `just upload` (`kind = "writing"`, see [docs/manual.md](docs/manual.md) §5). In the repo, create `content/writings/<slug>/index.md`. Writings are text only. There is no media, no grid and no metadata. The body is markdown. A single newline breaks the line; a blank line separates paragraphs and stanzas. This suits verse. Descriptions are optional.
 
 ```toml
 +++
@@ -104,17 +104,17 @@ thumbnail = "cover.jpg" # omit or set to "" for the mosaic
 src = "cover.jpg"
 title = "Evening light"
 [resources.params]
-weight = 1 # display-order fallback only; not image metadata
+order = 1 # display-order fallback only; not image metadata
 
 [[resources]]
 src = "street.jpg"
 title = "Street after rain"
 [resources.params]
-weight = 2
+order = 2
 +++
 ```
 
-`thumbnail` is only a presentation setting. The selected image stays in the collection grid. If embedded capture dates exist, image order comes from the image metadata. Images with no capture date follow in `weight` order. Videos follow in `weight` order after the images. Videos use their generated poster as the grid tile and as the detail poster. The poster is not listed as a gallery item. `title` is the human caption and alt text. It is not a substitute for EXIF.
+`thumbnail` is only a presentation setting. The selected image stays in the collection grid. If embedded capture dates exist, image order comes from the image metadata. Images with no capture date follow in `order`. Videos follow in `order` after the images. Videos use their generated poster as the grid tile and as the detail poster. The poster is not listed as a gallery item. `title` is the human caption and alt text. It is not a substitute for EXIF.
 
 ### Resource metadata is automatic
 
@@ -160,7 +160,7 @@ Hugo writes static output to `public/`. The home page links to Apex (`https://0x
 
 ## Self-hosting: SWS + media processor on Talos
 
-The public site is served by **Static Web Server (SWS)**. The exhib pod is a **single container** from `ghcr.io/bfeitknecht/exhib:latest` — the same image serves HTTP and ingests uploads, like the other tier-2 apps. `entrypoint.py` starts `static-web-server` (SWS) and `python3 -m processor` side by side and supervises them: if either exits, the other is stopped and the container exits with the same code, so Kubernetes restarts the pod instead of leaving a half-dead gallery. There is no uploader sidecar; uploads go through `kubectl exec` into the single container.
+The public site is served by **Static Web Server (SWS)**. The exhib pod is a **single container** from `ghcr.io/bfeitknecht/exhib:latest` — the same image serves HTTP and ingests uploads, like the other tier-2 apps. `uv run python entrypoint.py` (Python 3.15, uv project at the repo root) starts `static-web-server` (SWS) and `python -m processor` side by side and supervises them: if either exits, the other is stopped and the container exits with the same code, so Kubernetes restarts the pod instead of leaving a half-dead gallery. There is no uploader sidecar; uploads go through `kubectl exec` into the single container.
 
 - **SWS** serves `/data/public`. Its configuration (`sws.toml`, in this repo) is baked into the image at `/etc/sws/sws.toml`; the infra repo carries no `sws.toml`, no ConfigMap and no volume. All responses are `no-cache`; clients revalidate with Last-Modified and unchanged files are answered 304. No served file has a content hash in its name, so no `immutable` rule is used — that would pin stale bytes in returning browsers. SWS provides `/health` for the probes.
 - **Processor** watches `/data/incoming`. It converts media, writes Hugo page bundles into `/data/content`, keeps uploaded originals privately in `/data/originals` and rebuilds the public output. It shares the container with SWS, so an image rebuild is required when the site, the processor, the SWS base version, `sws.toml` or dependencies change. New gallery items do not need an image rebuild or push. The ingest code is a small package (`processor/`, run as `python -m processor`): `paths` (environment-derived locations), `media` (FFmpeg, cwebp and exiftool conversion), `bundle` (manifest validation, page bundles, atomic site rebuild), `__main__` (the poll loop).
@@ -169,17 +169,17 @@ The PVC request is 50 GiB. This gives room for both retained originals and gener
 
 The manifests live in `bfeitknecht/infra` under `kubernetes/applications/exhib/` (the tier-2 layout used by apex and glob): namespace, PVC (`local-path`), a single-container Deployment (probes on `/health`, `fsGroup: 1000`), Service and HTTPRoute for `gallery.0xbf.ch` (matching `baseURL` here), and the owner-created `ghcr.sops.yaml` GHCR pull secret referenced by the Kustomization. A generic busybox initContainer creates the data directories on the PVC. Infra carries no application configuration — no ConfigMap, no `sws.toml`, no environment beyond what the image sets. The Flux Kustomization lives in that repo's `kubernetes/cluster/applications.yaml` (`dependsOn: storage, traefik`, sops decryption). Keel keeps the `:latest` image digest in motion. The infra repo is the single source of truth for cluster state. The reusable GitHub workflow builds the root `Dockerfile` and publishes `ghcr.io/bfeitknecht/exhib` (`:latest` + `:<tag>`) on `v*` tags and on manual dispatch — one image is the whole app and its release, like glob. Content uploads never require an image build. Only template, processor, serving or dependency changes do; re-tag this repo for those.
 
-### Upload a piece or collection
+### Upload a collection, piece or writing
 
-Make a folder whose name is a lowercase slug. Put `manifest.toml` and the source media files in it. The smallest working manifest:
+The full guide is [docs/manual.md](docs/manual.md). Make a folder whose name is a lowercase slug. Put the source media files in it (or one `.md` body for a writing). Run `just manifest path/to/folder` for a local browser editor that writes `manifest.toml` (`tools/manifest/`, a separate uv project that runs only on your machine). The smallest working manifest:
 
 ```toml
-kind = "collection" # or "piece"
+kind = "collection" # or "piece" or "writing"
 title = "Evening walks"
 date = 2026-11-07T18:30:00Z
 ```
 
-The folder name becomes the URL slug. Every supported media file in the folder is included automatically, in numeric-aware filename order, titled after the filename (`01-paper-light.jpg` → “Paper light”). Still images with an EXIF capture date are shown oldest first; the rest follow in filename order. Per-file `[[media]]` tables (`file`, optional `title`, optional `weight`) are only needed to override those defaults — `title` falls back to the filename and `weight` to the position. Optional extras in the manifest: `description` and `thumbnail` (the name of one media file; without it, the feed card uses a mosaic of the first items).
+The folder name becomes the URL slug. Every supported media file in the folder is included automatically, in numeric-aware filename order, titled after the filename (`01-paper-light.jpg` → “Paper light”). Still images with an EXIF capture date are shown oldest first; the rest follow in filename order. Per-file `[[media]]` tables (`file`, optional `title`, optional `order`) are only needed to override those defaults — `title` falls back to the filename and `order` to the position. `order` was called `weight` before; manifests with `weight` are rejected. Optional extras in the manifest: `description` and `thumbnail` (the name of one media file; without it, the feed card uses a mosaic of the first items).
 
 With [`just`](https://just.systems) installed and `kubectl` configured for the Talos cluster, run:
 

@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>exhib manifest</title>
+<style>
+  :root {
+    --bg: oklch(96% 0 0); --fg: oklch(21% 0 0); --muted: oklch(47% 0 0);
+    --line: oklch(85% 0 0); --field: oklch(99% 0 0); --bad: oklch(50% 0.17 25);
+    --sans: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    --mono: "Commit Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: oklch(17% 0 0); --fg: oklch(95% 0 0); --muted: oklch(70% 0 0);
+            --line: oklch(32% 0 0); --field: oklch(21% 0 0); --bad: oklch(70% 0.15 25); }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--sans); }
+  header, main, footer { max-width: 1200px; margin: 0 auto; padding: 1rem 1.5rem; }
+  header { display: flex; flex-wrap: wrap; gap: 1rem; align-items: baseline; justify-content: space-between; }
+  h1 { margin: 0; font: 600 1.4rem var(--sans); }
+  .mono, label, .chip, button, .badge, time { font-family: var(--mono); font-size: .8rem; }
+  .muted { color: var(--muted); }
+  .bad { color: var(--bad); }
+  .top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 2rem; }
+  @media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
+  label { display: block; margin: 1rem 0 .3rem; color: var(--muted); text-transform: lowercase; }
+  input[type=text], input[type=number], input[type=datetime-local], textarea {
+    width: 100%; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: 3px;
+    background: var(--field); color: var(--fg); font: inherit;
+  }
+  textarea { min-height: 6rem; resize: vertical; }
+  textarea.body { min-height: 24rem; font: 1.05rem/1.7 var(--sans); white-space: pre-wrap; }
+  .hint { margin: .25rem 0 0; color: var(--muted); font-size: .8rem; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; }
+  .seg button[aria-pressed=true] { background: var(--fg); color: var(--bg); }
+  button { padding: .4rem .8rem; border: 1px solid var(--line); border-radius: 3px;
+           background: var(--field); color: var(--fg); cursor: pointer; }
+  button:hover { border-color: var(--fg); }
+  button.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .tags { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; padding: .35rem;
+          border: 1px solid var(--line); border-radius: 3px; background: var(--field); }
+  .tags input { flex: 1; min-width: 8rem; border: 0; padding: .2rem; background: transparent; color: var(--fg); font: inherit; outline: none; }
+  .chip { display: inline-flex; gap: .3rem; align-items: center; padding: .1rem .5rem;
+          border: 1px solid var(--line); border-radius: 999px; }
+  .chip button { padding: 0 .2rem; border: 0; background: none; line-height: 1; }
+  /* Homepage card preview */
+  .card { border-top: 1px solid var(--line); padding-top: 1rem; }
+  .card .art { aspect-ratio: 1.41421356 / 1; background: var(--line); overflow: hidden; }
+  .card .art > * { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card .mosaic { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: 2px; background: var(--bg); }
+  .card .mosaic > * { width: 100%; height: 100%; object-fit: cover; min-height: 0; }
+  .card h2 { margin: .7rem 0 .1rem; font: 600 1.15rem var(--sans); }
+  .card p { margin: .4rem 0; }
+  .card .chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+  /* Media grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .8rem; margin-top: .6rem; }
+  .tile { position: relative; padding: 0; border: 2px solid transparent; background: none; text-align: left; cursor: grab; }
+  .tile.selected { border-color: var(--fg); }
+  .tile.off { opacity: .35; }
+  .tile.drop { border-style: dashed; border-color: var(--muted); }
+  .tile .art { aspect-ratio: 1.41421356 / 1; background: var(--line); overflow: hidden; display: grid; place-items: center; }
+  .tile .art img, .tile .art video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile .cap { display: block; padding: .3rem .1rem 0; font: .85rem var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badges { position: absolute; top: .3rem; left: .3rem; display: flex; gap: .25rem; }
+  .badge { padding: 0 .35rem; background: var(--fg); color: var(--bg); border-radius: 2px; }
+  .fallback { padding: .5rem; font: .75rem var(--mono); color: var(--muted); word-break: break-all; }
+  .detail { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.5rem; margin-top: 1.5rem;
+            padding-top: 1rem; border-top: 1px solid var(--line); }
+  @media (max-width: 860px) { .detail { grid-template-columns: 1fr; } }
+  .detail .big { max-height: 60vh; display: grid; place-items: center; background: var(--line); }
+  .detail .big img, .detail .big video { max-width: 100%; max-height: 60vh; display: block; }
+  .row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+  footer { position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); }
+  footer .bar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+  pre { margin: .8rem 0 0; padding: .8rem; max-height: 14rem; overflow: auto; border: 1px solid var(--line);
+        background: var(--field); font: .8rem/1.5 var(--mono); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1 id="slug"></h1>
+    <div class="mono muted" id="folder"></div>
+    <div class="mono bad" id="slugWarn" hidden>Folder name is not a lowercase slug. Rename it before upload.</div>
+  </div>
+  <div class="seg" id="kinds">
+    <button type="button" data-kind="collection">collection</button>
+    <button type="button" data-kind="piece">piece</button>
+    <button type="button" data-kind="writing">writing</button>
+  </div>
+</header>
+
+<main>
+  <section class="top">
+    <div>
+      <label for="title">title</label>
+      <input type="text" id="title">
+      <label for="date">date</label>
+      <input type="datetime-local" id="date" step="1">
+      <p class="hint">Local time. Saved as UTC. Sets feed order, newest first. A future date stays hidden until then.</p>
+      <label for="description">description</label>
+      <textarea id="description" placeholder="Optional. Markdown."></textarea>
+      <p class="hint">Shown on the homepage card and under the page title.</p>
+      <label for="tagInput">tags</label>
+      <div class="tags" id="tags"><input type="text" id="tagInput" placeholder="type, then Enter"></div>
+      <p class="hint">Lowercase slug words, e.g. evergrowing, design, essay.</p>
+    </div>
+    <aside>
+      <label>homepage card</label>
+      <div class="card">
+        <div class="art" id="cardArt"></div>
+        <h2 id="cardTitle"></h2>
+        <time id="cardDate" class="muted"></time>
+        <p id="cardDesc"></p>
+        <div class="chips" id="cardTags"></div>
+      </div>
+    </aside>
+  </section>
+
+  <section id="mediaSection">
+    <label>media <span class="muted" id="mediaHint"></span></label>
+    <div class="grid" id="grid"></div>
+    <p class="hint">Click a tile to edit it. Drag tiles to reorder. Images with an EXIF capture date still show oldest first on the site; this order applies to the rest.</p>
+    <div class="detail" id="detail" hidden>
+      <div class="big" id="bigArt"></div>
+      <div>
+        <div class="mono muted" id="detailName"></div>
+        <label for="itemTitle">caption</label>
+        <input type="text" id="itemTitle">
+        <p class="hint">Empty uses the file name.</p>
+        <label for="itemOrder">order</label>
+        <input type="number" id="itemOrder" min="1" step="1">
+        <p class="hint">Position in the grid; 1 comes first. Saved as <code>order</code>.</p>
+        <label><input type="checkbox" id="itemIncluded"> include</label>
+        <div class="row">
+          <button type="button" id="moveLeft">← earlier</button>
+          <button type="button" id="moveRight">later →</button>
+          <button type="button" id="makeThumb">use as thumbnail</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="bodySection" hidden>
+    <label for="body">body <span class="muted" id="bodyFile"></span></label>
+    <textarea class="body" id="body" placeholder="Markdown. One newline breaks the line. A blank line starts a stanza."></textarea>
+  </section>
+</main>
+
+<footer>
+  <div class="bar">
+    <button type="button" class="primary" id="save">Save manifest (⌘S)</button>
+    <span class="mono" id="status"></span>
+  </div>
+  <pre id="output" hidden></pre>
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let state = null;
+let selected = null;
+let dirty = false;
+
+const media = (name) => "/media/" + encodeURIComponent(name);
+const shown = (item) => item.title || item.default_title;
+const included = () => state.items.filter((i) => i.included);
+
+function pad(n) { return String(n).padStart(2, "0"); }
+function toLocalInput(iso) {
+  const d = iso ? new Date(iso) : new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+function fromLocalInput(value) { return new Date(value).toISOString().slice(0, 19) + "Z"; }
+
+function artFor(item, opts = {}) {
+  const fallback = () => { const d = document.createElement("div"); d.className = "fallback"; d.textContent = item.name; return d; };
+  let el;
+  if (item.type === "video") {
+    el = document.createElement("video");
+    // #t=0.1 makes the browser paint a first frame without autoplay.
+    Object.assign(el, { src: media(item.name) + (opts.autoplay || opts.controls ? "" : "#t=0.1"), muted: true, loop: true, playsInline: true, autoplay: !!opts.autoplay, controls: !!opts.controls });
+    el.preload = "metadata";
+  } else {
+    el = document.createElement("img");
+    el.src = media(item.name);
+    el.loading = "lazy";
+    el.alt = "";
+  }
+  el.addEventListener("error", () => el.replaceWith(fallback()), { once: true });
+  return el;
+}
+
+function touch() { dirty = true; $("status").textContent = "unsaved"; render(); }
+
+function renderKind() {
+  for (const b of $("kinds").children) b.setAttribute("aria-pressed", b.dataset.kind === state.kind);
+  const writing = state.kind === "writing";
+  $("mediaSection").hidden = writing;
+  $("bodySection").hidden = !writing;
+  $("makeThumb").hidden = state.kind !== "collection";
+  $("cardArt").hidden = writing;
+  const n = included().length;
+  $("mediaHint").textContent = state.kind === "piece"
+    ? `(${n} included; a piece shows the first one)`
+    : `(${n} of ${state.items.length} included)`;
+}
+
+function renderTags() {
+  const box = $("tags");
+  box.querySelectorAll(".chip").forEach((c) => c.remove());
+  state.tags.forEach((tag, i) => {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.textContent = tag;
+    const x = document.createElement("button");
+    x.type = "button"; x.textContent = "×"; x.title = "remove";
+    x.onclick = () => { state.tags.splice(i, 1); touch(); };
+    chip.append(x);
+    box.insertBefore(chip, $("tagInput"));
+  });
+}
+
+function renderCardText() {
+  $("cardTitle").textContent = $("title").value || "(no title)";
+  const d = $("date").value ? new Date($("date").value) : null;
+  $("cardDate").textContent = d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : "";
+  $("cardDesc").textContent = $("description").value;
+  $("cardTags").replaceChildren(...state.tags.map((t) => Object.assign(document.createElement("span"), { className: "chip", textContent: t })));
+}
+
+let cardKey = null;
+function renderCardArt() {
+  const key = JSON.stringify([state.kind, state.thumbnail, included().map((i) => i.name)]);
+  if (key === cardKey) return;
+  cardKey = key;
+  const art = $("cardArt");
+  art.replaceChildren();
+  art.classList.remove("mosaic");
+  const items = included();
+  const thumb = state.kind === "collection" && items.find((i) => i.name === state.thumbnail);
+  if (state.kind === "piece" || thumb) {
+    const first = thumb || items[0];
+    if (first) art.append(artFor(first, { autoplay: true }));
+  } else {
+    art.classList.add("mosaic");
+    items.slice(0, 9).forEach((i) => art.append(artFor(i, { autoplay: true })));
+  }
+}
+
+function renderGrid() {
+  const grid = $("grid");
+  grid.replaceChildren();
+  if (!state.items.length) {
+    grid.append(Object.assign(document.createElement("p"), { className: "hint", textContent: "No supported media in this folder." }));
+  }
+  state.items.forEach((item, index) => {
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = "tile" + (item.included ? "" : " off") + (item === selected ? " selected" : "");
+    tile.draggable = true;
+    const art = document.createElement("span");
+    art.className = "art";
+    art.append(artFor(item));
+    const badges = document.createElement("span");
+    badges.className = "badges";
+    const add = (t) => badges.append(Object.assign(document.createElement("span"), { className: "badge", textContent: t }));
+    if (item.included) add(String(included().indexOf(item) + 1));
+    if (item.type === "video") add("video");
+    if (state.kind === "collection" && item.name === state.thumbnail) add("thumb");
+    const cap = Object.assign(document.createElement("span"), { className: "cap", textContent: shown(item) });
+    tile.append(art, badges, cap);
+    tile.onclick = () => { selected = item; render(); };
+    tile.ondragstart = (e) => { e.dataTransfer.setData("text/plain", String(index)); };
+    tile.ondragover = (e) => { e.preventDefault(); tile.classList.add("drop"); };
+    tile.ondragleave = () => tile.classList.remove("drop");
+    tile.ondrop = (e) => {
+      e.preventDefault();
+      const from = Number(e.dataTransfer.getData("text/plain"));
+      if (from === index) return;
+      const [moved] = state.items.splice(from, 1);
+      state.items.splice(index, 0, moved);
+      touch();
+    };
+    grid.append(tile);
+  });
+}
+
+let detailFor = null;
+function renderDetail() {
+  $("detail").hidden = !selected;
+  if (!selected) return;
+  if (detailFor !== selected) {
+    detailFor = selected;
+    $("bigArt").replaceChildren(artFor(selected, { controls: true }));
+    $("itemTitle").value = selected.title;
+  }
+  $("detailName").textContent = selected.name;
+  $("itemTitle").placeholder = selected.default_title;
+  $("itemIncluded").checked = selected.included;
+  const rank = included().indexOf(selected);
+  $("itemOrder").disabled = !selected.included;
+  $("itemOrder").max = included().length;
+  if (document.activeElement !== $("itemOrder")) $("itemOrder").value = rank < 0 ? "" : rank + 1;
+  $("makeThumb").textContent = state.thumbnail === selected.name ? "clear thumbnail" : "use as thumbnail";
+}
+
+function render() { renderKind(); renderTags(); renderCardText(); renderCardArt(); renderGrid(); renderDetail(); }
+
+function collect() {
+  return {
+    kind: state.kind,
+    title: $("title").value,
+    date: fromLocalInput($("date").value),
+    description: $("description").value,
+    tags: state.tags,
+    thumbnail: state.thumbnail,
+    items: state.items.map(({ name, title, included }) => ({ name, title, included })),
+    body: $("body").value,
+  };
+}
+
+async function save() {
+  if (!$("date").value) { $("status").textContent = "date is required"; return; }
+  $("status").textContent = "saving…";
+  const res = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(collect()) });
+  const data = await res.json();
+  if (!res.ok) { $("status").innerHTML = ""; $("status").append(Object.assign(document.createElement("span"), { className: "bad", textContent: data.error })); return; }
+  dirty = false;
+  $("status").textContent = `saved. next: just upload ${state.folder}`;
+  $("output").hidden = false;
+  $("output").textContent = data.manifest;
+}
+
+function addTag() {
+  const raw = $("tagInput").value.trim().toLowerCase().replace(/\s+/g, "-").replace(/,+$/, "");
+  $("tagInput").value = "";
+  if (raw && !state.tags.includes(raw)) { state.tags.push(raw); touch(); }
+}
+
+async function init() {
+  state = await (await fetch("/api/state")).json();
+  document.title = `${state.slug} · exhib manifest`;
+  $("slug").textContent = state.slug;
+  $("folder").textContent = state.folder + (state.has_manifest ? "" : "  (new manifest)");
+  $("slugWarn").hidden = state.slug_ok;
+  $("title").value = state.title;
+  $("date").value = toLocalInput(state.date);
+  $("description").value = state.description;
+  $("body").value = state.body;
+  $("bodyFile").textContent = `(${state.body_file})`;
+  render();
+}
+
+for (const b of $("kinds").children) b.onclick = () => { state.kind = b.dataset.kind; touch(); };
+for (const id of ["title", "date", "description", "body"]) $(id).addEventListener("input", () => { dirty = true; $("status").textContent = "unsaved"; renderCardText(); });
+$("tagInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(); }
+  else if (e.key === "Backspace" && !$("tagInput").value && state.tags.length) { state.tags.pop(); touch(); }
+});
+$("tagInput").addEventListener("blur", addTag);
+$("itemTitle").addEventListener("input", () => { selected.title = $("itemTitle").value; touch(); });
+$("itemIncluded").addEventListener("change", () => {
+  selected.included = $("itemIncluded").checked;
+  if (!selected.included && state.thumbnail === selected.name) state.thumbnail = "";
+  touch();
+});
+const move = (delta) => {
+  const i = state.items.indexOf(selected), j = i + delta;
+  if (j < 0 || j >= state.items.length) return;
+  [state.items[i], state.items[j]] = [state.items[j], state.items[i]];
+  touch();
+};
+// Move the selected item to position n among the included items.
+function setOrder(n) {
+  const list = included();
+  const target = Math.min(Math.max(1, Math.round(n) || 1), list.length);
+  if (list.indexOf(selected) === target - 1) return;
+  state.items.splice(state.items.indexOf(selected), 1);
+  const rest = included();
+  const anchor = rest[target - 1];
+  if (anchor) state.items.splice(state.items.indexOf(anchor), 0, selected);
+  else state.items.splice(state.items.indexOf(rest[rest.length - 1]) + 1, 0, selected);
+  touch();
+}
+$("itemOrder").addEventListener("change", () => setOrder(Number($("itemOrder").value)));
+$("moveLeft").onclick = () => move(-1);
+$("moveRight").onclick = () => move(1);
+$("makeThumb").onclick = () => {
+  state.thumbnail = state.thumbnail === selected.name ? "" : selected.name;
+  if (state.thumbnail) selected.included = true;
+  touch();
+};
+$("save").onclick = save;
+document.addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); save(); } });
+window.addEventListener("beforeunload", (e) => { if (dirty) e.preventDefault(); });
+init();
+</script>
+</body>
+</html>
