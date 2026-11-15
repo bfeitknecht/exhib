@@ -266,7 +266,7 @@ The uploader sidecar was a busybox container that slept. Its only job was to be 
 
 The single container runs `entrypoint.py`, which starts two children and supervises them:
 
-- `static-web-server`: serves `/data/public` on `8080`, `/livez` and `/readyz` for probes, `Cache-Control: no-cache` on all responses.
+- `static-web-server`: serves `/data/public` on `8080`, `/health` for probes, `Cache-Control: no-cache` on all responses.
 - `python3 -m processor`: the ingest loop.
 
 If one child exits, the supervisor stops the other and exits with the same code. Kubernetes then restarts the pod.
@@ -335,7 +335,7 @@ Templates, CSS, JS, processor, `sws.toml`, `Dockerfile`: commit, then push a `v*
 PR #8 changes the image entrypoint to run SWS too. Production infra still runs 3 containers (`sws`, `uploader`, `processor`). Order matters:
 
 1. Merge PR #8, tag exhib. Keel rolls the `processor` container to the new image. Its SWS cannot bind `8080` (the `sws` container holds it), so the supervisor exits and `processor` crash-loops. The `sws` container keeps serving the old site. Uploads stop.
-2. Tag infra with the single-container Deployment right after: one `exhib` container, port `8080`, probes `/readyz` and `/livez`, memory limit from the old processor (`2Gi`), `/data` mounted read-write. Delete `sws.toml`, the `exhib-sws` `configMapGenerator`, the `sws-config` volume and the `uploader` container.
+2. Tag infra with the single-container Deployment right after: one `exhib` container, port `8080`, probes `/health`, memory limit from the old processor (`2Gi`), `/data` mounted read-write. Delete `sws.toml`, the `exhib-sws` `configMapGenerator`, the `sws-config` volume and the `uploader` container.
 
 Do not tag infra first. The old image does not run SWS, so the site would go down.
 

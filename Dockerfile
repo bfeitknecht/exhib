@@ -8,7 +8,8 @@ ARG HUGO_VERSION=0.169.0
 ARG SWS_VERSION=2.44.1
 # BuildKit sets TARGETARCH per platform. A default here overrides it.
 ARG TARGETARCH
-RUN apk add --no-cache ca-certificates ffmpeg libheif-tools libwebp-tools exiftool python3 wget tar \
+# Hugo extended is glibc-linked. gcompat and libstdc++ let it run on musl.
+RUN apk add --no-cache ca-certificates gcompat libstdc++ ffmpeg libheif-tools libwebp-tools exiftool python3 wget tar \
  && case "${TARGETARCH}" in \
       amd64) HUGO_ARCH=amd64 SWS_ARCH=x86_64-unknown-linux-musl SWS_SHA256=8f94abd9bc9c6d11240301d7271b95f9ec05b1b3e8509087c86ca8fd0b56fb4e ;; \
       arm64) HUGO_ARCH=arm64 SWS_ARCH=aarch64-unknown-linux-musl SWS_SHA256=28e53e5979735309ec3de685330719a11a0ef339aa06d0f0cd8eff5d973b9dfc ;; \
