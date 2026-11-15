@@ -1,0 +1,5 @@
+{{/* Title and caption rows of a media item, first in the detail panel.
+     Title defaults to the file name (processor). Caption is optional
+     markdown. */}}
+{{- with .Title }}<div class="metadata-row"><dt>Title</dt><dd>{{ . }}</dd></div>{{ end -}}
+{{- with .Params.caption }}<div class="metadata-row"><dt>Caption</dt><dd>{{ . | markdownify }}</dd></div>{{ end -}}

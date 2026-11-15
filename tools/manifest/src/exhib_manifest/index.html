@@ -37,6 +37,7 @@
     background: var(--field); color: var(--fg); font: inherit;
   }
   textarea { min-height: 6rem; resize: vertical; }
+  textarea.caption { min-height: 3.2rem; }
   textarea.body { min-height: 24rem; font: 1.05rem/1.7 var(--sans); white-space: pre-wrap; }
   .hint { margin: .25rem 0 0; color: var(--muted); font-size: .8rem; }
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
@@ -86,7 +87,7 @@
   .detail { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.5rem; margin-top: 1.5rem;
             padding-top: 1rem; border-top: 1px solid var(--line); }
   @media (max-width: 860px) { .detail { grid-template-columns: 1fr; } }
-  .detail .big { display: grid; place-items: center; background: var(--line); min-height: 8rem; }
+  .detail .big { display: grid; place-items: center; min-height: 8rem; }
   .stage { position: relative; display: inline-block; line-height: 0; overflow: hidden; touch-action: none; }
   .stage img, .stage video { max-width: 100%; max-height: 60vh; display: block; user-select: none; -webkit-user-drag: none; }
   /* Cover crop frame: the card's 1:√2 window over the image. The shadow dims the rest. */
@@ -165,8 +166,10 @@
       <div class="big" id="bigArt"></div>
       <div>
         <div class="mono muted" id="detailName"></div>
-        <label for="itemTitle">caption</label>
+        <label for="itemTitle">title</label>
         <input type="text" id="itemTitle">
+        <label for="itemCaption">caption</label>
+        <textarea id="itemCaption" rows="2" class="caption"></textarea>
         <label for="itemPosition">position</label>
         <input type="number" id="itemPosition" min="1" step="1">
         <label><input type="checkbox" id="itemIncluded"> include</label>
@@ -458,6 +461,7 @@ function renderDetail() {
     }
     $("bigArt").replaceChildren(stage);
     $("itemTitle").value = selected.title;
+    $("itemCaption").value = selected.caption;
   }
   placeFrame();
   $("detailName").textContent = selected.name;
@@ -484,7 +488,7 @@ function collect() {
     tags: state.tags,
     thumbnail: state.thumbnail,
     thumbnail_focus: state.thumbnail_focus,
-    items: state.items.map(({ name, title, included }) => ({ name, title, included })),
+    items: state.items.map(({ name, title, caption, included }) => ({ name, title, caption, included })),
     body: $("body").value,
   };
 }
@@ -564,6 +568,7 @@ $("tagInput").addEventListener("keydown", (e) => {
 });
 $("tagInput").addEventListener("blur", addTag);
 $("itemTitle").addEventListener("input", () => { selected.title = $("itemTitle").value; touch(); });
+$("itemCaption").addEventListener("input", () => { selected.caption = $("itemCaption").value; markDirty(); });
 $("itemIncluded").addEventListener("change", () => {
   selected.included = $("itemIncluded").checked;
   if (!selected.included && state.thumbnail === selected.name) state.thumbnail = "";

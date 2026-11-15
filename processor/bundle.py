@@ -148,6 +148,7 @@ def build_front_matter(
             "resolution",
             "framerate",
             "duration",
+            "caption",
             "date",
             "poster",
             "role",
@@ -236,7 +237,10 @@ def write_media_bundle(package: Path, manifest: dict, bundle_dir: Path) -> None:
         if not source.is_file():
             raise ValueError(f"media file does not exist: {entry['file']}")
         ext = source.suffix.lower()
+        # Title: short name, defaults to the file name. Caption: optional
+        # markdown text shown under the title in the detail panel.
         title = str(entry.get("title") or humanize_stem(source.stem))
+        caption = str(entry.get("caption") or "").strip()
         position = int(entry.get("position", index))
         if ext in IMAGE_EXTS:
             filename = convert_image(source, converted).name
@@ -244,6 +248,7 @@ def write_media_bundle(package: Path, manifest: dict, bundle_dir: Path) -> None:
                 {
                     "file": filename,
                     "title": title,
+                    "caption": caption,
                     "position": position,
                     "kind": "image",
                 }
@@ -255,6 +260,7 @@ def write_media_bundle(package: Path, manifest: dict, bundle_dir: Path) -> None:
                 {
                     "file": output.name,
                     "title": title,
+                    "caption": caption,
                     "position": position,
                     "kind": "video",
                     "poster": poster.name,

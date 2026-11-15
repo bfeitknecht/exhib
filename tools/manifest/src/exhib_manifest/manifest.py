@@ -126,6 +126,7 @@ def load_state(folder: Path) -> dict:
     names = [p.name for p in files]
     listed = manifest.get("media")
     titles: dict[str, str] = {}
+    captions: dict[str, str] = {}
     if isinstance(listed, list):
         # Same rule as the processor: explicit position, else list index.
         # Manifests from before the rename may say order or weight.
@@ -140,6 +141,9 @@ def load_state(folder: Path) -> dict:
         )
         order = [name for _, _, name in ranked]
         titles = {str(e["file"]): str(e["title"]) for e in listed if e.get("title")}
+        captions = {
+            str(e["file"]): str(e["caption"]) for e in listed if e.get("caption")
+        }
         included = set(order)
         order += [n for n in names if n not in included]
     else:
@@ -174,6 +178,7 @@ def load_state(folder: Path) -> dict:
                 "type": media_type(by_name[name]),
                 "default_title": humanize_stem(by_name[name].stem),
                 "title": titles.get(name, ""),
+                "caption": captions.get(name, ""),
                 "included": name in included,
             }
             for name in order
@@ -241,17 +246,18 @@ def render(folder: Path, data: dict) -> tuple[str, str | None]:
         if focus and focus != CENTER:
             lines.append(f"thumbnail_focus = [{focus[0]}, {focus[1]}]")
 
-    titled = {
-        i["name"]: str(i.get("title") or "").strip()
-        for i in chosen
-        if str(i.get("title") or "").strip()
-    }
-    defaults = [i["name"] for i in chosen] == names and not titled
+    def text(item: dict, key: str) -> str:
+        return str(item.get(key) or "").strip()
+
+    custom = any(text(i, "title") or text(i, "caption") for i in chosen)
+    defaults = [i["name"] for i in chosen] == names and not custom
     if not defaults:
         for index, item in enumerate(chosen, 1):
             lines += ["", "[[media]]", f"file = {toml_string(item['name'])}"]
-            if item["name"] in titled:
-                lines.append(f"title = {toml_string(titled[item['name']])}")
+            # Empty title: the processor uses the file name.
+            for key in ("title", "caption"):
+                if text(item, key):
+                    lines.append(f"{key} = {toml_string(text(item, key))}")
             lines.append(f"position = {index}")
     return "\n".join(lines) + "\n", None
 

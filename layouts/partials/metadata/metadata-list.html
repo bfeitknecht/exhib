@@ -1,10 +1,12 @@
 {{/* Render the automatic metadata of an image resource.
-     Output order: resolution, capture date, then the EXIF, IPTC and XMP groups. */}}
+     Output order: title, caption, resolution, capture date, then the EXIF,
+     IPTC and XMP groups. */}}
 {{- $image := .image -}}
 {{- $dimensions := partial "media/image-dimensions.html" $image -}}
 {{- $width := index $dimensions "width" -}}
 {{- $height := index $dimensions "height" -}}
 <dl class="metadata-list">
+  {{ partial "metadata/item-text.html" $image }}
   {{ if and (gt $width 0) (gt $height 0) }}<div class="metadata-row"><dt>Resolution</dt><dd>{{ $width }} × {{ $height }} px</dd></div>{{ end }}
   {{ if reflect.IsImageResourceWithMeta $image }}
     {{ with $image.Meta }}

@@ -89,11 +89,11 @@ On the page:
 - **Card**: live preview of the homepage card: cover or mosaic, title, date, rendered description, tags.
 - **Sort** (right of the media label): `position` or `date`. Saved as `sort`; `position` writes nothing.
 - **Media grid** (collection, piece): one tile per file, in position order. Badges show the `position` and `cover`. Excluded tiles are dimmed. Drag tiles to reorder. Click a tile to edit it.
-- **Item editor** (below the grid, after a click): large preview, caption (empty means the file name), `position` (1 comes first; a number past the end means last), include, ← / → to move, and **cover** (collection only).
+- **Item editor** (below the grid, after a click): large preview, title (empty means the file name), caption (optional, markdown), `position` (1 comes first; a number past the end means last), include, ← / → to move, and **cover** (collection only).
 - **Cover**: press **cover** to make this item the homepage cover; press it again for the mosaic of the first nine images. Pressing it on another item moves the cover. A cover is always included. A video cover shows its poster on the site.
 - **Cover crop**: while the item is the cover, the large preview shows the card's 1:√2 frame. Drag it to choose the part shown on the card; the card preview follows. **center** resets it. An image with the card's aspect ratio has nothing to crop.
 - **Body** (writing): the text, saved to `body.md` (or to the one `.md` file already in the folder).
-- **save** (button or ⌘S): checks the values and writes `manifest.toml`. Errors show next to the button; nothing is written then. The saved text shows below. `[[media]]` tables (`file`, `title`, `position`) appear only if you excluded a file, changed the order or set a caption. `thumbnail_focus` appears only if the crop is not centered.
+- **save** (button or ⌘S): checks the values and writes `manifest.toml`. Errors show next to the button; nothing is written then. The saved text shows below. `[[media]]` tables (`file`, `title`, `caption`, `position`) appear only if you excluded a file, changed the order, or set a title or caption. `thumbnail_focus` appears only if the crop is not centered.
 
 Full flow for one collection:
 
@@ -127,7 +127,9 @@ Without `[[media]]`:
 
 - Every supported file in the folder becomes one item. Hidden files and unknown types are skipped.
 - Order is numeric-aware filename order (`2-a.jpg` before `10-b.jpg`).
-- Caption comes from the file name: `01-paper-light.jpg` becomes "Paper light".
+- Title comes from the file name: `01-paper-light.jpg` becomes "Paper light". No caption.
+
+In the fullscreen view, the info panel starts with **Title** and, if set, **Caption**, then resolution, capture date and the image metadata (or format, frame rate and duration for a video). The title is also the image alt text.
 
 With `[[media]]`, only the listed files are included:
 
@@ -135,6 +137,7 @@ With `[[media]]`, only the listed files are included:
 [[media]]
 file = "IMG_4012.HEIC"
 title = "Street after rain"   # optional; falls back to the file name
+caption = "Zurich, *late*."   # optional; markdown, shown under the title
 position = 1                  # optional; falls back to list index
 
 [[media]]
