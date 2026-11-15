@@ -10,3 +10,4 @@ justfile
 .venv/
 docs/
 tools/
+uploads/

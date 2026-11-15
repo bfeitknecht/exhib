@@ -7,8 +7,8 @@ Commands are nushell. `kubectl` must point at the cluster
 Short form:
 
 ```nu
-just manifest path/to/2026-11   # edit manifest.toml in the browser
-just upload path/to/2026-11     # send it to the gallery
+just manifest uploads/2026-11   # edit manifest.toml in the browser
+just upload uploads/2026-11     # send it to the gallery
 just logs                       # watch it publish
 ```
 
@@ -28,7 +28,8 @@ The library is the PVC `exhib-site`, mounted at `/data` in the pod. The image ho
 │   ├── collection/<slug>/
 │   ├── piece/<slug>/
 │   └── writing/<slug>/
-└── public/        Hugo output; SWS serves this at gallery.0xbf.ch
+├── public/        Hugo output; SWS serves this at gallery.0xbf.ch
+└── .hugo-resources/  Hugo resized previews; cache, safe to delete
 ```
 
 What lives where:
@@ -210,6 +211,37 @@ just logs
 Success prints `Published collection 2026-11` (or `piece`, `writing`). The page is live at `https://gallery.0xbf.ch/collections/2026-11/`. No commit, tag or image build is needed.
 
 Video conversion is slow (lossless VP9 on the Pi). A minute of video can take many minutes. The site keeps serving the old build until the new build is complete.
+
+### 6.1 Staging folder and size limits
+
+Keep upload folders in `uploads/` at the repo root. Git and Docker ignore it. Do **not** put upload folders in `content/`: that only seeds an empty PVC, and it puts the files into git and the image.
+
+```nu
+just manifest uploads/bw
+just upload uploads/bw
+```
+
+The pod has 2 GiB. Measured with a 2 GiB cap:
+
+| Step                                    | Peak memory                      |
+| --------------------------------------- | -------------------------------- |
+| `cwebp` on 4961×7016 RGBA (35 Mpx)      | 0.6–0.8 GB                       |
+| `cwebp` on 7016×9921 RGBA (70 Mpx)      | 1.5 GB (too close; do not use)   |
+| Hugo cold build with 35 Mpx posters     | 1.5 GB (2 threads, `GOMEMLIMIT`) |
+
+Keep images at or below about 35 Mpx (A2 at 300 dpi, 4961×7016). Downscale larger ones before upload:
+
+```nu
+sips --resampleHeightWidth 7016 4961 uploads/bw/abriss.png
+```
+
+If a step is killed for memory, the upload fails like any other (§8), and the site stays up. `EXHIB_HUGO_THREADS` (default `2`) and `EXHIB_HUGO_MEMLIMIT` (default `1GiB`) in the pod env tune the Hugo build.
+
+Avoid `?`, `*`, `[` and `]` in file names. Hugo reads a resource `src` as a glob, so `??.png` matches other files and the image drops off the page.
+
+### 6.2 Previews
+
+The grid, the homepage cards and the piece stage show resized lossy WebP previews (1200 px wide; 2400 px for the piece stage) that Hugo makes at build time. The fullscreen view shows the lossless original and loads it only when opened. Previews are cached in `/data/.hugo-resources`, so a rebuild or pod restart reuses them. The first build after a new image makes all missing previews once.
 
 Hugo does not build pages with a date in the future. A future-dated item appears only at the first rebuild after that date. Rebuilds happen on upload, `just rebuild` or pod restart.
 
