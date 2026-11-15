@@ -27,7 +27,7 @@
   .top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 2rem; }
   @media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
   label { display: block; margin: 1rem 0 .3rem; color: var(--muted); text-transform: lowercase; }
-  input[type=text], input[type=number], select, textarea {
+  input[type=text], input[type=number], textarea {
     width: 100%; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: 3px;
     background: var(--field); color: var(--fg); font: inherit;
   }
@@ -69,6 +69,13 @@
   .tile .cap { display: block; padding: .3rem .1rem 0; font: .85rem var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .badges { position: absolute; top: .3rem; left: .3rem; display: flex; gap: .25rem; }
   .badge { padding: 0 .35rem; background: var(--fg); color: var(--bg); border-radius: 2px; }
+  .cover-toggle { position: absolute; top: .3rem; right: .3rem; padding: .05rem .45rem; font-size: .75rem;
+                  background: var(--bg); color: var(--fg); border: 1px solid var(--fg); border-radius: 999px;
+                  opacity: 0; transition: opacity .15s; }
+  .tile:hover .cover-toggle, .tile:focus-within .cover-toggle, .cover-toggle:focus-visible { opacity: .9; }
+  .cover-toggle[aria-pressed=true] { opacity: 1; background: var(--fg); color: var(--bg); }
+  .tile.cover { border-color: var(--fg); border-style: double; border-width: 4px; }
+  .tile:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
   .fallback { padding: .5rem; font: .75rem var(--mono); color: var(--muted); word-break: break-all; }
   .detail { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.5rem; margin-top: 1.5rem;
             padding-top: 1rem; border-top: 1px solid var(--line); }
@@ -128,18 +135,14 @@
         <div id="cardDesc" class="desc"></div>
         <div class="chips" id="cardTags"></div>
       </div>
-      <div id="coverBox">
-        <label for="cover">cover</label>
-        <select id="cover"></select>
-        <p class="hint">What the homepage card shows. Mosaic: the first nine images. Or pick one file. Same as "use as thumbnail" on a tile.</p>
-      </div>
+      <p class="hint" id="coverHint"></p>
     </aside>
   </section>
 
   <section id="mediaSection">
     <label>media <span class="muted" id="mediaHint"></span></label>
     <div class="grid" id="grid"></div>
-    <p class="hint">Click a tile to edit it. Drag tiles to reorder. Images with an EXIF capture date still show oldest first on the site; this order applies to the rest.</p>
+    <p class="hint">Click a tile to edit it. Drag tiles to reorder. Hover a tile and toggle "cover" to make it the homepage cover (collections). Images with an EXIF capture date still show oldest first on the site; this order applies to the rest.</p>
     <div class="detail" id="detail" hidden>
       <div class="big" id="bigArt"></div>
       <div>
@@ -154,7 +157,6 @@
         <div class="row">
           <button type="button" id="moveLeft">← earlier</button>
           <button type="button" id="moveRight">later →</button>
-          <button type="button" id="makeThumb">use as thumbnail</button>
         </div>
       </div>
     </div>
@@ -246,7 +248,6 @@ function renderKind() {
   const writing = state.kind === "writing";
   $("mediaSection").hidden = writing;
   $("bodySection").hidden = !writing;
-  $("makeThumb").hidden = state.kind !== "collection";
   $("cardArt").hidden = writing;
   const n = included().length;
   $("mediaHint").textContent = state.kind === "piece"
@@ -337,8 +338,9 @@ function renderGrid() {
     grid.append(Object.assign(document.createElement("p"), { className: "hint", textContent: "No supported media in this folder." }));
   }
   state.items.forEach((item, index) => {
-    const tile = document.createElement("button");
-    tile.type = "button";
+    const tile = document.createElement("div");
+    tile.setAttribute("role", "button");
+    tile.tabIndex = 0;
     tile.className = "tile" + (item.included ? "" : " off") + (item === selected ? " selected" : "");
     tile.draggable = true;
     const art = document.createElement("span");
@@ -349,10 +351,21 @@ function renderGrid() {
     const add = (t) => badges.append(Object.assign(document.createElement("span"), { className: "badge", textContent: t }));
     if (item.included) add(String(included().indexOf(item) + 1));
     if (item.type === "video") add("video");
-    if (state.kind === "collection" && item.name === state.thumbnail) add("thumb");
     const cap = Object.assign(document.createElement("span"), { className: "cap", textContent: shown(item) });
     tile.append(art, badges, cap);
+    if (state.kind === "collection") {
+      const isCover = item.name === state.thumbnail;
+      const toggle = Object.assign(document.createElement("button"), {
+        type: "button", className: "cover-toggle", textContent: "cover",
+        title: isCover ? "Homepage cover. Click for the mosaic." : "Use as homepage cover",
+      });
+      toggle.setAttribute("aria-pressed", isCover);
+      toggle.onclick = (e) => { e.stopPropagation(); toggleCover(item); };
+      tile.append(toggle);
+      tile.classList.toggle("cover", isCover);
+    }
     tile.onclick = () => { selected = item; render(); };
+    tile.onkeydown = (e) => { if (e.target === tile && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); tile.click(); } };
     tile.ondragstart = (e) => { e.dataTransfer.setData("text/plain", String(index)); };
     tile.ondragover = (e) => { e.preventDefault(); tile.classList.add("drop"); };
     tile.ondragleave = () => tile.classList.remove("drop");
@@ -384,14 +397,21 @@ function renderDetail() {
   $("itemOrder").disabled = !selected.included;
   $("itemOrder").max = included().length;
   if (document.activeElement !== $("itemOrder")) $("itemOrder").value = rank < 0 ? "" : rank + 1;
-  $("makeThumb").textContent = state.thumbnail === selected.name ? "clear thumbnail" : "use as thumbnail";
 }
 
 function renderCover() {
-  $("coverBox").hidden = state.kind !== "collection";
-  const options = [["", "mosaic (first nine images)"], ...included().map((i) => [i.name, `${shown(i)} (${i.name})`])];
-  $("cover").replaceChildren(...options.map(([value, text]) => Object.assign(document.createElement("option"), { value, textContent: text })));
-  $("cover").value = state.thumbnail || "";
+  const cover = state.kind === "collection" && state.items.find((i) => i.name === state.thumbnail);
+  $("coverHint").hidden = state.kind !== "collection";
+  $("coverHint").textContent = cover
+    ? `Cover: ${shown(cover)}. Toggle "cover" on its tile off for the mosaic.`
+    : 'Cover: mosaic of the first nine images. Toggle "cover" on a tile to use one file.';
+}
+
+// One cover at most. Toggling a tile on moves the cover there; off means mosaic.
+function toggleCover(item) {
+  state.thumbnail = state.thumbnail === item.name ? "" : item.name;
+  if (state.thumbnail) item.included = true;
+  touch();
 }
 
 function render() { renderKind(); renderTags(); renderCardText(); renderCardArt(); renderCover(); renderGrid(); renderDetail(); }
@@ -476,12 +496,6 @@ function setOrder(n) {
 $("itemOrder").addEventListener("change", () => setOrder(Number($("itemOrder").value)));
 $("moveLeft").onclick = () => move(-1);
 $("moveRight").onclick = () => move(1);
-$("cover").addEventListener("change", () => { state.thumbnail = $("cover").value; touch(); });
-$("makeThumb").onclick = () => {
-  state.thumbnail = state.thumbnail === selected.name ? "" : selected.name;
-  if (state.thumbnail) selected.included = true;
-  touch();
-};
 $("save").onclick = save;
 document.addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); save(); } });
 window.addEventListener("beforeunload", (e) => { if (dirty) e.preventDefault(); });

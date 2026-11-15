@@ -1,8 +1,7 @@
 # exhib manual
 
 How to use the gallery library, make collections, pieces and writings, and make them go live.
-Commands are nushell. `kubectl` must point at the cluster
-(`kubectl --kubeconfig kubeconfig` from the infra repo root, or `$env.KUBECONFIG`).
+Commands are nushell. The `just` recipes set `KUBECONFIG` to `../infra/kubeconfig` (the infra repo root, next to this repo); this overrides `$env.KUBECONFIG`. Raw `kubectl` commands below need the same: `$env.KUBECONFIG = ("../infra/kubeconfig" | path expand)` from the exhib repo root.
 
 Short form:
 
@@ -90,9 +89,9 @@ On the page:
 - **Kind**: collection, piece or writing (top right). The editor guesses from the folder contents: no media and one `.md` file means writing, one media file means piece, otherwise collection.
 - **Title, date, description, tags.** Date is `DD/MM/YYYY` (dots work too), time is 24h `HH:MM`, in the browser's local time zone (shown under the fields, e.g. `Europe/Zurich (UTC+01:00)`). **now** fills in the current minute. The manifest stores local time with its offset, e.g. `2026-11-15T18:30:00+01:00` (`+02:00` in summer). Description is markdown. It shows on the homepage card and under the page title. Type a tag and press Enter or a comma; Backspace in an empty tag field removes the last tag.
 - **Homepage card**: live preview of the feed card: cover, title, date, description (markdown rendered), tags.
-- **Cover** (collection only, under the card): `mosaic (first nine images)` or one included file. A single file is saved as `thumbnail`. It stays in the grid too. A video as cover shows its poster on the site. The tile detail button **use as thumbnail** does the same.
+- **Cover** (collection only): hover a tile and click its **cover** toggle. That file becomes the homepage cover: the toggle stays filled and the tile gets a double border. Toggle another tile to move the cover; toggle the same tile off for the mosaic of the first nine images. The line under the card says which is active. The cover is saved as `thumbnail`, stays in the grid, and is included if it was excluded. A video as cover shows its poster on the site.
 - **Media grid** (collection, piece): one tile per file. The badge on each tile is its `order`. Excluded tiles are dimmed. Drag tiles to reorder.
-- **Tile detail** (click a tile): large preview, caption (empty means the file name), `order` (type a position; 1 comes first; a number past the end means last), include, ← earlier / later →, and use as thumbnail (collection only; click again to clear). A piece shows its first included item.
+- **Tile detail** (click a tile): large preview, caption (empty means the file name), `order` (type a position; 1 comes first; a number past the end means last), include, and ← earlier / later →. A piece shows its first included item.
 - **Body** (writing): the text of the writing, saved to `body.md` (or to the one `.md` file already in the folder).
 - **Save** (button or ⌘S): checks the values and writes `manifest.toml`. Errors show next to the button; nothing is written then. It writes the smallest manifest that gives the result: `[[media]]` tables (`file`, `title`, `order`) appear only if you excluded a file, changed the order or set a caption. The saved text shows below the button.
 - Leaving the page with unsaved changes asks for confirmation.

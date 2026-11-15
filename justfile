@@ -1,6 +1,9 @@
 # exhib: common tasks. Run `just` to list the recipes.
 # Paths are relative to the directory you run `just` from.
 
+# kubectl uses the cluster kubeconfig in the infra repo root, next to this repo.
+export KUBECONFIG := justfile_directory() / ".." / "infra" / "kubeconfig"
+
 # List the available recipes.
 default:
     @just --list
@@ -29,6 +32,7 @@ upload folder:
     [[ -f "$PACKAGE/manifest.toml" ]] || { echo "manifest.toml is required. Run: just manifest {{folder}}" >&2; exit 2; }
     [[ "$SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "Folder name must be a lowercase slug (letters, numbers, hyphens)." >&2; exit 2; }
     command -v kubectl >/dev/null || { echo "kubectl is required." >&2; exit 1; }
+    [[ -f "$KUBECONFIG" ]] || { echo "No kubeconfig at $KUBECONFIG (infra repo root)." >&2; exit 1; }
 
     POD="$(kubectl -n exhib get pods -l app.kubernetes.io/name=exhib -o jsonpath='{.items[0].metadata.name}')"
     [[ -n "$POD" ]] || { echo "No exhib pod found in namespace exhib." >&2; exit 1; }
