@@ -8,85 +8,85 @@ thumbnail = "cover.svg"
 src = "cover.svg"
 title = "Cover — evening rooflines"
 [resources.params]
-weight = 1
+order = 1
 
 [[resources]]
 src = "study-one.svg"
 title = "Study in warm stone"
 [resources.params]
-weight = 2
+order = 2
 
 [[resources]]
 src = "study-two.svg"
 title = "Study in blue and ochre"
 [resources.params]
-weight = 3
+order = 3
 
 [[resources]]
 src = "standalone-piece.svg"
 title = "Standalone architectural placeholder"
 [resources.params]
-weight = 4
+order = 4
 
 [[resources]]
 src = "01-paper-light.svg"
 title = "Late afternoon on the studio table"
 [resources.params]
-weight = 5
+order = 5
 
 [[resources]]
 src = "02-stairwell.svg"
 title = "Stairwell"
 [resources.params]
-weight = 6
+order = 6
 
 [[resources]]
 src = "03-window-study.svg"
 title = "Glass and reflected sky"
 [resources.params]
-weight = 7
+order = 7
 
 [[resources]]
 src = "04-glass-roof.svg"
 title = "Glass roof"
 [resources.params]
-weight = 8
+order = 8
 
 [[resources]]
 src = "05-shadow-line.svg"
 title = "A line across the pavement"
 [resources.params]
-weight = 9
+order = 9
 
 [[resources]]
 src = "06-studio-cutting-mat.svg"
 title = "Studio cutting mat"
 [resources.params]
-weight = 10
+order = 10
 
 [[resources]]
 src = "07-blue-hour.svg"
 title = "Blue hour, on the way home"
 [resources.params]
-weight = 11
+order = 11
 
 [[resources]]
 src = "08-last-light.svg"
 title = "Last light"
 [resources.params]
-weight = 12
+order = 12
 
 [[resources]]
 src = "placeholder.svg"
 title = "Abstract architectural study"
 [resources.params]
-weight = 13
+order = 13
 
 [[resources]]
 src = "test-pattern.webm"
 title = "Test pattern"
 [resources.params]
-weight = 14
+order = 14
 kind = "video"
 poster = "test-pattern-poster.jpg"
 preview = "test-pattern-preview.webp"
@@ -99,7 +99,7 @@ duration = "4 s"
 src = "test-pattern-poster.jpg"
 title = "Test pattern"
 [resources.params]
-weight = 14
+order = 14
 kind = "image"
 role = "poster"
 
@@ -107,7 +107,7 @@ role = "poster"
 src = "test-pattern-preview.webp"
 title = "Test pattern"
 [resources.params]
-weight = 14
+order = 14
 kind = "image"
 role = "preview"
 
@@ -115,37 +115,37 @@ role = "preview"
 src = "color-bars.jpg"
 title = "Colour bars"
 [resources.params]
-weight = 15
+order = 15
 
 [[resources]]
 src = "gradient-sweep.jpg"
 title = "Gradient sweep"
 [resources.params]
-weight = 16
+order = 16
 
 [[resources]]
 src = "convergence-chart.jpg"
 title = "Convergence chart"
 [resources.params]
-weight = 17
+order = 17
 
 [[resources]]
 src = "grayscale-ramp.jpg"
 title = "Greyscale ramp"
 [resources.params]
-weight = 18
+order = 18
 
 [[resources]]
 src = "crosshair.jpg"
 title = "Crosshair"
 [resources.params]
-weight = 19
+order = 19
 
 [[resources]]
 src = "signal-sweep.webm"
 title = "Signal sweep"
 [resources.params]
-weight = 20
+order = 20
 kind = "video"
 poster = "signal-sweep-poster.jpg"
 preview = "signal-sweep-preview.webp"
@@ -158,7 +158,7 @@ duration = "4 s"
 src = "signal-sweep-poster.jpg"
 title = "Signal sweep"
 [resources.params]
-weight = 20
+order = 20
 kind = "image"
 role = "poster"
 
@@ -166,7 +166,7 @@ role = "poster"
 src = "signal-sweep-preview.webp"
 title = "Signal sweep"
 [resources.params]
-weight = 20
+order = 20
 kind = "image"
 role = "preview"
 +++
