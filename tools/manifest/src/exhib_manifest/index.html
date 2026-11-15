@@ -27,7 +27,7 @@
   .top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 2rem; }
   @media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
   label { display: block; margin: 1rem 0 .3rem; color: var(--muted); text-transform: lowercase; }
-  input[type=text], input[type=number], input[type=datetime-local], textarea {
+  input[type=text], input[type=number], textarea {
     width: 100%; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: 3px;
     background: var(--field); color: var(--fg); font: inherit;
   }
@@ -78,6 +78,9 @@
   footer .bar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
   pre { margin: .8rem 0 0; padding: .8rem; max-height: 14rem; overflow: auto; border: 1px solid var(--line);
         background: var(--field); font: .8rem/1.5 var(--mono); }
+  .when { display: grid; grid-template-columns: 9.5rem 5.5rem auto; gap: .5rem; justify-content: start; }
+  .when input { font-family: var(--mono); }
+  .when input.invalid { border-color: var(--bad); }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -101,8 +104,12 @@
       <label for="title">title</label>
       <input type="text" id="title">
       <label for="date">date</label>
-      <input type="datetime-local" id="date" step="1">
-      <p class="hint">Local time. Saved as UTC. Sets feed order, newest first. A future date stays hidden until then.</p>
+      <div class="when">
+        <input type="text" id="date" placeholder="DD/MM/YYYY" inputmode="numeric" autocomplete="off" aria-label="date, DD/MM/YYYY">
+        <input type="text" id="time" placeholder="HH:MM" inputmode="numeric" autocomplete="off" aria-label="time, 24h HH:MM">
+        <button type="button" id="now">now</button>
+      </div>
+      <p class="hint"><span id="tz"></span> 24h. Saved in local time with its offset. Sets feed order, newest first. A future date stays hidden until then.</p>
       <label for="description">description</label>
       <textarea id="description" placeholder="Optional. Markdown."></textarea>
       <p class="hint">Shown on the homepage card and under the page title.</p>
@@ -171,11 +178,41 @@ const shown = (item) => item.title || item.default_title;
 const included = () => state.items.filter((i) => i.included);
 
 function pad(n) { return String(n).padStart(2, "0"); }
-function toLocalInput(iso) {
-  const d = iso ? new Date(iso) : new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+// Swiss convention: DD/MM/YYYY (also DD.MM.YYYY), 24h HH:MM[:SS], local time zone.
+const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+function showWhen(d) {
+  $("date").value = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+  $("time").value = `${pad(d.getHours())}:${pad(d.getMinutes())}` + (d.getSeconds() ? `:${pad(d.getSeconds())}` : "");
 }
-function fromLocalInput(value) { return new Date(value).toISOString().slice(0, 19) + "Z"; }
+// Returns a local Date, or null if the fields do not form a real date and time.
+function readWhen() {
+  const dm = $("date").value.trim().match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/);
+  const tm = $("time").value.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  $("date").classList.toggle("invalid", !dm);
+  $("time").classList.toggle("invalid", !tm);
+  if (!dm || !tm) return null;
+  const [day, month, year] = [+dm[1], +dm[2], +dm[3]];
+  const [h, mi, s] = [+tm[1], +tm[2], +(tm[3] || 0)];
+  const d = new Date(year, month - 1, day, h, mi, s);
+  const real = d.getDate() === day && d.getMonth() === month - 1 && d.getHours() === h && mi < 60 && s < 60;
+  $("date").classList.toggle("invalid", !real);
+  $("time").classList.toggle("invalid", !real);
+  return real ? d : null;
+}
+function offsetOf(d) {
+  const m = -d.getTimezoneOffset();
+  return `${m < 0 ? "-" : "+"}${pad(Math.floor(Math.abs(m) / 60))}:${pad(Math.abs(m) % 60)}`;
+}
+// ISO 8601 in local time with the offset valid on that date (DST aware).
+function isoLocal(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${offsetOf(d)}`;
+}
+// Now, to the minute.
+function nowMinute() { const d = new Date(); d.setSeconds(0, 0); return d; }
+function renderTz() {
+  const d = readWhen() || new Date();
+  $("tz").textContent = `${TZ} (UTC${offsetOf(d)}).`;
+}
 
 function artFor(item, opts = {}) {
   const fallback = () => { const d = document.createElement("div"); d.className = "fallback"; d.textContent = item.name; return d; };
@@ -227,7 +264,8 @@ function renderTags() {
 
 function renderCardText() {
   $("cardTitle").textContent = $("title").value || "(no title)";
-  const d = $("date").value ? new Date($("date").value) : null;
+  const d = readWhen();
+  renderTz();
   $("cardDate").textContent = d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : "";
   $("cardDesc").textContent = $("description").value;
   $("cardTags").replaceChildren(...state.tags.map((t) => Object.assign(document.createElement("span"), { className: "chip", textContent: t })));
@@ -315,7 +353,7 @@ function collect() {
   return {
     kind: state.kind,
     title: $("title").value,
-    date: fromLocalInput($("date").value),
+    date: isoLocal(readWhen()),
     description: $("description").value,
     tags: state.tags,
     thumbnail: state.thumbnail,
@@ -325,7 +363,7 @@ function collect() {
 }
 
 async function save() {
-  if (!$("date").value) { $("status").textContent = "date is required"; return; }
+  if (!readWhen()) { $("status").textContent = "date must be DD/MM/YYYY and time HH:MM (24h)"; return; }
   $("status").textContent = "saving…";
   const res = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(collect()) });
   const data = await res.json();
@@ -349,7 +387,7 @@ async function init() {
   $("folder").textContent = state.folder + (state.has_manifest ? "" : "  (new manifest)");
   $("slugWarn").hidden = state.slug_ok;
   $("title").value = state.title;
-  $("date").value = toLocalInput(state.date);
+  showWhen(state.date ? new Date(state.date) : nowMinute());
   $("description").value = state.description;
   $("body").value = state.body;
   $("bodyFile").textContent = `(${state.body_file})`;
@@ -357,7 +395,8 @@ async function init() {
 }
 
 for (const b of $("kinds").children) b.onclick = () => { state.kind = b.dataset.kind; touch(); };
-for (const id of ["title", "date", "description", "body"]) $(id).addEventListener("input", () => { dirty = true; $("status").textContent = "unsaved"; renderCardText(); });
+$("now").onclick = () => { showWhen(nowMinute()); dirty = true; $("status").textContent = "unsaved"; renderCardText(); };
+for (const id of ["title", "date", "time", "description", "body"]) $(id).addEventListener("input", () => { dirty = true; $("status").textContent = "unsaved"; renderCardText(); });
 $("tagInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(); }
   else if (e.key === "Backspace" && !$("tagInput").value && state.tags.length) { state.tags.pop(); touch(); }

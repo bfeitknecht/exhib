@@ -80,7 +80,7 @@ What it does:
 
 - Starts a web page on `127.0.0.1` only, and opens it in the browser. The terminal prints the folder and the URL.
 - Runs on your machine only. It never talks to the cluster. It needs [uv](https://docs.astral.sh/uv/); uv gets Python 3.15 on first run.
-- Reads `manifest.toml` if it exists, so you can run it again to change an item. A new folder starts with defaults: the title from the folder name, the date set to now, and every media file included.
+- Reads `manifest.toml` if it exists, so you can run it again to change an item. A new folder starts with defaults: the title from the folder name, the date set to now (to the minute), and every media file included.
 - Writes only `manifest.toml`, plus `body.md` for a writing. It never changes or deletes media files.
 - Warns if the folder name is not a lowercase slug. Rename the folder before upload.
 - Stops with Ctrl-C. It then prints the upload command.
@@ -88,7 +88,7 @@ What it does:
 On the page:
 
 - **Kind**: collection, piece or writing (top right). The editor guesses from the folder contents: no media and one `.md` file means writing, one media file means piece, otherwise collection.
-- **Title, date, description, tags.** Date is local time, saved as UTC. Description is markdown. It shows on the homepage card and under the page title. Type a tag and press Enter or a comma; Backspace in an empty tag field removes the last tag.
+- **Title, date, description, tags.** Date is `DD/MM/YYYY` (dots work too), time is 24h `HH:MM`, in the browser's local time zone (shown under the fields, e.g. `Europe/Zurich (UTC+01:00)`). **now** fills in the current minute. The manifest stores local time with its offset, e.g. `2026-11-15T18:30:00+01:00` (`+02:00` in summer). Description is markdown. It shows on the homepage card and under the page title. Type a tag and press Enter or a comma; Backspace in an empty tag field removes the last tag.
 - **Homepage card**: live preview of the feed card: thumbnail or mosaic, title, date, description, tags.
 - **Media grid** (collection, piece): one tile per file. The badge on each tile is its `order`. Excluded tiles are dimmed. Drag tiles to reorder.
 - **Tile detail** (click a tile): large preview, caption (empty means the file name), `order` (type a position; 1 comes first; a number past the end means last), include, ← earlier / later →, and use as thumbnail (collection only; click again to clear). A piece shows its first included item.

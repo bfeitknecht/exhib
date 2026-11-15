@@ -71,9 +71,11 @@ def body_file(folder: Path) -> Path:
 
 
 def iso(value: datetime) -> str:
+    # Keep the offset the date was written with (local time). A date with
+    # no offset is UTC, as in the processor.
     if value.tzinfo is None:
         value = value.replace(tzinfo=UTC)
-    return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return value.isoformat(timespec="seconds")
 
 
 def load_state(folder: Path) -> dict:
