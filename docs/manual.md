@@ -93,7 +93,7 @@ On the page:
 - **Cover**: press **cover** to make this item the homepage cover; press it again for the mosaic of the first nine images. Pressing it on another item moves the cover. A cover is always included. A video cover shows its poster on the site.
 - **Cover crop**: while the item is the cover, the large preview shows the card's 1:√2 frame. Drag it to choose the part shown on the card; the card preview follows. **center** resets it. An image with the card's aspect ratio has nothing to crop.
 - **Body** (writing): the text, saved to `body.md` (or to the one `.md` file already in the folder).
-- **save** (button or ⌘S): checks the values and writes `manifest.toml`. Errors show next to the button; nothing is written then. The saved text shows below. `[[media]]` tables (`file`, `title`, `caption`, `position`) appear only if you excluded a file, changed the order, or set a title or caption. `thumbnail_focus` appears only if the crop is not centered.
+- **save** (button or ⌘S): checks the values and writes `manifest.toml`. Errors show next to the button; nothing is written then. A ✓ shows when saved; any edit turns it back to `unsaved`. `[[media]]` tables (`file`, `title`, `caption`, `position`) appear only if you excluded a file, changed the order, or set a title or caption. `thumbnail_focus` appears only if the crop is not centered.
 
 Full flow for one collection:
 

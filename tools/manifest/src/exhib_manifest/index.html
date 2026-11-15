@@ -96,8 +96,6 @@
   .row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
   footer { position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); }
   footer .bar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
-  pre { margin: .8rem 0 0; padding: .8rem; max-height: 14rem; overflow: auto; border: 1px solid var(--line);
-        background: var(--field); font: .8rem/1.5 var(--mono); }
   .when { display: grid; grid-template-columns: 9.5rem 5.5rem auto; gap: .5rem; justify-content: start; }
   .when input { font-family: var(--mono); }
   .when input.invalid { border-color: var(--bad); }
@@ -194,7 +192,6 @@
     <button type="button" class="primary" id="save">save ⌘S</button>
     <span class="mono" id="status"></span>
   </div>
-  <pre id="output" hidden></pre>
 </footer>
 
 <script>
@@ -263,7 +260,7 @@ function artFor(item, opts = {}) {
   return el;
 }
 
-function markDirty() { dirty = true; $("status").textContent = "unsaved"; }
+function markDirty() { dirty = true; $("status").textContent = "unsaved"; $("status").title = ""; }
 function touch() { markDirty(); render(); }
 
 function renderKind() {
@@ -501,9 +498,8 @@ async function save() {
   const data = await res.json();
   if (!res.ok) { $("status").replaceChildren(Object.assign(document.createElement("span"), { className: "bad", textContent: data.error })); return; }
   dirty = false;
-  $("status").textContent = "saved";
-  $("output").hidden = false;
-  $("output").textContent = data.manifest;
+  $("status").textContent = "✓";
+  $("status").title = "saved";
   const entry = folders.find((f) => f.name === slug);
   if (entry) entry.has_manifest = true;
 }
@@ -539,7 +535,7 @@ async function open(name, push = true) {
   slug = name; state = null; selected = null; dirty = false;
   detailKey = null; cardKey = null;
   $("slugInput").value = name;
-  $("output").hidden = true; $("status").textContent = "";
+  $("status").textContent = "";
   if (push) history.pushState(null, "", name ? `?f=${encodeURIComponent(name)}` : "/");
   document.title = name ? `${name} · exhib manifest` : "exhib manifest";
   $("picker").hidden = !!name;
