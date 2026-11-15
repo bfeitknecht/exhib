@@ -9,7 +9,7 @@ import tomllib
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .media import IMAGE_EXTS, VIDEO_EXTS, convert_image, convert_video, run
+from .media import IMAGE_EXTS, VIDEO_EXTS, convert_image, convert_video, probe_video, run
 from .paths import APP, CONTENT, DATA, ORIGINALS, PUBLIC
 
 
@@ -27,6 +27,33 @@ def safe_relative(root: Path, value: str) -> Path:
     return resolved
 
 
+def natural_key(name: str) -> list:
+    # Numeric-aware sort so "2-a.jpg" comes before "10-b.jpg".
+    return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", name)]
+
+
+def humanize_stem(stem: str) -> str:
+    # "01-evening-walk.jpg" -> "Evening walk"
+    text = re.sub(r"^\d+[-_ ]*", "", stem)
+    text = re.sub(r"[-_]+", " ", text).strip()
+    return (text[:1].upper() + text[1:]) if text else stem
+
+
+def collect_media(package: Path) -> list[dict]:
+    # No [[media]] tables in the manifest: every supported file in the
+    # folder becomes an item, in natural filename order, titled after the
+    # filename. Weights follow the order (set later from the index).
+    entries = []
+    for path in sorted(package.iterdir(), key=lambda p: natural_key(p.name)):
+        if not path.is_file() or path.name.startswith("."):
+            continue
+        if path.suffix.lower() in IMAGE_EXTS | VIDEO_EXTS:
+            entries.append({"file": path.name, "title": humanize_stem(path.stem)})
+    if not entries:
+        raise ValueError("no supported media files in the folder")
+    return entries
+
+
 def build_front_matter(
     manifest: dict, media_rows: list[dict], thumbnail: str | None
 ) -> str:
@@ -40,6 +67,15 @@ def build_front_matter(
     lines.append(f"date = {date.isoformat()}")
     if manifest.get("description"):
         lines.append(f"description = {toml_string(manifest['description'])}")
+    tags = manifest.get("tags")
+    if tags:
+        if not isinstance(tags, list) or not all(
+            isinstance(t, str) and t.strip() for t in tags
+        ):
+            raise ValueError("tags must be a list of non-empty strings")
+        lines.append(
+            "tags = [" + ", ".join(toml_string(t.strip()) for t in tags) + "]"
+        )
     if kind == "collection" and thumbnail:
         lines.append(f"thumbnail = {toml_string(thumbnail)}")
     for row in media_rows:
@@ -52,6 +88,14 @@ def build_front_matter(
             f"weight = {int(row['weight'])}",
             f"kind = {toml_string(row['kind'])}",
         ]
+        if row.get("format"):
+            lines.append(f"format = {toml_string(row['format'])}")
+        if row.get("resolution"):
+            lines.append(f"resolution = {toml_string(row['resolution'])}")
+        if row.get("framerate"):
+            lines.append(f"framerate = {toml_string(row['framerate'])}")
+        if row.get("duration"):
+            lines.append(f"duration = {toml_string(row['duration'])}")
         if row.get("poster"):
             lines.append(f"poster = {toml_string(row['poster'])}")
         if row.get("role"):
@@ -103,8 +147,10 @@ def publish_bundle(package: Path) -> None:
     if not manifest.get("title") or not isinstance(manifest.get("date"), datetime):
         raise ValueError("manifest.toml must include title and a TOML datetime date")
     media = manifest.get("media")
-    if not isinstance(media, list) or not media:
-        raise ValueError("manifest.toml needs at least one [[media]] entry")
+    if media is None:
+        media = collect_media(package)
+    elif not isinstance(media, list) or not media:
+        raise ValueError("manifest.toml: [[media]] must be a non-empty list")
 
     original_dir = ORIGINALS / kind / slug
     if original_dir.exists():
@@ -155,6 +201,8 @@ def publish_bundle(package: Path) -> None:
                     "weight": weight,
                     "kind": "video",
                     "poster": poster_name,
+                    "format": "WebM · VP9",
+                    **probe_video(source),
                 }
                 video_rows.append(row)
                 rows.append(row)

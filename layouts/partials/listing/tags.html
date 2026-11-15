@@ -1,0 +1,4 @@
+{{/* Tag chips. Pass the page as context. Links to the per-tag filter view. */}}
+{{- with .Params.tags }}
+  <p class="tag-list">{{- range . }}<a class="tag" href="{{ "tags/" | relURL }}{{ . | urlize }}/">#{{ . }}</a>{{- end }}</p>
+{{- end }}

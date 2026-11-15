@@ -515,3 +515,71 @@ a.item-preview:focus-visible img,
 .item-copy h2 a:focus-visible {
   transform: scale(1.03);
 }
+
+/* Tags: chips on cards and page intros, cloud on /tags/ (sized by usage). */
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem .6rem;
+  margin: .6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tag-list .tag,
+.tag {
+  display: inline-block;
+  font: 400 .75rem/1.4 var(--mono);
+  color: var(--muted);
+  border: 1px solid color-mix(in oklch, var(--muted) 45%, transparent);
+  border-radius: 999px;
+  padding: .1rem .6rem .15rem;
+  text-decoration: none;
+  transition: color .25s ease, border-color .25s ease;
+}
+.tag:hover,
+.tag:focus-visible {
+  color: var(--fg);
+  border-color: var(--fg);
+}
+.tags-page .tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .7rem 1.4rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tag-cloud-item {
+  font-family: var(--mono);
+  color: var(--fg);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color .25s ease;
+}
+.tag-cloud-item:hover,
+.tag-cloud-item:focus-visible {
+  color: var(--muted);
+}
+.tag-cloud-hash {
+  color: var(--muted);
+}
+.tag-count {
+  font-size: .65em;
+  color: var(--muted);
+  margin-left: .3em;
+  vertical-align: super;
+}
+.tag-size-1 { font-size: .8rem; }
+.tag-size-2 { font-size: 1.05rem; }
+.tag-size-3 { font-size: 1.35rem; }
+.tag-size-4 { font-size: 1.75rem; }
+.tag-size-5 { font-size: 2.25rem; }
+.tag-heading {
+  color: var(--fg);
+  text-decoration: none;
+}
+.tag-heading:hover,
+.tag-heading:focus-visible {
+  color: var(--muted);
+}

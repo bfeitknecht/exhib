@@ -1,0 +1,21 @@
+{{/* The tag cloud: every tag in the site, sized by how many items carry it.
+     Kind "taxonomy". Reached at /tags/ from the global nav. */}}
+{{ define "main" }}
+<main class="archive tags-page">
+  <h1>Tags</h1>
+  {{ with .Pages }}
+    {{- $max := 1 }}
+    {{- range . }}{{ if gt (len .Pages) $max }}{{ $max = len .Pages }}{{ end }}{{ end }}
+    <ul class="tag-cloud">
+      {{- range sort . "LinkTitle" }}
+        {{- $count := len .Pages }}
+        {{- $step := 1 }}
+        {{- if gt $max 1 }}{{ $step = add 1 (int (div (mul (sub $count 1) 4) (sub $max 1))) }}{{ end }}
+        <li><a class="tag-cloud-item tag-size-{{ $step }}" href="{{ .RelPermalink }}"><span class="tag-cloud-hash">#</span>{{ .LinkTitle }}<span class="tag-count">{{ $count }}</span></a></li>
+      {{- end }}
+    </ul>
+  {{ else }}
+    <p class="empty-state">No tags yet.</p>
+  {{ end }}
+</main>
+{{ end }}

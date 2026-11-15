@@ -23,13 +23,13 @@ upload package:
     [[ -n "$POD" ]] || { echo "No exhib pod found in namespace exhib." >&2; exit 1; }
     REMOTE="/data/incoming/.upload-${SLUG}-$(date +%s)"
     DEST="/data/incoming/${SLUG}"
-    if kubectl -n exhib exec "$POD" -c uploader -- sh -c "test ! -e '$DEST'"; then
+    if kubectl -n exhib exec "$POD" -- sh -c "test ! -e '$DEST'"; then
       :
     else
       echo "An upload with slug '$SLUG' is already queued." >&2
       exit 1
     fi
-    kubectl -n exhib exec "$POD" -c uploader -- mkdir -p "$REMOTE"
-    tar -C "$PACKAGE" -cf - . | kubectl -n exhib exec -i "$POD" -c uploader -- tar -xf - -C "$REMOTE"
-    kubectl -n exhib exec "$POD" -c uploader -- mv "$REMOTE" "$DEST"
+    kubectl -n exhib exec "$POD" -- mkdir -p "$REMOTE"
+    tar -C "$PACKAGE" -cf - . | kubectl -n exhib exec -i "$POD" -- tar -xf - -C "$REMOTE"
+    kubectl -n exhib exec "$POD" -- mv "$REMOTE" "$DEST"
     echo "Queued $SLUG. The processor will transcode it and rebuild the gallery automatically."
