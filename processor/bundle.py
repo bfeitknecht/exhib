@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 import os
 import re
@@ -18,6 +19,7 @@ from .media import (
     probe_video,
     run,
 )
+from .variants import make_variants
 from .paths import APP, CONTENT, DATA, ORIGINALS, PUBLIC, RESOURCES
 
 # Upload kind -> Hugo section directory.
@@ -169,6 +171,25 @@ HUGO_ENV = {
 }
 
 
+# Text files SWS serves from a ".gz" sibling (compression-static), so no
+# request pays for compression. Binary formats are already compressed.
+PRECOMPRESS = {".html", ".xml", ".svg", ".js", ".css", ".txt"}
+
+
+def precompress(root: Path) -> None:
+    for path in root.rglob("*"):
+        if path.suffix not in PRECOMPRESS or not path.is_file():
+            continue
+        data = path.read_bytes()
+        if len(data) < 512:
+            continue
+        # mtime=0 keeps the output reproducible. SWS reads Last-Modified from
+        # the original file, not from the .gz.
+        packed = gzip.compress(data, compresslevel=9, mtime=0)
+        if len(packed) < len(data):
+            path.with_name(path.name + ".gz").write_bytes(packed)
+
+
 def build_and_publish() -> None:
     staging = DATA / ".public-next"
     backup = DATA / ".public-previous"
@@ -190,6 +211,7 @@ def build_and_publish() -> None:
         ],
         env=os.environ | HUGO_ENV,
     )
+    precompress(staging)
     if PUBLIC.exists():
         PUBLIC.rename(backup)
     try:
@@ -283,6 +305,10 @@ def write_media_bundle(package: Path, manifest: dict, bundle_dir: Path) -> None:
     for file in converted.iterdir():
         shutil.move(str(file), bundle_dir / file.name)
     converted.rmdir()
+    # Small lossy copies for grids, cards and stages. One image at a time keeps memory low.
+    for row in rows:
+        if row["kind"] == "image":
+            make_variants(bundle_dir / row["file"])
 
     thumbnail_source = manifest.get("thumbnail")
     thumbnail = None

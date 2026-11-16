@@ -214,6 +214,13 @@ const shown = (item) => item.title || item.default_title;
 // Older servers or manifests may omit fields; never show "undefined".
 const clean = (items) => items.map((i) => ({ title: "", caption: "", ...i }));
 const included = () => state.items.filter((i) => i.included);
+// Order shown in the grid. "date" mirrors the site: capture date first, oldest
+// first (stable), then undated files in position order. Dragging only edits position.
+const ordered = () => {
+  if (state.sort !== "date") return state.items;
+  const dated = state.items.filter((i) => i.captured).sort((a, b) => (a.captured < b.captured ? -1 : a.captured > b.captured ? 1 : 0));
+  return [...dated, ...state.items.filter((i) => !i.captured)];
+};
 const coverItem = () => state.kind === "collection" && state.items.find((i) => i.name === state.thumbnail && i.included);
 const focusCss = () => `${state.thumbnail_focus[0]}% ${state.thumbnail_focus[1]}%`;
 const CARD = Math.SQRT2;
@@ -364,18 +371,22 @@ function renderCardArt() {
 function renderGrid() {
   const grid = $("grid");
   grid.replaceChildren();
-  state.items.forEach((item, index) => {
+  const byDate = state.sort === "date";
+  const shownOrder = ordered();
+  shownOrder.forEach((item) => {
+    const index = state.items.indexOf(item);
     const tile = document.createElement("button");
     tile.type = "button";
     tile.className = "tile" + (item.included ? "" : " off") + (item === selected ? " selected" : "");
-    tile.draggable = true;
+    tile.draggable = !byDate;
+    tile.title = item.captured ? item.captured.replace("T", " ") : "no capture date";
     const art = document.createElement("span");
     art.className = "art";
     art.append(artFor(item));
     const badges = document.createElement("span");
     badges.className = "badges";
     const add = (t) => badges.append(Object.assign(document.createElement("span"), { className: "badge", textContent: t }));
-    if (item.included) add(String(included().indexOf(item) + 1));
+    if (item.included) add(String(shownOrder.filter((i) => i.included).indexOf(item) + 1));
     if (item.type === "video") add("video");
     if (item === coverItem()) add("cover");
     const cap = Object.assign(document.createElement("span"), { className: "cap", textContent: shown(item) });
@@ -386,6 +397,7 @@ function renderGrid() {
     tile.ondragleave = () => tile.classList.remove("drop");
     tile.ondrop = (e) => {
       e.preventDefault();
+      if (byDate) return;
       const from = Number(e.dataTransfer.getData("text/plain"));
       if (from === index) return;
       const [moved] = state.items.splice(from, 1);

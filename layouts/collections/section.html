@@ -24,7 +24,7 @@
               {{- with .item.Params.preview -}}{{- with $page.Resources.GetMatch . -}}<img src="{{ .RelPermalink }}" alt="" loading="lazy">{{- end -}}{{- else -}}<video autoplay muted loop playsinline preload="metadata"{{ with .poster }} poster="{{ partial "media/preview.html" (dict "image" .) }}"{{ end }} aria-hidden="true"><source src="{{ .item.RelPermalink }}" type="video/webm"></video>{{- end -}}
               <span class="preview-tap" aria-hidden="true"></span>
             {{ else }}
-              <img src="{{ partial "media/preview.html" (dict "image" .item) }}" alt="{{ .title }}" loading="lazy">
+              {{ partial "media/img.html" (dict "image" .item "page" $page "alt" .title "sizes" "(max-width: 48rem) 34vw, 25vw") }}
             {{ end }}
           </a>
         {{ end }}
@@ -42,7 +42,7 @@
           </nav>
           <div class="viewer-scroll">
             <div class="viewer-unit" style="--image-ratio: {{ .ratio }};">
-              {{ partial "media/media-detail.html" (dict "item" .item "poster" .poster) }}
+              {{ partial "media/media-detail.html" (dict "item" .item "poster" .poster "page" $page) }}
             </div>
           </div>
         </section>

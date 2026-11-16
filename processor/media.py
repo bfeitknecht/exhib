@@ -73,6 +73,7 @@ def convert_image(source: Path, destination: Path) -> Path:
     decoded = destination / (source.stem + ".decoded.png")
     output = destination / (source.stem + ".webp")
     cwebp_inputs = {".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff"}
+    rotated = False
     if ext in cwebp_inputs:
         run(
             [
@@ -89,7 +90,9 @@ def convert_image(source: Path, destination: Path) -> Path:
         )
     else:
         if ext in {".heic", ".heif"}:
+            # heif-convert applies the rotation to the pixels.
             run(["heif-convert", str(source), str(decoded)])
+            rotated = True
         else:
             run(
                 [
@@ -121,6 +124,22 @@ def convert_image(source: Path, destination: Path) -> Path:
         )
         decoded.unlink(missing_ok=True)
     copy_metadata(source, output)
+    if rotated:
+        # The pixels are already upright. The copied Orientation tag would
+        # turn them again in a viewer that honours it, and the copied EXIF
+        # size would describe the unrotated frame.
+        run(
+            [
+                "exiftool",
+                "-q",
+                "-m",
+                "-overwrite_original",
+                "-Orientation#=1",
+                "-ExifIFD:ExifImageWidth<RIFF:ImageWidth",
+                "-ExifIFD:ExifImageHeight<RIFF:ImageHeight",
+                str(output),
+            ]
+        )
     return output
 
 

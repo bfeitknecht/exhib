@@ -27,7 +27,13 @@ The shared document shell is in `layouts/_default/baseof.html`. Every page carri
 - Home/feed entry list: `layouts/partials/listing/feed-entries.html`.
 - Automatic image metadata: `layouts/partials/metadata/metadata-list.html`.
 
-`static/css/site.css` controls fonts, colors, spacing, responsive layout, preview sizes and viewer sizing. It is a plain static file served at `/css/site.css`. Hugo does not process it, so there is no content hash; clients revalidate it against SWS (`no-cache`, Last-Modified → 304).
+`static/css/site.css` controls fonts, colors, spacing, responsive layout, preview sizes and viewer sizing. `layouts/_default/baseof.html` inlines it into every page (`readFile`), so styles exist at first paint and links never flash in the browser default color. The file is not linked or served separately.
+
+### Images load in steps
+
+The processor writes small lossy WebP copies next to each lossless master when it converts an upload (`processor/variants.py`): `<stem>.<hash>.w480|w960|w1920|w2880.webp` plus a 24 px blur `<stem>.<hash>.w24.webp`. `<hash>` is the first 8 hex digits of the master's SHA-256. `layouts/partials/media/img.html` renders them as one `<img>` with a `srcset`, `sizes`, width and height (no layout shift) and the blur inlined as its CSS background. The browser fetches the smallest copy that is sharp enough for the slot and the screen density. The fullscreen viewer also lists the lossless master as the largest candidate. The copies are not media: `sorted-media.html` skips them by name. Images with no copies (SVG, the repo placeholders) fall back to a Hugo resize. No JavaScript is involved.
+
+Caching (`sws.toml`): pages, masters and videos revalidate (`no-cache`, 304). Copies and Hugo resizes carry a content hash in their name, so they are `immutable` for one year. The build writes a `.gz` beside each HTML/XML/SVG file and SWS serves it (`compression-static`).
 
 ### Styling knobs
 

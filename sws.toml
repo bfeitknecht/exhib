@@ -5,17 +5,39 @@
 # 1. root is /data/public, the Hugo output on the shared PVC.
 # 2. port is 8080. The binary default is 80.
 # 3. health = true enables /health for the probes. SWS has no /livez or /readyz.
-# 4. no-cache everywhere. Clients revalidate with If-Modified-Since;
-#    unchanged files are answered 304. No file in this site carries a
-#    content hash in its name (css/site.css is the stable name), so an
-#    immutable rule would pin stale bytes in returning browsers.
+# 4. Caching has two classes. Later [[advanced.headers]] rules win.
+#    - Default: no-cache. Clients revalidate (If-Modified-Since, 304). This
+#      covers pages, the masters (<stem>.webp, replaced when a slug is
+#      re-uploaded) and videos.
+#    - Immutable: files whose name carries a content hash. The processor's
+#      small copies (<stem>.<hash>.w<width>.webp) and Hugo's resizes
+#      (<stem>_hu_<hash>.webp) never change under one name, so a returning
+#      visitor makes no request for them at all.
+# 5. compression-static serves the .gz that the processor writes next to
+#    each HTML/XML/SVG file; SWS compresses nothing per request for those.
 [general]
 root = "/data/public"
 port = 8080
 health = true
+compression-static = true
 
 [advanced]
 
 [[advanced.headers]]
 source = "**"
 headers = { Cache-Control = "no-cache" }
+
+[[advanced.headers]]
+source = "**/*.w*.webp"
+status = [200, 206, 304]
+headers = { Cache-Control = "public, max-age=31536000, immutable" }
+
+[[advanced.headers]]
+source = "**/*_hu_*.webp"
+status = [200, 206, 304]
+headers = { Cache-Control = "public, max-age=31536000, immutable" }
+
+[[advanced.headers]]
+source = "**/*.woff2"
+status = [200, 304]
+headers = { Cache-Control = "public, max-age=604800" }

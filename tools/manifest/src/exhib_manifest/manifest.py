@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
@@ -68,6 +70,42 @@ def media_files(folder: Path) -> list[Path]:
         ),
         key=lambda p: natural_key(p.name),
     )
+
+
+def capture_date(path: Path) -> str | None:
+    """Capture time as local ISO text, or None. Same sources as the site.
+
+    The site orders by the EXIF capture date of a photo and the creation
+    tag of a video. A file with neither is undated and follows the dated
+    ones. File times only record the export, so they are never used.
+    macOS only (sips, mdls); elsewhere every file is undated.
+    """
+    try:
+        if media_type(path) == "image" and shutil.which("sips"):
+            out = subprocess.run(
+                ["sips", "-g", "creation", str(path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            ).stdout
+            value = out.rsplit("creation:", 1)[-1].strip()
+            return (
+                datetime.strptime(value, "%Y:%m:%d %H:%M:%S").isoformat()
+                if "creation:" in out and value != "<nil>"
+                else None
+            )
+        if media_type(path) == "video" and shutil.which("mdls"):
+            out = subprocess.run(
+                ["mdls", "-raw", "-name", "kMDItemContentCreationDate", str(path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            ).stdout.strip()
+            moment = datetime.strptime(out, "%Y-%m-%d %H:%M:%S %z")
+            return moment.astimezone().replace(tzinfo=None).isoformat()
+    except ValueError:
+        pass
+    return None
 
 
 def body_file(folder: Path) -> Path:
@@ -180,6 +218,7 @@ def load_state(folder: Path) -> dict:
                 "title": titles.get(name, ""),
                 "caption": captions.get(name, ""),
                 "included": name in included,
+                "captured": capture_date(by_name[name]),
             }
             for name in order
         ],

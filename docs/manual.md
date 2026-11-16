@@ -298,6 +298,8 @@ Sections and original folders: `collections` / `collection`, `pieces` / `piece`,
 
 A bundle with no upload original (seeded from the repo or added by hand) is replaced by an upload with the same slug.
 
+The small image copies (`<stem>.<hash>.w480.webp` and so on) are made when an upload is processed. An item that has none (uploaded before they existed, or added by hand) is served with Hugo resizes, which is slow to build and large for big sources. Run `just variants` to create the missing copies for every image and rebuild. It handles one image at a time and is safe to re-run.
+
 For a text-only fix (title, description, tags), you can also edit the front matter of `/data/content/<section>/<slug>/_index.md` (or `index.md`) in place, then `just rebuild`. Keep the `[[resources]]` blocks. They are generated.
 
 A pod restart also rebuilds (the processor builds on boot), but the `Recreate` strategy gives a short outage. Prefer `just rebuild`.

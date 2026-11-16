@@ -69,6 +69,11 @@ img {
   display: block;
   max-width: 100%;
 }
+/* Blurred copy inlined behind each photo (media/img.html), so a slot is never blank while pixels load. */
+img.lq {
+  background-size: cover;
+  background-position: center;
+}
 /* ── Chrome ── */
 .global-header,
 .site-footer,

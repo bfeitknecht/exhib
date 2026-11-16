@@ -89,6 +89,10 @@ release *flags:
     git push origin "$tag"
     echo "pushed $tag; CI publishes ghcr.io/bfeitknecht/exhib"
 
+# Make the small lossy copies for every image that lacks them, then rebuild. Safe to re-run.
+variants:
+    kubectl -n exhib exec deploy/exhib -- uv run --frozen --no-sync python -m processor variants
+
 # Preview the site locally with the repo content.
 serve:
     hugo server --bind 0.0.0.0 --port 4173

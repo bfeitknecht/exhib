@@ -5,14 +5,14 @@
      creation date in the `date` param); items without a date follow by
      `position`.
      Bundles from before the rename carry `weight`; it is read as `position`.
-     Generated posters and previews are excluded.
+     Generated posters, previews and the small copies (<stem>.<hash>.w<width>.webp) are excluded.
      Returns a slice of resources. */}}
 {{- $byDate := eq .Params.sort "date" -}}
 {{- $dated := slice -}}
 {{- $rest := slice -}}
 {{- range .Resources -}}
   {{- $isVideo := eq .ResourceType "video" -}}
-  {{- $isImage := and (eq .ResourceType "image") (ne .Params.role "poster") (ne .Params.role "preview") -}}
+  {{- $isImage := and (eq .ResourceType "image") (ne .Params.role "poster") (ne .Params.role "preview") (not (findRE `\.[0-9a-f]{8}\.w\d+\.webp$` .Name 1)) -}}
   {{- if or $isVideo $isImage -}}
     {{- $date := false -}}
     {{- if $byDate -}}

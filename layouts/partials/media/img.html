@@ -1,0 +1,56 @@
+{{/* An <img> that loads in steps. Expects a dict:
+       image    - the image resource (the lossless master)
+       page     - the page bundle that holds it
+       sizes    - the sizes attribute (default 100vw)
+       alt      - alt text (default empty)
+       focus    - [x y] percentages for object-position
+       eager    - true loads at once with high priority (above the fold)
+       original - true lists the lossless master as the largest candidate
+       fallback - width of a Hugo resize when the image has no copies (default 1200)
+     The processor writes small lossy copies, named <stem>.<hash>.w<width>.webp.
+     The smallest is a blur, inlined here as the background, so the slot is
+     never blank. The browser picks the smallest sharp-enough copy from the
+     srcset for the slot size and screen density. Images without copies
+     (SVG, repo placeholders) use the Hugo resize or the file itself. */}}
+{{- $img := .image -}}
+{{- $page := .page -}}
+{{- $alt := .alt | default "" -}}
+{{- $eager := .eager | default false -}}
+{{- $style := "" -}}
+{{- with .focus -}}{{- $style = printf "object-position:%v%% %v%%;" (index . 0) (index . 1) -}}{{- end -}}
+{{- $prefix := printf "%s." (strings.TrimSuffix (path.Ext $img.Name) $img.Name) -}}
+{{- $copies := slice -}}
+{{- $blur := false -}}
+{{- range $page.Resources -}}
+  {{- $res := . -}}
+  {{- if strings.HasPrefix $res.Name $prefix -}}
+    {{- $m := findRESubmatch `^[0-9a-f]{8}\.w(\d+)\.webp$` (strings.TrimPrefix $prefix $res.Name) 1 -}}
+    {{- if $m -}}
+      {{- $w := int (index (index $m 0) 1) -}}
+      {{- if le $w 32 -}}{{- $blur = $res -}}
+      {{- else -}}{{- $copies = $copies | append (dict "w" $w "res" $res) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $copies = sort $copies "w" "asc" -}}
+{{- if not $copies -}}
+  {{- $url := $img.RelPermalink -}}
+  {{- if not .original -}}{{- $url = partial "media/preview.html" (dict "image" $img "width" (.fallback | default 1200)) -}}{{- end -}}
+<img src="{{ $url }}" alt="{{ $alt }}" loading="{{ cond $eager " eager" "lazy"
+  }}" decoding="async" {{ with $style }} style="{{ . }}" {{ end }}>
+{{- else -}}
+  {{- $src := (index $copies 0).res.RelPermalink -}}
+  {{- $set := slice -}}
+  {{- range $copies -}}
+    {{- $set = $set | append (printf "%s %dw" .res.RelPermalink .w) -}}
+    {{- if le .w 960 -}}{{- $src = .res.RelPermalink -}}{{- end -}}
+  {{- end -}}
+  {{- if .original -}}{{- $set = $set | append (printf "%s %dw" $img.RelPermalink $img.Width) -}}{{- end -}}
+  {{- with $blur -}}{{- $style = printf "%sbackground-image:url(data:image/webp;base64,%s)" $style (.Content | base64Encode) -}}{{- end -}}
+<img class="lq" src="{{ $src }}" srcset="{{ delimit $set " , " }}"
+  sizes="{{ .sizes | default " 100vw" }}" width="{{ $img.Width }}"
+  height="{{ $img.Height }}" alt="{{ $alt }}" loading="{{ cond $eager " eager"
+  "lazy" }}" decoding="async" {{ if $eager }} fetchpriority="high" {{ end }}
+  {{ with $style }} style="{{ . | safeCSS }}" {{ end }}>
+{{- end -}}
