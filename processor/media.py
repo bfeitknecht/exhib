@@ -319,10 +319,38 @@ def convert_image(
     return output
 
 
+def video_pixel_format(source: Path) -> str:
+    """Keep 10-bit sources 10-bit (iPhone HLG HDR), others 8-bit."""
+    out = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=pix_fmt",
+            "-of",
+            "csv=p=0",
+            str(source),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    return "yuv420p10le" if "10le" in out else "yuv420p"
+
+
 def convert_video(source: Path, destination: Path) -> tuple[Path, Path]:
     output = destination / (source.stem + ".webm")
     poster_png = destination / (source.stem + "-poster.png")
     poster = destination / (source.stem + "-poster.webp")
+    # Quality-targeted VP9, not lossless: camera footage defeats lossless
+    # compression (a 10 MB clip became 550 MB). CRF 32 keeps phone clips
+    # around their original size at a look nobody can tell apart. The scale
+    # caps the long side at 1920 px (no upscaling) for future 4K uploads.
+    # row-mt and cpu-used 4 trade a little efficiency for much faster runs.
+    # 10-bit HLG sources stay 10-bit, so HDR clips keep their look.
     run(
         [
             "ffmpeg",
@@ -341,16 +369,23 @@ def convert_video(source: Path, destination: Path) -> tuple[Path, Path]:
             "0:a:0?",
             "-map_metadata",
             "0",
+            "-vf",
+            "scale='min(1920,iw)':'min(1920,ih)':"
+            "force_original_aspect_ratio=decrease:force_divisible_by=2",
             "-c:v",
             "libvpx-vp9",
-            "-lossless",
-            "1",
+            "-crf",
+            "32",
             "-b:v",
             "0",
             "-deadline",
             "good",
             "-cpu-used",
-            "2",
+            "4",
+            "-row-mt",
+            "1",
+            "-pix_fmt",
+            video_pixel_format(source),
             "-c:a",
             "libopus",
             "-b:a",
