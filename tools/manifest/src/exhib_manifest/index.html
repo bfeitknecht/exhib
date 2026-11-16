@@ -540,7 +540,10 @@ function renderGrid() {
 // so the frame offset maps 1:1 to the stored focus.
 let detailKey = null;
 function frameGeometry(stage) {
-  const el = stage.querySelector("img, video");
+  // An edited item renders a canvas, not an img; include it, or the cover
+  // frame never places (and the crash kills the whole render).
+  const el = stage.querySelector("img, video, canvas");
+  if (!el) return null;
   const w = el.clientWidth, h = el.clientHeight;
   const nw = el.naturalWidth || el.videoWidth || el.width, nh = el.naturalHeight || el.videoHeight || el.height;
   if (!w || !h || !nw || !nh) return null;
