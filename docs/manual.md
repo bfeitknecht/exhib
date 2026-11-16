@@ -90,10 +90,11 @@ On the page:
 - **Sort** (right of the media label): `position` or `date`. Saved as `sort`; `position` writes nothing.
 - **Media grid** (collection, piece): one tile per file, in position order. Badges show the `position` and `cover`. Excluded tiles are dimmed. Drag tiles to reorder. Click a tile to edit it.
 - **Item editor** (below the grid, after a click): large preview, title (empty means the file name), caption (optional, markdown), `position` (1 comes first; a number past the end means last), include, ← / → to move, and **cover** (collection only).
+- **crop / rotate** (images only): opens the edit stage. ⟲ / ⟳ turn by 90°; the slider straightens by up to ±45° in 0.1° steps (double-click resets); the crop box drags and resizes (8 handles), `crop aspect` locks a ratio, `fit` crops away the empty corners of a straighten, `no crop` clears it. `Esc` or the button again leaves the edit stage. The tiles and the card show the edited picture. Videos cannot be edited (convert them first or rotate in the source).
 - **Cover**: press **cover** to make this item the homepage cover; press it again for the mosaic of the first nine images. Pressing it on another item moves the cover. A cover is always included. A video cover shows its poster on the site.
 - **Cover crop**: while the item is the cover, the large preview shows the card's 1:√2 frame. Drag it to choose the part shown on the card; the card preview follows. **center** resets it. An image with the card's aspect ratio has nothing to crop.
 - **Body** (writing): the text, saved to `body.md` (or to the one `.md` file already in the folder).
-- **save** (button or ⌘S): checks the values and writes `manifest.toml`. Errors show next to the button; nothing is written then. A ✓ shows when saved; any edit turns it back to `unsaved`. `[[media]]` tables (`file`, `title`, `caption`, `position`) appear only if you excluded a file, changed the order, or set a title or caption. `thumbnail_focus` appears only if the crop is not centered.
+- **save** (button or ⌘S): checks the values and writes `manifest.toml`. Errors show next to the button; nothing is written then. A ✓ shows when saved; any edit turns it back to `unsaved`. `[[media]]` tables (`file`, `title`, `caption`, `position`, `rotate`, `crop`) appear only if you excluded a file, changed the order, or set a title, caption or edit. `thumbnail_focus` appears only if the crop is not centered.
 
 Full flow for one collection:
 
@@ -139,10 +140,14 @@ file = "IMG_4012.HEIC"
 title = "Street after rain"   # optional; falls back to the file name
 caption = "Zurich, *late*."   # optional; markdown, shown under the title
 position = 1                  # optional; falls back to list index
+rotate = 90                    # optional; degrees clockwise, any number
+crop = [0.1, 0.1, 0.8, 0.8]     # optional; fractions of the rotated image
 
 [[media]]
 file = "clip.mov"
 ```
+
+`rotate` and `crop` redo the edits Apple Photos loses when you export an original. `rotate` is degrees clockwise, any number (`90`, `-90`, `3.5`). Whole quarter turns are exact. `crop` is `[x, y, width, height]` as fractions (0 to 1) of the **upright image after rotation** — of the bounding box that holds the tilted picture, so a straightened photo can be cropped past its empty corners. The processor decodes the source upright (EXIF orientation applied), applies the turn, then the crop, and writes the result as the lossless master; the small copies are made from it as usual. The editor draws the same frame, so what you see is what the cluster builds. Capture dates and the rest of the EXIF are kept.
 
 `position` sets the place in the grid: lower comes first. It was called `weight`, then `order`. A manifest with either fails with `[[media]] weight is renamed to position` (or `order`). The editor reads both and writes `position`. Bundles already on the PVC with `weight` still sort correctly.
 

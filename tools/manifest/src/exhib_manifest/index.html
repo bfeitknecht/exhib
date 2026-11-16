@@ -86,7 +86,7 @@
   .tile.off { opacity: .35; }
   .tile.drop { border-style: dashed; border-color: var(--muted); }
   .tile .art { aspect-ratio: var(--card) / 1; background: var(--line); overflow: hidden; display: grid; place-items: center; }
-  .tile .art img, .tile .art video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile .art img, .tile .art video, .tile .art canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
   .tile .cap { display: block; padding: .3rem .1rem 0; font: .85rem var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .badges { position: absolute; top: .3rem; left: .3rem; display: flex; gap: .25rem; }
   .badge { padding: 0 .35rem; background: var(--fg); color: var(--bg); border-radius: 2px; }
@@ -97,11 +97,36 @@
   @media (max-width: 860px) { .detail { grid-template-columns: 1fr; } }
   .detail .big { display: grid; place-items: center; min-height: 8rem; }
   .stage { position: relative; display: inline-block; line-height: 0; overflow: hidden; touch-action: none; }
-  .stage img, .stage video { max-width: 100%; max-height: 60vh; display: block; user-select: none; -webkit-user-drag: none; }
+  .stage img, .stage video, .stage canvas { max-width: 100%; max-height: 60vh; display: block; user-select: none; -webkit-user-drag: none; }
   /* Cover crop frame: the card's 1:√2 window over the image. The shadow dims the rest. */
   .frame { position: absolute; box-shadow: 0 0 0 9999px oklch(0% 0 0 / .55); outline: 2px solid #fff; cursor: grab; }
   .frame:active { cursor: grabbing; }
   .row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+  select { width: 100%; padding: .45rem .5rem; border: 1px solid var(--line); border-radius: 3px;
+           background: var(--field); color: var(--fg); font: .85rem var(--mono); }
+  input[type=range] { width: 100%; accent-color: var(--fg); }
+  .fine { display: grid; grid-template-columns: minmax(0, 1fr) 5.5rem; gap: .6rem; align-items: center; }
+  #editTools { margin-top: 1rem; padding-top: .2rem; border-top: 1px solid var(--line); }
+  /* Crop and rotate. The stage is the bounding box of the rotated picture; the crop is a
+     fraction of it, as the processor reads it (processor/media.py: edit_filters). */
+  .cropstage { position: relative; line-height: 0; overflow: hidden; touch-action: none; user-select: none;
+               background: repeating-conic-gradient(var(--line) 0 25%, var(--field) 0 50%) 0 0 / 16px 16px; }
+  .cropstage img { position: absolute; max-width: none; max-height: none; pointer-events: none; transform-origin: 50% 50%; }
+  .cropbox { position: absolute; cursor: move; outline: 1px solid #fff; box-shadow: 0 0 0 9999px oklch(0% 0 0 / .55);
+             background:
+               linear-gradient(#fff5, #fff5) 33.333% 0 / 1px 100% no-repeat,
+               linear-gradient(#fff5, #fff5) 66.666% 0 / 1px 100% no-repeat,
+               linear-gradient(#fff5, #fff5) 0 33.333% / 100% 1px no-repeat,
+               linear-gradient(#fff5, #fff5) 0 66.666% / 100% 1px no-repeat; }
+  .cropbox i { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; background: #fff; border: 1px solid #000; }
+  .cropbox i[data-h=nw] { left: 0; top: 0; cursor: nwse-resize; }
+  .cropbox i[data-h=n] { left: 50%; top: 0; cursor: ns-resize; }
+  .cropbox i[data-h=ne] { left: 100%; top: 0; cursor: nesw-resize; }
+  .cropbox i[data-h=e] { left: 100%; top: 50%; cursor: ew-resize; }
+  .cropbox i[data-h=se] { left: 100%; top: 100%; cursor: nwse-resize; }
+  .cropbox i[data-h=s] { left: 50%; top: 100%; cursor: ns-resize; }
+  .cropbox i[data-h=sw] { left: 0; top: 100%; cursor: nesw-resize; }
+  .cropbox i[data-h=w] { left: 0; top: 50%; cursor: ew-resize; }
   footer { position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); }
   footer .bar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
   .when { display: grid; grid-template-columns: 9.5rem 5.5rem auto; gap: .5rem; justify-content: start; }
@@ -183,6 +208,36 @@
           <button type="button" id="moveRight">→</button>
           <button type="button" id="coverToggle" aria-pressed="false">cover</button>
           <button type="button" id="centerCrop" hidden>center</button>
+          <button type="button" id="editToggle" aria-pressed="false" hidden>crop / rotate</button>
+        </div>
+        <div id="editTools" hidden>
+          <label>rotate</label>
+          <div class="row" style="margin-top:0">
+            <button type="button" id="rotL" title="90° counter-clockwise">⟲ 90°</button>
+            <button type="button" id="rotR" title="90° clockwise">⟳ 90°</button>
+          </div>
+          <label for="fineRange">straighten</label>
+          <div class="fine">
+            <input type="range" id="fineRange" min="-45" max="45" step="0.1" value="0" title="double-click to reset">
+            <input type="number" id="fineNum" min="-45" max="45" step="0.1" value="0" aria-label="degrees">
+          </div>
+          <label for="aspect">crop aspect</label>
+          <select id="aspect">
+            <option value="free">free</option>
+            <option value="orig">original</option>
+            <option value="1">1:1</option>
+            <option value="1.5">3:2</option><option value="0.6666667">2:3</option>
+            <option value="1.3333333">4:3</option><option value="0.75">3:4</option>
+            <option value="1.25">5:4</option><option value="0.8">4:5</option>
+            <option value="1.7777778">16:9</option><option value="0.5625">9:16</option>
+            <option value="1.41421356">1:√2 (card)</option>
+          </select>
+          <div class="row">
+            <button type="button" id="cropFit" title="largest crop with no empty corners">fit</button>
+            <button type="button" id="cropFull" title="no crop">no crop</button>
+            <button type="button" id="editReset">reset</button>
+          </div>
+          <p class="hint" id="cropInfo"></p>
         </div>
       </div>
     </div>
@@ -212,7 +267,7 @@ let dirty = false;
 const media = (name) => `/media/${encodeURIComponent(slug)}/${encodeURIComponent(name)}`;
 const shown = (item) => item.title || item.default_title;
 // Older servers or manifests may omit fields; never show "undefined".
-const clean = (items) => items.map((i) => ({ title: "", caption: "", ...i }));
+const clean = (items) => items.map((i) => ({ title: "", caption: "", rotate: 0, crop: null, ...i }));
 const included = () => state.items.filter((i) => i.included);
 // Order shown in the grid. "date" mirrors the site: capture date first, oldest
 // first (stable), then undated files in position order. Dragging only edits position.
@@ -257,7 +312,78 @@ function isoLocal(d) {
 }
 function nowMinute() { const d = new Date(); d.setSeconds(0, 0); return d; }
 
+// ── Crop and rotate ──────────────────────────────────────────────
+// item.rotate: degrees clockwise, 0 to 360. item.crop: [x, y, w, h] as fractions of the
+// bounding box of the rotated picture, or null. The processor makes the same picture
+// from the original (processor/media.py: edit_filters). Keep the two in step.
+const RAD = Math.PI / 180;
+const isEdited = (i) => i.type === "image" && (!!i.rotate || !!i.crop);
+const editSig = (i) => (isEdited(i) ? JSON.stringify([i.rotate, i.crop]) : "");
+function frameSize(nw, nh, deg) {
+  const c = Math.abs(Math.cos(deg * RAD)), s = Math.abs(Math.sin(deg * RAD));
+  return [nw * c + nh * s, nw * s + nh * c];
+}
+const normRot = (deg) => {
+  const r = Math.round((((deg % 360) + 360) % 360) * 10) / 10;
+  return r >= 360 ? 0 : r;
+};
+const fineOf = (deg) => deg - Math.round(deg / 90) * 90;
+// Largest axis-aligned crop with no empty corners, in the aspect of the upright picture.
+function inscribed(nw, nh, deg) {
+  const q = Math.round(deg / 90), a = Math.abs(fineOf(deg)) * RAD;
+  if (a < 1e-6) return null;
+  const [w, h] = q % 2 ? [nh, nw] : [nw, nh];
+  const c = Math.cos(a), s = Math.sin(a);
+  const k = Math.min(w / (w * c + h * s), h / (w * s + h * c));
+  const cw = (k * w) / (w * c + h * s), ch = (k * h) / (w * s + h * c);
+  return [(1 - cw) / 2, (1 - ch) / 2, cw, ch];
+}
+// Turn a crop with the picture by a quarter turn (clockwise: +1, counter-clockwise: -1).
+function turnCrop(crop, dir) {
+  if (!crop) return null;
+  const [x, y, w, h] = crop;
+  return dir > 0 ? [1 - y - h, x, h, w] : [y, 1 - x - w, h, w];
+}
+const isFull = (c) => c[0] < 1e-4 && c[1] < 1e-4 && c[2] > 0.9999 && c[3] > 0.9999;
+const srcImages = new Map();
+function loadSource(url) {
+  if (!srcImages.has(url)) {
+    srcImages.set(url, new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    }));
+  }
+  return srcImages.get(url);
+}
+// Draw the edited picture into a canvas, at most `max` px on the long side.
+function editedCanvas(item, max) {
+  const cv = document.createElement("canvas");
+  loadSource(media(item.name)).then((img) => {
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    const [W, H] = frameSize(nw, nh, item.rotate || 0);
+    const c = item.crop || [0, 0, 1, 1];
+    const k = Math.min(1, max / Math.max(W * c[2], H * c[3]));
+    cv.width = Math.max(1, Math.round(W * c[2] * k));
+    cv.height = Math.max(1, Math.round(H * c[3] * k));
+    const g = cv.getContext("2d");
+    g.imageSmoothingQuality = "high";
+    g.translate(-c[0] * W * k, -c[1] * H * k);
+    g.translate((W * k) / 2, (H * k) / 2);
+    g.rotate((item.rotate || 0) * RAD);
+    g.drawImage(img, (-nw * k) / 2, (-nh * k) / 2, nw * k, nh * k);
+    cv.dispatchEvent(new Event("load"));
+  }, () => cv.dispatchEvent(new Event("error")));
+  return cv;
+}
+
 function artFor(item, opts = {}) {
+  if (isEdited(item) && !opts.raw) {
+    const cv = editedCanvas(item, opts.controls || opts.eager ? 1600 : 480);
+    cv.addEventListener("error", () => { const d = document.createElement("div"); d.className = "fallback"; d.textContent = item.name; cv.replaceWith(d); }, { once: true });
+    return cv;
+  }
   const fallback = () => { const d = document.createElement("div"); d.className = "fallback"; d.textContent = item.name; return d; };
   let el;
   if (item.type === "video") {
@@ -349,7 +475,7 @@ function renderCardText() {
 let cardKey = null;
 function renderCardArt() {
   const cover = coverItem();
-  const key = JSON.stringify([slug, state.kind, state.thumbnail, included().map((i) => i.name)]);
+  const key = JSON.stringify([slug, state.kind, state.thumbnail, included().map((i) => [i.name, editSig(i)])]);
   if (key !== cardKey) {
     cardKey = key;
     const art = $("cardArt");
@@ -388,6 +514,7 @@ function renderGrid() {
     const add = (t) => badges.append(Object.assign(document.createElement("span"), { className: "badge", textContent: t }));
     if (item.included) add(String(shownOrder.filter((i) => i.included).indexOf(item) + 1));
     if (item.type === "video") add("video");
+    if (isEdited(item)) add("edited");
     if (item === coverItem()) add("cover");
     const cap = Object.assign(document.createElement("span"), { className: "cap", textContent: shown(item) });
     tile.append(art, badges, cap);
@@ -415,7 +542,7 @@ let detailKey = null;
 function frameGeometry(stage) {
   const el = stage.querySelector("img, video");
   const w = el.clientWidth, h = el.clientHeight;
-  const nw = el.naturalWidth || el.videoWidth, nh = el.naturalHeight || el.videoHeight;
+  const nw = el.naturalWidth || el.videoWidth || el.width, nh = el.naturalHeight || el.videoHeight || el.height;
   if (!w || !h || !nw || !nh) return null;
   const wide = nw / nh > CARD;
   const fw = wide ? h * CARD : w, fh = wide ? h : w / CARD;
@@ -462,9 +589,15 @@ function renderDetail() {
   $("detail").hidden = !selected;
   if (!selected) return;
   const isCover = selected === coverItem();
-  const key = `${slug}/${selected.name}/${isCover}`;
+  if (selected.type === "video" || selected !== editTarget) editing = false;
+  const key = editing ? `${slug}/${selected.name}/edit` : `${slug}/${selected.name}/${isCover}/${editSig(selected)}`;
   if (detailKey !== key) {
     detailKey = key;
+    if (editing) {
+      buildEditStage();
+      $("itemTitle").value = selected.title || "";
+      $("itemCaption").value = selected.caption || "";
+    } else {
     const stage = document.createElement("span");
     stage.className = "stage";
     const el = artFor(selected, { controls: !isCover, eager: true });
@@ -480,8 +613,13 @@ function renderDetail() {
     $("bigArt").replaceChildren(stage);
     $("itemTitle").value = selected.title || "";
     $("itemCaption").value = selected.caption || "";
+    }
   }
   placeFrame();
+  layoutEdit();
+  $("editToggle").hidden = selected.type !== "image";
+  $("editToggle").setAttribute("aria-pressed", editing);
+  $("editTools").hidden = !editing;
   $("detailName").textContent = selected.name;
   $("itemTitle").placeholder = selected.default_title;
   $("itemIncluded").checked = selected.included;
@@ -491,8 +629,210 @@ function renderDetail() {
   if (document.activeElement !== $("itemPosition")) $("itemPosition").value = rank < 0 ? "" : rank + 1;
   $("coverToggle").hidden = state.kind !== "collection";
   $("coverToggle").setAttribute("aria-pressed", isCover);
-  $("centerCrop").hidden = !isCover;
+  $("centerCrop").hidden = !isCover || editing;
 }
+
+let editing = false;
+let editTarget = null;
+let editRatio = null; // locked width / height of the crop box, or null for free
+const MIN_BOX = 0.04; // smallest crop side, as a fraction
+
+function buildEditStage() {
+  const stage = document.createElement("div");
+  stage.className = "cropstage";
+  const img = document.createElement("img");
+  img.src = media(selected.name);
+  img.draggable = false;
+  img.addEventListener("load", layoutEdit);
+  img.addEventListener("error", () => stage.replaceChildren(Object.assign(document.createElement("div"), { className: "fallback", textContent: selected.name })));
+  const box = document.createElement("div");
+  box.className = "cropbox";
+  for (const h of ["nw", "n", "ne", "e", "se", "s", "sw", "w"]) {
+    const dot = document.createElement("i");
+    dot.dataset.h = h;
+    box.append(dot);
+  }
+  stage.append(img, box);
+  bindCrop(stage, box);
+  $("bigArt").replaceChildren(stage);
+}
+
+function layoutEdit() {
+  if (!editing || !selected) return;
+  const stage = $("bigArt").querySelector(".cropstage");
+  const img = stage && stage.querySelector("img");
+  const box = stage && stage.querySelector(".cropbox");
+  if (!img || !box || !img.naturalWidth) return;
+  const nw = img.naturalWidth, nh = img.naturalHeight, rot = selected.rotate || 0;
+  const [W, H] = frameSize(nw, nh, rot);
+  const k = Math.min(Math.max(160, $("bigArt").clientWidth - 2) / W, (innerHeight * 0.62) / H);
+  stage.style.width = `${W * k}px`;
+  stage.style.height = `${H * k}px`;
+  Object.assign(img.style, {
+    width: `${nw * k}px`, height: `${nh * k}px`,
+    left: `${(W * k - nw * k) / 2}px`, top: `${(H * k - nh * k) / 2}px`,
+    transform: `rotate(${rot}deg)`,
+  });
+  const c = selected.crop || [0, 0, 1, 1];
+  Object.assign(box.style, { left: `${c[0] * 100}%`, top: `${c[1] * 100}%`, width: `${c[2] * 100}%`, height: `${c[3] * 100}%` });
+  const fine = fineOf(rot);
+  if (document.activeElement !== $("fineRange")) $("fineRange").value = fine;
+  if (document.activeElement !== $("fineNum")) $("fineNum").value = Math.round(fine * 10) / 10;
+  const bw = c[2] * W, bh = c[3] * H;
+  $("cropInfo").textContent = `${rot}° · crop ${(c[2] * 100).toFixed(0)}% × ${(c[3] * 100).toFixed(0)}% · ${(bw / bh).toFixed(3)}:1${selected.crop ? "" : " (no crop)"}`;
+}
+
+function sourceSize() {
+  const img = $("bigArt").querySelector(".cropstage img");
+  return img && img.naturalWidth ? [img.naturalWidth, img.naturalHeight] : null;
+}
+
+// Largest centered rectangle of the given width/height ratio inside rect [x, y, w, h] (pixels).
+function fitRatio(rect, ratio) {
+  const [x, y, w, h] = rect;
+  const [nw, nh] = w / h > ratio ? [h * ratio, h] : [w, w / ratio];
+  return [x + (w - nw) / 2, y + (h - nh) / 2, nw, nh];
+}
+
+// New rect [x, y, w, h] in pixels for a drag. mode: "move" or a handle (n, ne, ...).
+function dragRect(mode, r, dx, dy, W, H, ratio) {
+  const min = Math.max(MIN_BOX * Math.min(W, H), 8);
+  let [l, t] = [r[0], r[1]];
+  let [rr, b] = [r[0] + r[2], r[1] + r[3]];
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  if (mode === "move") {
+    l = clamp(l + dx, 0, W - r[2]); t = clamp(t + dy, 0, H - r[3]);
+    return [l, t, r[2], r[3]];
+  }
+  const hasW = mode.includes("w"), hasE = mode.includes("e"), hasN = mode.includes("n"), hasS = mode.includes("s");
+  if (!ratio) {
+    if (hasW) l = clamp(l + dx, 0, rr - min);
+    if (hasE) rr = clamp(rr + dx, l + min, W);
+    if (hasN) t = clamp(t + dy, 0, b - min);
+    if (hasS) b = clamp(b + dy, t + min, H);
+    return [l, t, rr - l, b - t];
+  }
+  const corner = mode.length === 2;
+  let w, h;
+  if (corner) {
+    const nw = hasW ? rr - clamp(l + dx, 0, rr - min) : clamp(rr + dx, l + min, W) - l;
+    const nh = hasN ? b - clamp(t + dy, 0, b - min) : clamp(b + dy, t + min, H) - t;
+    [w, h] = nw / nh > ratio ? [nw, nw / ratio] : [nh * ratio, nh];
+    const maxW = hasW ? rr : W - l, maxH = hasN ? b : H - t;
+    if (w > maxW) [w, h] = [maxW, maxW / ratio];
+    if (h > maxH) [w, h] = [maxH * ratio, maxH];
+    if (w < min) [w, h] = [min, min / ratio];
+    if (h < min) [w, h] = [min * ratio, min];
+    return [hasW ? rr - w : l, hasN ? b - h : t, w, h];
+  }
+  if (hasW || hasE) {
+    const cy = t + (b - t) / 2;
+    w = hasW ? rr - clamp(l + dx, 0, rr - min) : clamp(rr + dx, l + min, W) - l;
+    w = Math.min(w, (2 * Math.min(cy, H - cy)) * ratio, hasW ? rr : W - l);
+    w = Math.max(w, Math.min(min, (2 * Math.min(cy, H - cy)) * ratio));
+    h = w / ratio;
+    return [hasW ? rr - w : l, cy - h / 2, w, h];
+  }
+  const cx = l + (rr - l) / 2;
+  h = hasN ? b - clamp(t + dy, 0, b - min) : clamp(b + dy, t + min, H) - t;
+  h = Math.min(h, (2 * Math.min(cx, W - cx)) / ratio, hasN ? b : H - t);
+  h = Math.max(h, Math.min(min, (2 * Math.min(cx, W - cx)) / ratio));
+  w = h * ratio;
+  return [cx - w / 2, hasN ? b - h : t, w, h];
+}
+
+function currentRatio() {
+  if (editRatio === null) return null;
+  return editRatio;
+}
+
+function setCrop(rectPx, W, H) {
+  const c = [rectPx[0] / W, rectPx[1] / H, rectPx[2] / W, rectPx[3] / H].map((v) => Math.round(v * 10000) / 10000);
+  selected.crop = isFull(c) ? null : c;
+}
+
+function bindCrop(stage, box) {
+  let drag = null;
+  box.addEventListener("pointerdown", (e) => {
+    const handle = e.target.dataset.h;
+    const W = stage.clientWidth, H = stage.clientHeight;
+    if (!W || !H) return;
+    const c = selected.crop || [0, 0, 1, 1];
+    box.setPointerCapture(e.pointerId);
+    drag = { mode: handle || "move", x: e.clientX, y: e.clientY, W, H, rect: [c[0] * W, c[1] * H, c[2] * W, c[3] * H] };
+    e.preventDefault();
+  });
+  box.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const next = dragRect(drag.mode, drag.rect, e.clientX - drag.x, e.clientY - drag.y, drag.W, drag.H, currentRatio());
+    setCrop(next, drag.W, drag.H);
+    markDirty();
+    layoutEdit();
+  });
+  const end = () => { if (drag) { drag = null; render(); } };
+  box.addEventListener("pointerup", end);
+  box.addEventListener("pointercancel", end);
+}
+
+function applyRatio() {
+  const v = $("aspect").value;
+  const src = sourceSize();
+  if (v === "free" || !src) { editRatio = null; return; }
+  const q = Math.round((selected.rotate || 0) / 90);
+  editRatio = v === "orig" ? (q % 2 ? src[1] / src[0] : src[0] / src[1]) : Number(v);
+  const [W, H] = frameSize(src[0], src[1], selected.rotate || 0);
+  // The ratio is of the crop in picture pixels; the box is in stage fractions.
+  const c = selected.crop || [0, 0, 1, 1];
+  const rect = fitRatio([c[0] * W, c[1] * H, c[2] * W, c[3] * H], editRatio);
+  setCrop(rect, W, H);
+  editRatioStage();
+  markDirty();
+  layoutEdit();
+  render();
+}
+// The stage keeps the picture's proportions (W:H), so a pixel ratio is the same on screen.
+function editRatioStage() {}
+
+function setRotation(deg, crop) {
+  selected.rotate = normRot(deg);
+  selected.crop = crop;
+  markDirty();
+  layoutEdit();
+}
+function turn(dir) {
+  setRotation((selected.rotate || 0) + dir * 90, turnCrop(selected.crop, dir));
+  render();
+}
+function straighten(fine, final) {
+  const q = Math.round((selected.rotate || 0) / 90);
+  const src = sourceSize();
+  const rot = normRot(q * 90 + Math.min(45, Math.max(-45, fine)));
+  setRotation(rot, src ? inscribed(src[0], src[1], rot) : null);
+  if (final) render();
+}
+$("rotL").onclick = () => turn(-1);
+$("rotR").onclick = () => turn(1);
+$("fineRange").addEventListener("input", () => straighten(Number($("fineRange").value), false));
+$("fineRange").addEventListener("change", () => straighten(Number($("fineRange").value), true));
+$("fineRange").addEventListener("dblclick", () => { $("fineRange").value = 0; straighten(0, true); });
+$("fineNum").addEventListener("change", () => straighten(Number($("fineNum").value) || 0, true));
+$("aspect").addEventListener("change", applyRatio);
+$("cropFit").onclick = () => {
+  const src = sourceSize();
+  selected.crop = src ? inscribed(src[0], src[1], selected.rotate || 0) : null;
+  markDirty(); layoutEdit(); render();
+};
+$("cropFull").onclick = () => { selected.crop = null; markDirty(); layoutEdit(); render(); };
+$("editReset").onclick = () => { selected.rotate = 0; selected.crop = null; $("aspect").value = "free"; editRatio = null; markDirty(); layoutEdit(); render(); };
+$("editToggle").onclick = () => {
+  editing = !editing;
+  editTarget = editing ? selected : null;
+  $("aspect").value = "free";
+  editRatio = null;
+  render();
+};
+addEventListener("keydown", (e) => { if (e.key === "Escape" && editing) { editing = false; editTarget = null; render(); } });
+addEventListener("resize", layoutEdit);
 
 function render() { renderKind(); renderTags(); renderCardText(); renderCardArt(); renderGrid(); renderDetail(); }
 
@@ -506,7 +846,7 @@ function collect() {
     tags: state.tags,
     thumbnail: state.thumbnail,
     thumbnail_focus: state.thumbnail_focus,
-    items: state.items.map(({ name, title, caption, included }) => ({ name, title, caption, included })),
+    items: state.items.map(({ name, title, caption, included, rotate, crop }) => ({ name, title, caption, included, rotate, crop })),
     body: $("body").value,
   };
 }

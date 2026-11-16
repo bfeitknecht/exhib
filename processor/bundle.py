@@ -16,6 +16,7 @@ from .media import (
     VIDEO_EXTS,
     convert_image,
     convert_video,
+    parse_edit,
     probe_video,
     run,
 )
@@ -264,8 +265,11 @@ def write_media_bundle(package: Path, manifest: dict, bundle_dir: Path) -> None:
         title = str(entry.get("title") or humanize_stem(source.stem))
         caption = str(entry.get("caption") or "").strip()
         position = int(entry.get("position", index))
+        rotate, crop = parse_edit(entry)
+        if (rotate or crop) and ext not in IMAGE_EXTS:
+            raise ValueError(f"rotate and crop apply to images only: {entry['file']}")
         if ext in IMAGE_EXTS:
-            filename = convert_image(source, converted).name
+            filename = convert_image(source, converted, rotate, crop).name
             rows.append(
                 {
                     "file": filename,

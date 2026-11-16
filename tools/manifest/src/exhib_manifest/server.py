@@ -112,12 +112,36 @@ class Handler(BaseHTTPRequestHandler):
         )
 
     def preview(self, slug: str, source: Path) -> Path | None:
+        """A JPEG the browser can show, upright, for formats it cannot read.
+
+        sips drops the HEIC rotation (irot) and gives a sideways picture.
+        Quick Look applies it, so HEIC goes through qlmanage first. The editor
+        crops and rotates on this picture, so it must match what the processor
+        makes (upright pixels).
+        """
         target = self.server.previews / slug / (source.name + ".jpg")
         if target.is_file():
             return target
         if not shutil.which("sips"):
             return None
         target.parent.mkdir(exist_ok=True)
+        if source.suffix.lower() in {".heic", ".heif"} and shutil.which("qlmanage"):
+            with tempfile.TemporaryDirectory() as scratch:
+                subprocess.run(
+                    ["qlmanage", "-t", "-s", "2400", "-o", scratch, str(source)],
+                    check=False,
+                    capture_output=True,
+                )
+                thumbnail = Path(scratch) / (source.name + ".png")
+                if thumbnail.is_file():
+                    result = subprocess.run(
+                        ["sips", "-s", "format", "jpeg", "-s", "formatOptions", "88"]
+                        + [str(thumbnail), "--out", str(target)],
+                        check=False,
+                        capture_output=True,
+                    )
+                    if result.returncode == 0 and target.is_file():
+                        return target
         result = subprocess.run(
             ["sips", "-s", "format", "jpeg", "-Z", "1600", str(source)]
             + ["--out", str(target)],

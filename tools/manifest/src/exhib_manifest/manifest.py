@@ -13,6 +13,7 @@ folders, one per slug. No other path is reachable.
 from __future__ import annotations
 
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -137,6 +138,39 @@ def list_folders(root: Path) -> list[dict]:
     ]
 
 
+def edit_of(entry: dict) -> tuple[float, list[float] | None]:
+    """Read rotate and crop of a [[media]] entry. Same rules as the processor
+    (processor/media.py: parse_edit). Raises ValueError on a bad value."""
+    rotate = entry.get("rotate", 0) or 0
+    if isinstance(rotate, bool) or not isinstance(rotate, int | float):
+        raise ValueError("rotate must be a number of degrees")
+    if not math.isfinite(rotate):
+        raise ValueError("rotate must be finite")
+    rotate = round(float(rotate) % 360, 1)
+    if rotate >= 360:
+        rotate = 0.0
+    crop = entry.get("crop")
+    if crop is not None:
+        if not (
+            isinstance(crop, list)
+            and len(crop) == 4
+            and all(
+                isinstance(v, int | float) and not isinstance(v, bool) for v in crop
+            )
+        ):
+            raise ValueError("crop must be [x, y, width, height]")
+        x, y, w, h = (round(float(v), 4) for v in crop)
+        if not (0 <= x <= 1 and 0 <= y <= 1 and w > 0 and h > 0):
+            raise ValueError("crop must lie inside the image")
+        # Same tolerance as the processor (parse_edit): a crop that reaches
+        # past the edge is invalid, not silently clamped.
+        if x + w > 1.0001 or y + h > 1.0001:
+            raise ValueError("crop must lie inside the image")
+        w, h = min(w, round(1 - x, 4)), min(h, round(1 - y, 4))
+        crop = None if x == 0 and y == 0 and w >= 1 and h >= 1 else [x, y, w, h]
+    return rotate, crop
+
+
 def focus_of(value: object) -> list[int] | None:
     """[x, y] in percent (0-100), or None if value is not such a pair."""
     if (
@@ -165,6 +199,7 @@ def load_state(folder: Path) -> dict:
     listed = manifest.get("media")
     titles: dict[str, str] = {}
     captions: dict[str, str] = {}
+    edits: dict[str, tuple[float, list[float] | None]] = {}
     if isinstance(listed, list):
         # Same rule as the processor: explicit position, else list index.
         # Manifests from before the rename may say order or weight.
@@ -182,6 +217,11 @@ def load_state(folder: Path) -> dict:
         captions = {
             str(e["file"]): str(e["caption"]) for e in listed if e.get("caption")
         }
+        for e in listed:
+            try:
+                edits[str(e["file"])] = edit_of(e)
+            except KeyError, ValueError:
+                pass
         included = set(order)
         order += [n for n in names if n not in included]
     else:
@@ -218,6 +258,8 @@ def load_state(folder: Path) -> dict:
                 "title": titles.get(name, ""),
                 "caption": captions.get(name, ""),
                 "included": name in included,
+                "rotate": edits.get(name, (0.0, None))[0],
+                "crop": edits.get(name, (0.0, None))[1],
                 "captured": capture_date(by_name[name]),
             }
             for name in order
@@ -288,7 +330,19 @@ def render(folder: Path, data: dict) -> tuple[str, str | None]:
     def text(item: dict, key: str) -> str:
         return str(item.get(key) or "").strip()
 
-    custom = any(text(i, "title") or text(i, "caption") for i in chosen)
+    for item in chosen:
+        if media_type(folder / item["name"]) == "video" and (
+            item.get("rotate") or item.get("crop")
+        ):
+            raise ValueError(f"rotate and crop apply to images only: {item['name']}")
+        edit_of(item)  # Reject a bad value now, not at upload.
+
+    def edit(item: dict) -> tuple[float, list[float] | None]:
+        return edit_of(item)
+
+    custom = any(
+        text(i, "title") or text(i, "caption") or edit(i) != (0.0, None) for i in chosen
+    )
     defaults = [i["name"] for i in chosen] == names and not custom
     if not defaults:
         for index, item in enumerate(chosen, 1):
@@ -297,6 +351,13 @@ def render(folder: Path, data: dict) -> tuple[str, str | None]:
             for key in ("title", "caption"):
                 if text(item, key):
                     lines.append(f"{key} = {toml_string(text(item, key))}")
+            rotate, crop = edit(item)
+            if rotate:
+                # Whole degrees read better as integers.
+                shown = int(rotate) if rotate == int(rotate) else rotate
+                lines.append(f"rotate = {shown}")
+            if crop:
+                lines.append("crop = [" + ", ".join(str(v) for v in crop) + "]")
             lines.append(f"position = {index}")
     return "\n".join(lines) + "\n", None
 
