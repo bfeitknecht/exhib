@@ -334,8 +334,11 @@ def convert_video(source: Path, destination: Path) -> tuple[Path, Path]:
             str(source),
             "-map",
             "0:v:0",
+            # Only the first audio track. Phone clips carry extra audio-typed
+            # streams with no decoder (Apple metadata); 0:a? maps those too
+            # and the conversion fails. The first track is the real sound.
             "-map",
-            "0:a?",
+            "0:a:0?",
             "-map_metadata",
             "0",
             "-c:v",
