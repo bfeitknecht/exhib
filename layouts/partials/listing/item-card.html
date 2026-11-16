@@ -16,14 +16,14 @@
     <div class="item-preview">
       <div class="preview-grid">
         {{- range first 9 $images }}
-        <a href="{{ $page.RelPermalink }}#{{ .id }}"{{ with .title }} aria-label="Open {{ $page.Title }}: {{ . }}"{{ end }}>{{ partial "media/img.html" (dict "image" .item "widths" (slice 320 640) "sizes" "(max-width: 48rem) 30vw, 14rem") }}</a>
+        <a href="{{ $page.RelPermalink }}#{{ .id }}"{{ with .title }} aria-label="Open {{ $page.Title }}: {{ . }}"{{ end }}><img src="{{ partial "media/preview.html" (dict "image" .item) }}" alt="" loading="lazy"></a>
         {{- end }}
       </div>
     </div>
   {{- else }}
     <a class="item-preview" href="{{ $page.RelPermalink }}" aria-label="Open {{ $page.Title }}">
       {{- if $isCollection -}}
-        {{- with $page.Params.thumbnail -}}{{- with $page.Resources.GetMatch . -}}{{ partial "media/img.html" (dict "image" . "widths" (slice 480 960 1280) "sizes" "(max-width: 48rem) 100vw, 40rem" "focus" $page.Params.thumbnail_focus) }}{{- end -}}{{- end -}}
+        {{- with $page.Params.thumbnail -}}{{- with $page.Resources.GetMatch . -}}<img src="{{ partial "media/preview.html" (dict "image" .) }}" alt="" loading="lazy"{{ with $page.Params.thumbnail_focus }} style="object-position: {{ index . 0 }}% {{ index . 1 }}%"{{ end }}>{{- end -}}{{- end -}}
       {{- else -}}
         {{- with index (partial "media/sorted-media.html" $page) 0 -}}
           {{- if eq .Params.kind "video" -}}
@@ -31,7 +31,7 @@
             {{- $poster := $page.Resources.GetMatch $video.Params.poster -}}
             {{- with $video.Params.preview -}}{{- with $page.Resources.GetMatch . -}}<img src="{{ .RelPermalink }}" alt="" loading="lazy">{{- end -}}{{- else -}}<video autoplay muted loop playsinline preload="metadata"{{ with $poster }} poster="{{ partial "media/preview.html" (dict "image" .) }}"{{ end }} aria-hidden="true"><source src="{{ $video.RelPermalink }}" type="video/webm"></video>{{- end -}}<span class="preview-tap" aria-hidden="true"></span>
           {{- else -}}
-            {{ partial "media/img.html" (dict "image" . "widths" (slice 480 960 1280) "sizes" "(max-width: 48rem) 100vw, 40rem") }}
+            <img src="{{ partial "media/preview.html" (dict "image" .) }}" alt="" loading="lazy">
           {{- end -}}
         {{- end -}}
       {{- end -}}

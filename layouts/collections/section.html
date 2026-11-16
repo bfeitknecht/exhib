@@ -24,7 +24,7 @@
               {{- with .item.Params.preview -}}{{- with $page.Resources.GetMatch . -}}<img src="{{ .RelPermalink }}" alt="" loading="lazy">{{- end -}}{{- else -}}<video autoplay muted loop playsinline preload="metadata"{{ with .poster }} poster="{{ partial "media/preview.html" (dict "image" .) }}"{{ end }} aria-hidden="true"><source src="{{ .item.RelPermalink }}" type="video/webm"></video>{{- end -}}
               <span class="preview-tap" aria-hidden="true"></span>
             {{ else }}
-              {{ partial "media/img.html" (dict "image" .item "alt" .title "widths" (slice 320 640 960) "sizes" "(max-width: 48rem) 34vw, 25vw") }}
+              <img src="{{ partial "media/preview.html" (dict "image" .item) }}" alt="{{ .title }}" loading="lazy">
             {{ end }}
           </a>
         {{ end }}
