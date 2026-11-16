@@ -525,6 +525,9 @@ a.item-preview:focus-visible img,
   padding: 0;
   list-style: none;
 }
+.item-copy .tag-list {
+  grid-column: 1 / -1;
+}
 .tag-list .tag,
 .tag {
   display: inline-block;

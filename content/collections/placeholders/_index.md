@@ -1,7 +1,8 @@
 +++
 title = "Placeholders"
 date = 2026-10-29T00:00:00Z
-description = "All assistant-created placeholder artwork: cover, studies, standalone-piece and card-thumbnail previews, generated calibration charts and test-pattern clips."
+description = "AI-generated placeholder art and test patterns."
+tags = ["ai"]
 thumbnail = "cover.svg"
 
 [[resources]]
