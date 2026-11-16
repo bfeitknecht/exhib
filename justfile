@@ -58,6 +58,37 @@ logs:
 rebuild:
     kubectl -n exhib exec deploy/exhib -- uv run --frozen --no-sync python -m processor rebuild
 
+# Format Python sources. `just fmt --check` only reports (CI uses it).
+fmt *flags:
+    uvx ruff@0.15 format {{flags}} processor entrypoint.py tools/manifest/src
+
+# Everything CI runs: format check, lint, Hugo build.
+check:
+    uvx ruff@0.15 format --check processor entrypoint.py tools/manifest/src
+    uvx ruff@0.15 check processor entrypoint.py tools/manifest/src
+    hugo --quiet --destination "$(mktemp -d)"
+
+# Build the image for the local architecture (smoke test before a release).
+image:
+    docker buildx build --load -t exhib:dev .
+
+# Tag vX.Y.Z from pyproject.toml and push (CI publishes the image). --check only validates.
+release *flags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version="$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -1)"
+    tag="v${version}"
+    [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "pyproject.toml version '$version' is not X.Y.Z" >&2; exit 1; }
+    ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null || { echo "tag $tag exists; bump pyproject.toml" >&2; exit 1; }
+    [[ -z "$(git status --porcelain)" ]] || { echo "working tree is not clean; commit first" >&2; exit 1; }
+    git fetch -q origin
+    [[ "$(git rev-parse HEAD)" == "$(git rev-parse @{u})" ]] || { echo "HEAD differs from upstream; push or pull first" >&2; exit 1; }
+    just check
+    if [[ "{{flags}}" == *--check* ]]; then echo "$tag is ready"; exit 0; fi
+    git tag -a "$tag" -m "Release $version"
+    git push origin "$tag"
+    echo "pushed $tag; CI publishes ghcr.io/bfeitknecht/exhib"
+
 # Preview the site locally with the repo content.
 serve:
     hugo server --bind 0.0.0.0 --port 4173
