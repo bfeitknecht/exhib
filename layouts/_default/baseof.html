@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="{{ .Description | default site.Params.description | markdownify | plainify | htmlEscape }}">
   <title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }} — {{ site.Title }}{{ end }}</title>
-  <link rel="stylesheet" href="{{ "css/site.css" | relURL }}">
+  <link rel="preload" href="{{ "fonts/CommitMono-400-Regular.woff2" | relURL }}" as="font" type="font/woff2" crossorigin>
+  {{/* Inlined: styles exist at the first style pass, so links never paint in the browser default blue. */}}
+  <style>{{ readFile "static/css/site.css" | safeCSS }}</style>
   <link rel="icon" href="{{ "favicon.svg" | relURL }}" type="image/svg+xml">
   <meta name="theme-color" content="#f2f2f2" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">

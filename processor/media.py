@@ -38,6 +38,33 @@ def copy_metadata(source: Path, output: Path) -> None:
             str(output),
         ]
     )
+    keep_creation_date(source, output)
+
+
+def keep_creation_date(source: Path, output: Path) -> None:
+    # PNG has no EXIF date of its own: the creation date lives in a text
+    # chunk (CreationTime), tIME (ModifyDate) or XMP (CreateDate). WebP reads
+    # capture dates from EXIF, so copy the best source date there. -wm cg only
+    # creates tags and never overwrites a real EXIF date. Later arguments win:
+    # creation beats modification. A source with no date gets none. Never
+    # invent one from file times, which only record the upload.
+    subprocess.run(
+        [
+            "exiftool",
+            "-q",
+            "-m",
+            "-wm",
+            "cg",
+            "-overwrite_original",
+            "-TagsFromFile",
+            str(source),
+            "-EXIF:DateTimeOriginal<PNG:ModifyDate",
+            "-EXIF:DateTimeOriginal<PNG:CreationTime",
+            "-EXIF:DateTimeOriginal<XMP-xmp:CreateDate",
+            str(output),
+        ],
+        check=False,
+    )
 
 
 def convert_image(source: Path, destination: Path) -> Path:
