@@ -2,7 +2,7 @@
 title = "Placeholders"
 date = 2026-10-29T00:00:00Z
 description = "AI-generated placeholder art and test patterns."
-tags = ["ai"]
+tags = ["ai", "2026"]
 thumbnail = "cover.svg"
 
 [[resources]]
