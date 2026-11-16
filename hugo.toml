@@ -4,6 +4,8 @@ defaultContentLanguage = "en"
 
 locale = "en"
 enableRobotsTXT = true
+# Tag names stay as written (lowercase). Hugo title-cases list titles by default.
+capitalizeListTitles = false
 
 # Keep the default RSS media type. Pin baseName so the feed stays at /rss.xml.
 [outputFormats.RSS]

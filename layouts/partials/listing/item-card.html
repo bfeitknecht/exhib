@@ -1,10 +1,14 @@
+{{/* A listing card. Takes a page, or a dict with "page" and "preview"
+     (false: title, date, description and tags only, as for writings). */}}
 {{- $page := . -}}
+{{- $preview := true -}}
+{{- if reflect.IsMap . -}}{{- $page = .page -}}{{- $preview = .preview -}}{{- end -}}
 {{- $isCollection := eq $page.Kind "section" -}}
-{{- $isWriting := eq $page.Section "writings" -}}
+{{- $isWriting := or (eq $page.Section "writings") (not $preview) -}}
 {{- $useMosaic := and $isCollection (not $page.Params.thumbnail) -}}
 <article class="item-card">
   {{- if $isWriting }}
-  {{/* Writings have no media. Title, date and description only. */}}
+  {{/* Writings and text-only cards: title, date and description only. */}}
   {{- else if $useMosaic }}{{/* Mosaic of the first nine images in gallery order.
          Each cell links to the fullscreen overlay of that image. */}}
     {{- $images := slice }}

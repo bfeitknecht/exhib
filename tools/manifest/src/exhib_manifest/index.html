@@ -26,9 +26,17 @@
   .bad { color: var(--bad); }
   .path { display: flex; align-items: baseline; gap: .1rem; font: 600 1.4rem var(--sans); }
   .path .root { color: var(--muted); font-weight: 400; }
-  .path input { font: inherit; color: var(--fg); background: transparent; border: 0;
-                border-bottom: 1px dashed var(--line); padding: 0 .1rem; width: 14ch; outline: none; }
+  .path input { font: inherit; color: var(--fg); background: transparent; border: 0; border-radius: 0;
+                border-bottom: 1px solid var(--line); padding: 0 .1rem; width: 14ch; outline: none; }
   .path input:focus { border-bottom-color: var(--fg); }
+  .pathbox { position: relative; }
+  .menu { position: absolute; left: 0; top: calc(100% + .3rem); z-index: 10; min-width: 100%; max-height: 50vh;
+          overflow: auto; margin: 0; padding: .25rem 0; list-style: none; background: var(--field);
+          border: 1px solid var(--line); border-radius: 3px; font: 400 .9rem var(--mono); }
+  .menu li { padding: .3rem .8rem; cursor: pointer; white-space: nowrap; }
+  .menu li[aria-selected=true] { background: var(--fg); color: var(--bg); }
+  .menu li .muted { margin-left: .5rem; }
+  .menu li[aria-selected=true] .muted { color: inherit; }
   .top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 2rem; }
   @media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
   label { display: block; margin: 1rem 0 .3rem; color: var(--muted); text-transform: lowercase; }
@@ -106,8 +114,7 @@
 <header>
   <div>
     <div class="path">
-      <span class="root" id="rootName"></span>/<input id="slugInput" list="folderList" spellcheck="false" autocomplete="off" aria-label="folder">
-      <datalist id="folderList"></datalist>
+      <span class="root" id="rootName"></span>/<span class="pathbox"><input id="slugInput" spellcheck="false" autocomplete="off" aria-label="folder" role="combobox" aria-controls="folderMenu" aria-expanded="false"><ul class="menu" id="folderMenu" role="listbox" hidden></ul></span>
     </div>
     <div class="mono bad" id="pathWarn" hidden></div>
   </div>
@@ -518,7 +525,6 @@ async function loadFolders() {
   const data = await (await fetch("/api/folders")).json();
   folders = data.folders;
   $("rootName").textContent = data.root;
-  $("folderList").replaceChildren(...folders.map((f) => Object.assign(document.createElement("option"), { value: f.name })));
   $("folders").replaceChildren(...folders.map((f) => {
     const li = document.createElement("li");
     const a = Object.assign(document.createElement("a"), { href: `?f=${encodeURIComponent(f.name)}`, textContent: f.name });
@@ -555,8 +561,47 @@ async function open(name, push = true) {
   render();
 }
 
-$("slugInput").addEventListener("change", () => open($("slugInput").value.trim()));
-$("slugInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("slugInput").blur(); if (e.key === "Escape") { $("slugInput").value = slug; $("slugInput").blur(); } });
+// Folder menu under the path: all folders on focus, filtered while typing.
+// Arrows move, Enter or a click opens, Escape goes back.
+let menuItems = [];
+let menuActive = -1;
+function renderMenu(filter) {
+  const q = (filter || "").toLowerCase();
+  const starts = folders.filter((f) => f.name.toLowerCase().startsWith(q));
+  const contains = folders.filter((f) => !starts.includes(f) && f.name.toLowerCase().includes(q));
+  menuItems = [...starts, ...contains];
+  menuActive = menuItems.findIndex((f) => f.name === slug);
+  if (menuActive < 0 && q) menuActive = 0;
+  $("folderMenu").replaceChildren(...menuItems.map((f, i) => {
+    const li = Object.assign(document.createElement("li"), { textContent: f.name, role: "option" });
+    if (f.has_manifest) li.append(Object.assign(document.createElement("span"), { className: "muted", textContent: "✓" }));
+    li.setAttribute("aria-selected", i === menuActive);
+    li.addEventListener("mousedown", (e) => { e.preventDefault(); closeMenu(); open(f.name); $("slugInput").blur(); });
+    return li;
+  }));
+  $("folderMenu").hidden = !menuItems.length;
+  $("slugInput").setAttribute("aria-expanded", !$("folderMenu").hidden);
+}
+function closeMenu() { $("folderMenu").hidden = true; $("slugInput").setAttribute("aria-expanded", "false"); }
+function moveMenu(step) {
+  if (!menuItems.length) return;
+  menuActive = (menuActive + step + menuItems.length) % menuItems.length;
+  [...$("folderMenu").children].forEach((li, i) => li.setAttribute("aria-selected", i === menuActive));
+  $("folderMenu").children[menuActive].scrollIntoView({ block: "nearest" });
+}
+$("slugInput").addEventListener("focus", () => { $("slugInput").select(); renderMenu(""); });
+$("slugInput").addEventListener("input", () => renderMenu($("slugInput").value.trim()));
+$("slugInput").addEventListener("blur", () => { closeMenu(); if ($("slugInput").value.trim() !== slug) $("slugInput").value = slug; });
+$("slugInput").addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); if ($("folderMenu").hidden) renderMenu(""); moveMenu(e.key === "ArrowDown" ? 1 : -1); }
+  else if (e.key === "Enter") {
+    e.preventDefault();
+    const pick = menuItems[menuActive] || folders.find((f) => f.name === $("slugInput").value.trim());
+    closeMenu();
+    if (pick) open(pick.name);
+    $("slugInput").blur();
+  } else if (e.key === "Escape") { $("slugInput").value = slug; $("slugInput").blur(); }
+});
 window.addEventListener("popstate", () => open(new URLSearchParams(location.search).get("f") || "", false));
 for (const b of $("kinds").children) b.onclick = () => { state.kind = b.dataset.kind; touch(); };
 for (const b of $("sorts").children) b.onclick = () => { state.sort = b.dataset.sort; touch(); };
