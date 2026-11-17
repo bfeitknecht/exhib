@@ -1,6 +1,6 @@
 [project]
 name = "exhib"
-version = "0.5.2"
+version = "0.5.3"
 description = "Gallery ingest processor and serving supervisor."
 requires-python = ">=3.15"
 dependencies = []

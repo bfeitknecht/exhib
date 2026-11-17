@@ -17,7 +17,11 @@
 {{- $alt := .alt | default "" -}}
 {{- $eager := .eager | default false -}}
 {{- $style := "" -}}
-{{- with .focus -}}{{- $style = printf "object-position:%v%% %v%%;" (index . 0) (index . 1) -}}{{- end -}}
+{{- with .focus -}}{{- /* The blur must sit where the photo sits: a focused cover positions
+       the photo off-centre, and a sub-pixel sliver at the image edge would
+       otherwise show the blur of a different part of the picture. */ -}}
+  {{- $style = printf "object-position:%v%% %v%%;background-position:%v%% %v%%;" (index . 0) (index . 1) (index . 0) (index . 1) -}}
+{{- end -}}
 {{- $prefix := printf "%s." (strings.TrimSuffix (path.Ext $img.Name) $img.Name) -}}
 {{- $copies := slice -}}
 {{- $blur := false -}}
