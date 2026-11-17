@@ -8,8 +8,12 @@
   {{- $isVideo := eq $item.Params.kind "video" -}}
   {{- $poster := false -}}
   {{- if $isVideo -}}{{- $poster = $page.Resources.GetMatch $item.Params.poster -}}{{- end -}}
+  {{- /* Videos take the ratio of their poster: ffmpeg extracts the poster in
+         display orientation (rotation applied), so portrait clips stay
+         portrait. 16:9 only if a video has no poster. */ -}}
   {{- $ratio := "1.7777778" -}}
-  {{- if not $isVideo -}}{{- $ratio = partial "media/image-ratio.html" $item -}}{{- end -}}
+  {{- if not $isVideo -}}{{- $ratio = partial "media/image-ratio.html" $item -}}
+  {{- else if $poster -}}{{- $ratio = partial "media/image-ratio.html" $poster -}}{{- end -}}
   {{- $out = $out | append (dict "index" $index "id" (printf "photo-%02d" (add $index 1)) "item" $item "kind" $item.Params.kind "title" $item.Title "isVideo" $isVideo "ratio" $ratio "poster" $poster) -}}
 {{- end -}}
 {{- return $out -}}

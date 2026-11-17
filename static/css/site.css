@@ -429,9 +429,11 @@ img.lq {
   margin-inline: auto;
   object-fit: contain;
 }
+/* The box has the video's own ratio (from its poster) and no fill, so a
+   portrait or square video never shows bars. */
 .viewer-image video {
   aspect-ratio: var(--image-ratio);
-  background: oklch(0% 0 0);
+  background: transparent;
 }
 .viewer-unit .viewer-metadata {
   width: 100%;
