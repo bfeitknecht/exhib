@@ -41,6 +41,17 @@ What lives where:
 
 Important: the repo `content/` directory seeds `/data/content` **only on first boot, when `/data/content` is empty**. After that, edits to repo `content/` do not reach production. The PVC is the source of truth for content.
 
+## 1.1 Upload from the web (`gallery.0xbf.ch/upload`)
+
+For uploads without a terminal, e.g. a monthly recap album from the iPhone:
+open `https://gallery.0xbf.ch/upload`, log in with authentik (only the user
+`bf` gets in), set kind, title, date and tags, drop photos and videos (or tap to
+choose from Photos), upload. The page writes the same folder and
+`manifest.toml` as `just manifest` + `just upload` and puts it into the inbox;
+the gallery updates a few minutes later. For a collection, "by capture date"
+(`sort = "date"`) suits photo dumps. Per-file titles, captions, crops and the
+cover need the manifest editor (`just manifest`) and `just upload`.
+
 ## 2. The upload folder
 
 Every item is one folder. The folder name is the URL slug. Use lowercase letters, digits and hyphens (`evening-walks`, `2026-11`). The folder holds `manifest.toml` and the source files:

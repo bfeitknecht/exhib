@@ -60,12 +60,12 @@ rebuild:
 
 # Format Python sources. `just fmt --check` only reports (CI uses it).
 fmt *flags:
-    uvx ruff@0.15 format {{flags}} processor entrypoint.py tools/manifest/src
+    uvx ruff@0.15 format {{flags}} processor uploader entrypoint.py tools/manifest/src
 
 # Everything CI runs: format check, lint, Hugo build.
 check:
-    uvx ruff@0.15 format --check processor entrypoint.py tools/manifest/src
-    uvx ruff@0.15 check processor entrypoint.py tools/manifest/src
+    uvx ruff@0.15 format --check processor uploader entrypoint.py tools/manifest/src
+    uvx ruff@0.15 check processor uploader entrypoint.py tools/manifest/src
     hugo --quiet --destination "$(mktemp -d)"
 
 # Build the image for the local architecture (smoke test before a release).

@@ -1,5 +1,5 @@
-"""Run the gallery's serving stack in one container: media processor and
-static-web-server (SWS), supervised from here.
+"""Run the gallery's serving stack in one container: media processor,
+static-web-server (SWS) and the web uploader, supervised from here.
 
 If either process exits, the other is stopped and this supervisor exits
 with the same code, so Kubernetes restarts the pod instead of leaving a
@@ -16,6 +16,8 @@ from processor.paths import CONTENT, INCOMING, ORIGINALS, PUBLIC
 CHILDREN = [
     ["python", "-m", "processor"],
     ["static-web-server"],
+    # The web uploader (/upload, behind authentik): writes into the inbox only.
+    ["python", "-m", "uploader"],
 ]
 
 
