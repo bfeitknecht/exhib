@@ -11,7 +11,7 @@ import shutil
 import sys
 import time
 
-from .bundle import build_and_publish, publish_bundle
+from .bundle import build_and_publish, fail_package, publish_bundle
 from .variants import make_all
 from .paths import APP, CONTENT, INCOMING, ORIGINALS, POLL_SECONDS, PUBLIC
 
@@ -36,10 +36,10 @@ def main() -> None:
                 print(
                     f"Upload {package.name} failed: {exc}", file=sys.stderr, flush=True
                 )
-                # Do not retry a malformed package in a tight loop.
-                failed = INCOMING / (".failed-" + package.name)
+                # Do not retry a malformed package in a tight loop. It goes
+                # back to the drafts with the error (the web editor shows it).
                 try:
-                    package.rename(failed)
+                    fail_package(package, exc)
                 except OSError:
                     pass
         time.sleep(POLL_SECONDS)

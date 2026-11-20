@@ -9,6 +9,11 @@ __pycache__/
 justfile
 .venv/
 docs/
-tools/
+# tools/manifest/src is the gallery editor the web uploader serves.
+tools/*
+!tools/manifest/
+tools/manifest/*
+!tools/manifest/src/
+**/__pycache__/
 uploads/
 .ruff_cache/

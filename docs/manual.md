@@ -41,16 +41,31 @@ What lives where:
 
 Important: the repo `content/` directory seeds `/data/content` **only on first boot, when `/data/content` is empty**. After that, edits to repo `content/` do not reach production. The PVC is the source of truth for content.
 
-## 1.1 Upload from the web (`gallery.0xbf.ch/upload`)
+## 1.1 The gallery editor on the web (`gallery.0xbf.ch/upload`)
 
-For uploads without a terminal, e.g. a monthly recap album from the iPhone:
-open `https://gallery.0xbf.ch/upload`, log in with authentik (only the user
-`bf` gets in), set kind, title, date and tags, drop photos and videos (or tap to
-choose from Photos), upload. The page writes the same folder and
-`manifest.toml` as `just manifest` + `just upload` and puts it into the inbox;
-the gallery updates a few minutes later. For a collection, "by capture date"
-(`sort = "date"`) suits photo dumps. Per-file titles, captions, crops and the
-cover need the manifest editor (`just manifest`) and `just upload`.
+The same editor as `just manifest` (section 2.1), in the browser, on the
+gallery's own data. Only the authentik user `bf` gets in.
+
+- **The list** shows every item: published ones, drafts (dashed) and items
+  being published. Click one to edit it, or type a slug and press **new**.
+- **Editing** works exactly as in section 2.1: title, date (`DD/MM/YYYY`),
+  description, tags, kind, sort, the media grid with order, titles, captions,
+  cover, crop and rotate. Below the grid: drop photos and videos (or tap to
+  choose from Photos) to add them. **delete file** in the item editor removes
+  one file.
+- **save** writes the draft. Nothing on the site changes yet. A draft lives in
+  `/data/drafts/<slug>` and keeps until you publish or discard it, so you can
+  edit in several sittings.
+- **publish** sends the draft to the processor. The site shows the new version
+  a few minutes later. Files you deleted move to `/data/trash/<time>-<kind>-<slug>`
+  (with the old `manifest.toml`), never straight to nothing. If publishing
+  fails, the item comes back as a draft with the error at the bottom.
+- **discard draft** throws the draft away. A published item stays as it is; a
+  new item is gone with its uploaded files.
+
+Opening a published item makes its draft with hard links to the originals: no
+extra disk, and the published originals are never written. Previews are
+upright JPEGs (HEIC too), made on the server.
 
 ## 2. The upload folder
 
@@ -302,6 +317,9 @@ just serve   # http://localhost:4173
 ```
 
 ## 7. Change, replace or delete an item
+
+Easiest: the web editor (section 1.1). Open the item, change anything,
+publish. The rest of this section is the manual way.
 
 A slug can be uploaded once. A second upload with the same slug fails with `an item with this slug already exists`. To replace or delete, remove the bundle and the original, then rebuild:
 

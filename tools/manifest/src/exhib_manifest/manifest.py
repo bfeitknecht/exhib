@@ -109,6 +109,51 @@ def capture_date(path: Path) -> str | None:
     return None
 
 
+def capture_dates(files: list[Path]) -> dict[str, str | None]:
+    """Capture dates of all files, by name. sips/mdls on macOS, else exiftool.
+
+    exiftool (the web editor in the cluster) reads every file in one call:
+    EXIF DateTimeOriginal for photos, the QuickTime creation date (converted
+    from UTC to local time) for videos. No file times, as above.
+    """
+    if shutil.which("sips") or not shutil.which("exiftool") or not files:
+        return {p.name: capture_date(p) for p in files}
+    out = subprocess.run(
+        [
+            "exiftool",
+            "-j",
+            "-q",
+            "-m",
+            "-api",
+            "QuickTimeUTC",
+            "-d",
+            "%Y-%m-%dT%H:%M:%S",
+            "-DateTimeOriginal",
+            "-CreationDate",
+            "-CreateDate",
+            *(str(p) for p in files),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
+    dates: dict[str, str | None] = {p.name: None for p in files}
+    try:
+        rows = json.loads(out or "[]")
+    except ValueError:
+        rows = []
+    for row in rows:
+        name = Path(str(row.get("SourceFile", ""))).name
+        for key in ("DateTimeOriginal", "CreationDate", "CreateDate"):
+            value = str(row.get(key) or "")
+            if re.fullmatch(
+                r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", value[:19]
+            ) and not value.startswith("0000"):
+                dates[name] = value[:19]
+                break
+    return dates
+
+
 def body_file(folder: Path) -> Path:
     bodies = sorted(p for p in folder.glob("*.md") if not p.name.startswith("."))
     return bodies[0] if len(bodies) == 1 else folder / BODY_FILE
@@ -228,6 +273,7 @@ def load_state(folder: Path) -> dict:
         order = names
         included = set(names)
     by_name = {p.name: p for p in files}
+    dates = capture_dates(files)
     body = body_file(folder)
     kind = manifest.get("kind")
     if kind not in KINDS:
@@ -260,7 +306,7 @@ def load_state(folder: Path) -> dict:
                 "included": name in included,
                 "rotate": edits.get(name, (0.0, None))[0],
                 "crop": edits.get(name, (0.0, None))[1],
-                "captured": capture_date(by_name[name]),
+                "captured": dates.get(name),
             }
             for name in order
         ],

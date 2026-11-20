@@ -326,14 +326,38 @@ def write_media_bundle(package: Path, manifest: dict, bundle_dir: Path) -> None:
     )
 
 
+TRASH = DATA / "trash"
+DRAFTS = DATA / "drafts"
+# Marker from the web editor: the package replaces the published item of
+# this kind (the text of the file) and slug.
+REPLACE = ".replace"
+ERROR = ".error"
+META = {REPLACE, ERROR}
+
+
+def link_or_copy(src: str, dst: str) -> None:
+    # Hard links: the package is deleted right after, so the original keeps
+    # the same inodes and an edit costs no disk.
+    try:
+        os.link(src, dst)
+    except OSError:
+        shutil.copy2(src, dst)
+
+
 def publish_bundle(package: Path) -> None:
     manifest = read_manifest(package)
     kind = manifest["kind"]
     slug = package.name
+    marker = package / REPLACE
+    replace = marker.read_text().strip() if marker.is_file() else None
+    if replace is not None and replace not in SECTIONS:
+        raise ValueError(f"bad replace marker: {replace!r}")
 
     original_dir = ORIGINALS / kind / slug
-    if original_dir.exists():
+    if original_dir.exists() and replace != kind:
         raise ValueError(f"an item with this slug already exists: {slug}")
+    if replace and not (ORIGINALS / replace / slug).is_dir():
+        raise ValueError(f"nothing to replace: {replace} {slug} is not published")
     original_dir.parent.mkdir(parents=True, exist_ok=True)
     original_pending = original_dir.parent / ("." + slug + ".pending")
     if original_pending.exists():
@@ -341,24 +365,86 @@ def publish_bundle(package: Path) -> None:
             f"a previous processing attempt left a pending original for {slug}"
         )
     bundle_dir = CONTENT / SECTIONS[kind] / slug
-    if bundle_dir.exists():
+    old_bundle = CONTENT / SECTIONS[replace] / slug if replace else None
+    if bundle_dir.exists() and bundle_dir != old_bundle:
         # No upload original owns this bundle: it is left over from a
         # stopped attempt, seeded from the repo or added by hand. The
         # upload replaces it.
         shutil.rmtree(bundle_dir)
-    bundle_dir.mkdir(parents=True)
+    # Build the new bundle off to the side; the old one stays live meanwhile.
+    staging = DATA / ".bundle-next" / slug
+    shutil.rmtree(staging, ignore_errors=True)
+    staging.mkdir(parents=True)
+    backup = DATA / ".bundle-previous" / slug
+    shutil.rmtree(backup, ignore_errors=True)
+    swapped = False
     try:
         if kind == "writing":
-            write_writing(package, manifest, bundle_dir)
+            write_writing(package, manifest, staging)
         else:
-            write_media_bundle(package, manifest, bundle_dir)
-        shutil.copytree(package, original_pending)
+            write_media_bundle(package, manifest, staging)
+        shutil.copytree(
+            package,
+            original_pending,
+            ignore=shutil.ignore_patterns(*META),
+            copy_function=link_or_copy,
+        )
+        if old_bundle is not None and old_bundle.exists():
+            backup.parent.mkdir(parents=True, exist_ok=True)
+            old_bundle.rename(backup)
+        bundle_dir.parent.mkdir(parents=True, exist_ok=True)
+        staging.rename(bundle_dir)
+        swapped = True
         build_and_publish()
-        original_pending.rename(original_dir)
-        shutil.rmtree(package)
-        print(f"Published {kind} {slug}", flush=True)
     except Exception:
-        shutil.rmtree(bundle_dir, ignore_errors=True)
+        if swapped:
+            shutil.rmtree(bundle_dir, ignore_errors=True)
+        if backup.exists() and old_bundle is not None:
+            backup.rename(old_bundle)
+        shutil.rmtree(staging, ignore_errors=True)
         shutil.rmtree(original_pending, ignore_errors=True)
         # Leave the incoming folder available for inspection/retry.
         raise
+    shutil.rmtree(backup, ignore_errors=True)
+    if replace:
+        retire_original(ORIGINALS / replace / slug, original_pending)
+    original_pending.rename(original_dir)
+    shutil.rmtree(package)
+    print(f"Published {kind} {slug}" + (" (replaced)" if replace else ""), flush=True)
+
+
+def retire_original(old: Path, new: Path) -> None:
+    """Remove the replaced original. Files the new version dropped go to the trash.
+
+    A file the new version still has (same name and inode, or same bytes) is
+    simply unlinked: the new original holds it.
+    """
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    trash = TRASH / f"{stamp}-{old.parent.name}-{old.name}"
+    for path in old.iterdir():
+        kept = new / path.name
+        same = False
+        if path.is_file() and kept.is_file():
+            same = os.path.samefile(path, kept) or (
+                path.stat().st_size == kept.stat().st_size
+                and path.read_bytes() == kept.read_bytes()
+            )
+        if path.is_file() and not same and path.name != "manifest.toml":
+            trash.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(path), trash / path.name)
+    if (old / "manifest.toml").is_file() and trash.exists():
+        shutil.copy2(old / "manifest.toml", trash / "manifest.toml")
+    shutil.rmtree(old)
+
+
+def fail_package(package: Path, exc: Exception) -> None:
+    """A failed upload goes back to the drafts (the web editor shows the error)."""
+    (package / ERROR).write_text(f"{exc}\n")
+    target = DRAFTS / package.name
+    if not target.exists():
+        DRAFTS.mkdir(parents=True, exist_ok=True)
+        package.rename(target)
+        return
+    failed = package.parent / (".failed-" + package.name)
+    shutil.rmtree(failed, ignore_errors=True)
+    package.rename(failed)

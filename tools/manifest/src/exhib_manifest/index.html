@@ -132,6 +132,20 @@
   .when { display: grid; grid-template-columns: 9.5rem 5.5rem auto; gap: .5rem; justify-content: start; }
   .when input { font-family: var(--mono); }
   .when input.invalid { border-color: var(--bad); }
+  /* Web mode (the cluster editor): new item, file upload, publish */
+  .newform { display: flex; gap: .5rem; margin-bottom: 1rem; }
+  .newform input { max-width: 22ch; font-family: var(--mono); }
+  .folders a .st { display: block; font-size: .75rem; color: var(--muted); }
+  .folders a.draft { border-style: dashed; }
+  #drop { margin-top: .8rem; border: 1px dashed var(--muted); border-radius: 3px; padding: 1.2rem 1rem; text-align: center;
+          color: var(--muted); cursor: pointer; font-family: var(--mono); font-size: .85rem; }
+  #drop.over { border-style: solid; color: var(--fg); }
+  #uploads { list-style: none; padding: 0; margin: .5rem 0 0; font: .8rem var(--mono); }
+  #uploads li { display: grid; grid-template-columns: 1fr auto; gap: .5rem; padding: .2rem 0; }
+  #uploads .bar { grid-column: 1 / -1; height: 2px; background: var(--line); }
+  #uploads .bar i { display: block; height: 100%; width: 0; background: var(--fg); }
+  #notice { flex-basis: 100%; }
+  footer .spacer { flex: 1; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -151,6 +165,11 @@
 </header>
 
 <main id="picker" hidden>
+  <form class="newform" id="newForm" hidden>
+    <input type="text" id="newSlug" placeholder="new-slug" spellcheck="false" autocomplete="off" aria-label="new item slug" pattern="[a-z0-9]+(-[a-z0-9]+)*">
+    <button type="submit">new</button>
+    <span class="mono bad" id="newWarn"></span>
+  </form>
   <ul class="folders" id="folders"></ul>
 </main>
 
@@ -192,6 +211,8 @@
       </div>
     </div>
     <div class="grid" id="grid"></div>
+    <div id="drop" hidden>add photos and videos: drop them here, or tap to choose<input id="files" type="file" multiple accept="image/*,video/*,.heic,.heif" hidden></div>
+    <ul id="uploads"></ul>
     <div class="detail" id="detail" hidden>
       <div class="big" id="bigArt"></div>
       <div>
@@ -209,6 +230,7 @@
           <button type="button" id="coverToggle" aria-pressed="false">cover</button>
           <button type="button" id="centerCrop" hidden>center</button>
           <button type="button" id="editToggle" aria-pressed="false" hidden>crop / rotate</button>
+          <button type="button" id="removeFile" hidden title="delete this file from the draft (the published original goes to the trash on publish)">delete file</button>
         </div>
         <div id="editTools" hidden>
           <label>rotate</label>
@@ -253,6 +275,10 @@
   <div class="bar">
     <button type="button" class="primary" id="save">save ⌘S</button>
     <span class="mono" id="status"></span>
+    <span class="spacer"></span>
+    <button type="button" id="discard" hidden>discard draft</button>
+    <button type="button" id="publish" hidden>publish</button>
+    <span class="mono muted" id="notice" hidden></span>
   </div>
 </footer>
 
@@ -264,7 +290,10 @@ let state = null;
 let selected = null;
 let dirty = false;
 
-const media = (name) => `/media/${encodeURIComponent(slug)}/${encodeURIComponent(name)}`;
+// Relative URLs: the same page runs at / (just manifest) and at /upload/ (the cluster).
+const media = (name) => `media/${encodeURIComponent(slug)}/${encodeURIComponent(name)}?v=${version}`;
+let web = false; // the cluster editor: drafts, file upload, publish
+let version = 0; // bumps after uploads so the browser refetches media
 const shown = (item) => item.title || item.default_title;
 // Older servers or manifests may omit fields; never show "undefined".
 const clean = (items) => items.map((i) => ({ title: "", caption: "", rotate: 0, crop: null, ...i }));
@@ -621,6 +650,7 @@ function renderDetail() {
   placeFrame();
   layoutEdit();
   $("editToggle").hidden = selected.type !== "image";
+  $("removeFile").hidden = !web;
   $("editToggle").setAttribute("aria-pressed", editing);
   $("editTools").hidden = !editing;
   $("detailName").textContent = selected.name;
@@ -855,18 +885,19 @@ function collect() {
 }
 
 async function save() {
-  if (!state) return;
+  if (!state) return false;
   normalizeWhen();
-  if (!readWhen()) { $("status").textContent = "invalid date"; return; }
+  if (!readWhen()) { $("status").textContent = "invalid date"; return false; }
   $("status").textContent = "saving…";
-  const res = await fetch(`/api/save?f=${encodeURIComponent(slug)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(collect()) });
+  const res = await fetch(`api/save?f=${encodeURIComponent(slug)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(collect()) });
   const data = await res.json();
-  if (!res.ok) { $("status").replaceChildren(Object.assign(document.createElement("span"), { className: "bad", textContent: data.error })); return; }
+  if (!res.ok) { $("status").replaceChildren(Object.assign(document.createElement("span"), { className: "bad", textContent: data.error })); return false; }
   dirty = false;
   $("status").textContent = "✓";
   $("status").title = "saved";
   const entry = folders.find((f) => f.name === slug);
   if (entry) entry.has_manifest = true;
+  return true;
 }
 
 function addTag() {
@@ -877,13 +908,18 @@ function addTag() {
 
 // Navigation: the path input names one child folder of the root.
 async function loadFolders() {
-  const data = await (await fetch("/api/folders")).json();
+  const data = await (await fetch("api/folders")).json();
   folders = data.folders;
+  web = !!data.web;
+  $("newForm").hidden = !web;
   $("rootName").textContent = data.root;
   $("folders").replaceChildren(...folders.map((f) => {
     const li = document.createElement("li");
     const a = Object.assign(document.createElement("a"), { href: `?f=${encodeURIComponent(f.name)}`, textContent: f.name });
-    if (f.has_manifest) a.append(Object.assign(document.createElement("span"), { className: "muted", textContent: " ✓" }));
+    if (web) {
+      a.className = f.draft ? "draft" : "";
+      a.append(Object.assign(document.createElement("span"), { className: "st", textContent: [f.kind, f.status].filter(Boolean).join(" · ") }));
+    } else if (f.has_manifest) a.append(Object.assign(document.createElement("span"), { className: "muted", textContent: " ✓" }));
     a.onclick = (e) => { e.preventDefault(); open(f.name); };
     li.append(a);
     return li;
@@ -900,21 +936,121 @@ async function open(name, push = true) {
   detailKey = null; cardKey = null;
   $("slugInput").value = name;
   $("status").textContent = "";
-  if (push) history.pushState(null, "", name ? `?f=${encodeURIComponent(name)}` : "/");
+  if (push) history.pushState(null, "", name ? `?f=${encodeURIComponent(name)}` : location.pathname);
   document.title = name ? `${name} · exhib manifest` : "exhib manifest";
   $("picker").hidden = !!name;
   for (const id of ["editor", "footer", "kinds"]) $(id).hidden = !name;
   if (!name) return;
   if (!entry.slug_ok) { $("pathWarn").textContent = "not a slug"; $("pathWarn").hidden = false; }
-  state = await (await fetch(`/api/state?f=${encodeURIComponent(name)}`)).json();
+  if (web) {
+    // Opening a published item makes a draft of it (files are hard links).
+    const r = await fetch(`api/open?f=${encodeURIComponent(name)}`, { method: "POST" });
+    if (!r.ok) { $("pathWarn").textContent = (await r.json().catch(() => ({}))).error || "cannot open"; $("pathWarn").hidden = false; return; }
+  }
+  state = await (await fetch(`api/state?f=${encodeURIComponent(name)}`)).json();
   state.items = clean(state.items);
   $("title").value = state.title;
   showWhen(state.date ? new Date(state.date) : nowMinute());
   $("description").value = state.description;
   $("body").value = state.body;
   $("bodyFile").textContent = state.body_file;
+  renderWeb();
   render();
 }
+
+// ── Web mode: drafts, upload, delete, publish ─────────────────────
+function renderWeb() {
+  for (const id of ["drop", "discard", "publish", "notice"]) $(id).hidden = !web;
+  if (!web || !state) return;
+  const w = state.web || {};
+  const lines = [];
+  if (w.error) lines.push(`last publish failed: ${w.error}`);
+  lines.push(w.published ? `published as ${w.published}. publish replaces it; deleted files go to the trash.` : "new item: not published yet.");
+  $("notice").textContent = lines.join(" ");
+  $("notice").classList.toggle("bad", !!w.error);
+}
+async function reloadState() {
+  const keep = selected && selected.name;
+  const fresh = await (await fetch(`api/state?f=${encodeURIComponent(slug)}`)).json();
+  // Keep unsaved edits of the fields; take the new file list.
+  const old = new Map(state.items.map((i) => [i.name, i]));
+  state.items = clean(fresh.items).map((i) => old.get(i.name) || i);
+  state.web = fresh.web;
+  selected = state.items.find((i) => i.name === keep) || null;
+  version++; detailKey = null; cardKey = null;
+  renderWeb(); render();
+}
+function upload(file) {
+  const li = document.createElement("li");
+  li.innerHTML = `<span></span><span class="muted"></span><span class="bar"><i></i></span>`;
+  li.children[0].textContent = file.name;
+  li.children[1].textContent = (file.size / 1048576).toFixed(1) + " MB";
+  $("uploads").append(li);
+  return new Promise((ok, fail) => {
+    const x = new XMLHttpRequest();
+    x.open("PUT", `api/file?f=${encodeURIComponent(slug)}&name=${encodeURIComponent(file.name)}`);
+    x.upload.onprogress = (e) => { if (e.lengthComputable) li.querySelector("i").style.width = (100 * e.loaded / e.total) + "%"; };
+    x.onload = () => {
+      if (x.status < 300) { li.remove(); ok(); return; }
+      li.children[1].textContent = (JSON.parse(x.responseText || "{}").error) || x.statusText;
+      li.children[1].className = "bad";
+      fail();
+    };
+    x.onerror = () => { li.children[1].textContent = "network error"; li.children[1].className = "bad"; fail(); };
+    x.send(file);
+  });
+}
+async function addFiles(list) {
+  const files = [...list];
+  for (const f of files) { try { await upload(f); } catch {} }
+  if (files.length) { markDirty(); await reloadState(); }
+}
+$("drop").addEventListener("click", () => $("files").click());
+$("files").addEventListener("change", (e) => { addFiles(e.target.files); e.target.value = ""; });
+["dragenter", "dragover"].forEach((t) => $("drop").addEventListener(t, (e) => { e.preventDefault(); $("drop").classList.add("over"); }));
+["dragleave", "drop"].forEach((t) => $("drop").addEventListener(t, (e) => { e.preventDefault(); $("drop").classList.remove("over"); }));
+$("drop").addEventListener("drop", (e) => addFiles(e.dataTransfer.files));
+$("removeFile").onclick = async () => {
+  if (!selected || !confirm(`Delete ${selected.name} from this draft?`)) return;
+  const r = await fetch(`api/delete?f=${encodeURIComponent(slug)}&name=${encodeURIComponent(selected.name)}`, { method: "POST" });
+  if (!r.ok) { $("status").textContent = (await r.json().catch(() => ({}))).error || "delete failed"; return; }
+  if (state.thumbnail === selected.name) state.thumbnail = "";
+  state.items = state.items.filter((i) => i !== selected);
+  selected = null; markDirty(); await reloadState();
+};
+$("publish").onclick = async () => {
+  if (dirty && !(await save())) return;
+  if (!state.has_manifest && !(await save())) return;
+  $("status").textContent = "publishing…";
+  const r = await fetch(`api/publish?f=${encodeURIComponent(slug)}`, { method: "POST" });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) { $("status").replaceChildren(Object.assign(document.createElement("span"), { className: "bad", textContent: data.error || "publish failed" })); return; }
+  dirty = false;
+  await loadFolders();
+  open("");
+  $("status").textContent = "";
+};
+$("discard").onclick = async () => {
+  const w = state.web || {};
+  const what = w.published ? "Throw away the draft? The published item stays as it is." : "Throw away this new item and its uploaded files?";
+  if (!confirm(what)) return;
+  await fetch(`api/discard?f=${encodeURIComponent(slug)}`, { method: "POST" });
+  dirty = false;
+  await loadFolders();
+  open("");
+};
+$("newForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("newSlug").value.trim();
+  const r = await fetch(`api/new?f=${encodeURIComponent(name)}`, { method: "POST" });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) { $("newWarn").textContent = data.error || "cannot create"; return; }
+  $("newWarn").textContent = ""; $("newSlug").value = "";
+  await loadFolders();
+  open(name);
+});
+// Folder states change on the server (queued, published, failed): refresh the list.
+setInterval(() => { if (web && !slug) loadFolders(); }, 5000);
 
 // Folder menu under the path: all folders on focus, filtered while typing.
 // Arrows move, Enter or a click opens, Escape goes back.

@@ -1,284 +1,499 @@
-"""Web uploader for the gallery: drag and drop from any device, no terminal.
+"""The gallery editor on the web: the `just manifest` editor, run in the cluster.
 
-It does what `just upload` does. Files stream into a hidden staging folder in
-/data/incoming. On finish it writes manifest.toml (and body.md for a writing)
-and renames the folder to /data/incoming/<slug> in one step. The processor
-takes it from there. The published site stays static: this server only ever
-writes into the inbox.
+Same page and manifest code as the local tool (tools/manifest). Here it works
+on the PVC instead of a folder on the Mac:
+
+- Every item is a slug. A published item lives in /data/originals/<kind>/<slug>
+  (the upload as it was published). Opening it makes a draft in
+  /data/drafts/<slug>: manifest and body copied, media files as hard links
+  (no extra disk, the original is never written).
+- `new` makes an empty draft. Files upload into the draft; `delete file`
+  removes a file from the draft only.
+- save writes manifest.toml into the draft (as the local tool does).
+- publish moves the draft into /data/incoming with a `.replace` marker. The
+  processor builds the new version, swaps it in, and moves files that the
+  new version dropped to /data/trash. A failed publish comes back as the
+  draft, with the error.
+- discard deletes the draft. The published item stays.
 
 Access: Traefik sends /upload here only after authentik forward auth (app
-bound to one user). This server checks the X-authentik-username header again
+bound to one user). This server checks X-authentik-username again
 (UPLOAD_USER) and the Origin of every write. A network policy lets only
-Traefik reach the port.
-
-Stdlib only. Routes, all under /upload:
-  GET  /upload/                      the page
-  GET  /upload/api/queue             slugs waiting in the inbox
-  POST /upload/api/start             JSON manifest fields -> {"id": ...}
-  PUT  /upload/api/<id>/files/<name> raw file body (streamed)
-  POST /upload/api/<id>/finish       write manifest, publish to the inbox
-  POST /upload/api/<id>/abort        drop the staging folder
+Traefik reach the port. Stdlib only, plus ffmpeg/exiftool from the image.
 """
+
+from __future__ import annotations
 
 import json
 import os
-import re
-import secrets
 import shutil
+import subprocess
 import sys
 import threading
-from datetime import datetime, timezone
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import tomllib
+from http import HTTPStatus
+from http.server import ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote
+from urllib.parse import parse_qs, unquote, urlparse
 
-from processor.paths import INCOMING
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools/manifest/src"))
+
+from exhib_manifest import manifest  # noqa: E402
+from exhib_manifest.server import PAGE, Handler  # noqa: E402
+
+from processor.media import decode_upright  # noqa: E402
+from processor.paths import DATA, INCOMING, ORIGINALS  # noqa: E402
 
 PORT = int(os.environ.get("UPLOAD_PORT", "8081"))
 USER = os.environ.get("UPLOAD_USER", "bf")
 ORIGIN = os.environ.get("UPLOAD_ORIGIN", "https://gallery.0xbf.ch")
 MAX_FILE = int(os.environ.get("UPLOAD_MAX_FILE_BYTES", str(8 * 1024**3)))
+PREFIX = "/upload"
+DRAFTS = DATA / "drafts"
+PREVIEWS = DATA / ".previews"
 CHUNK = 1024 * 1024
-STAGING_PREFIX = ".upload-web-"
-
-SLUG = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-KINDS = {"collection", "piece", "writing"}
-MEDIA = {
-    "jpg",
-    "jpeg",
-    "png",
-    "webp",
-    "avif",
-    "tif",
-    "tiff",
-    "heic",
-    "heif",
-    "mov",
-    "mp4",
-    "m4v",
-    "3gp",
-    "mkv",
-    "webm",
-}
-SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ -]{0,200}$")
-PAGE = Path(__file__).with_name("index.html")
-
-# Upload id -> {"dir": Path, "slug": str, "fields": dict}. One replica, so
-# memory is enough; a restart drops unfinished uploads (staging is cleaned).
-SESSIONS: dict[str, dict] = {}
+KINDS = manifest.KINDS
+# Previews run ffmpeg. A grid asks for 30 at once; two at a time keeps the Pi usable.
+PREVIEW_SLOTS = threading.BoundedSemaphore(2)
 LOCK = threading.Lock()
 
 
-def toml_str(value: str) -> str:
-    # A JSON string is a valid TOML basic string.
-    return json.dumps(value, ensure_ascii=False)
-
-
-def toml_date(value: str) -> str:
-    # The page sends datetime-local ("2026-11-19T18:30") in the browser's
-    # time zone with the offset ("+01:00"); store it in UTC like the editor.
-    dt = datetime.fromisoformat(value)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def manifest(fields: dict) -> str:
-    lines = [
-        f"kind = {toml_str(fields['kind'])}",
-        f"title = {toml_str(fields['title'])}",
-        f"date = {toml_date(fields['date'])}",
-    ]
-    if fields.get("description"):
-        lines.append(f"description = {toml_str(fields['description'])}")
-    tags = [t for t in fields.get("tags", []) if t]
-    if tags:
-        lines.append("tags = [" + ", ".join(toml_str(t) for t in tags) + "]")
-    if fields["kind"] != "writing" and fields.get("sort") in {"date", "position"}:
-        lines.append(f"sort = {toml_str(fields['sort'])}")
-    return "\n".join(lines) + "\n"
-
-
-def validate(fields: dict) -> str | None:
-    if not SLUG.match(fields.get("slug", "")):
-        return "slug: lowercase letters, numbers and hyphens"
-    if fields.get("kind") not in KINDS:
-        return "kind: collection, piece or writing"
-    if not str(fields.get("title", "")).strip():
-        return "title is required"
-    try:
-        toml_date(fields.get("date", ""))
-    except TypeError, ValueError:
-        return "date is not valid"
-    tags = fields.get("tags", [])
-    if not isinstance(tags, list) or not all(
-        isinstance(t, str) and SLUG.match(t) for t in tags if t
-    ):
-        return "tags: slug-like names"
-    if fields["kind"] == "writing" and not str(fields.get("body", "")).strip():
-        return "a writing needs a body"
+def published_kind(slug: str) -> str | None:
+    for kind in KINDS:
+        if (ORIGINALS / kind / slug).is_dir():
+            return kind
     return None
 
 
-def clean_staging() -> None:
-    INCOMING.mkdir(parents=True, exist_ok=True)
-    for path in INCOMING.glob(STAGING_PREFIX + "*"):
-        shutil.rmtree(path, ignore_errors=True)
+def draft_kind(folder: Path) -> str | None:
+    try:
+        return tomllib.loads((folder / "manifest.toml").read_text())["kind"]
+    except OSError, ValueError, KeyError:
+        return None
 
 
-class Handler(BaseHTTPRequestHandler):
-    server_version = "exhib-upload"
+def check_slug(slug: str) -> str:
+    if not manifest.SLUG.fullmatch(slug or ""):
+        raise ValueError("slug: lowercase letters, digits and hyphens")
+    return slug
 
-    def log_message(self, fmt, *args):
-        sys.stderr.write("upload: " + (fmt % args) + "\n")
 
-    def reply(
-        self, code: int, body: dict | bytes, ctype: str = "application/json"
+def visible_dirs(root: Path) -> list[Path]:
+    return (
+        [p for p in root.iterdir() if p.is_dir() and not p.name.startswith(".")]
+        if root.is_dir()
+        else []
+    )
+
+
+def list_items() -> list[dict]:
+    names: set[str] = {p.name for p in visible_dirs(DRAFTS)}
+    for kind in KINDS:
+        names |= {p.name for p in visible_dirs(ORIGINALS / kind)}
+    queued = {p.name for p in visible_dirs(INCOMING)}
+    names |= queued
+    items = []
+    for name in sorted(names, key=manifest.natural_key, reverse=True):
+        draft = DRAFTS / name
+        kind = published_kind(name)
+        if name in queued:
+            status = "publishing…"
+        elif draft.is_dir():
+            status = (
+                "draft · last publish failed"
+                if (draft / ".error").is_file()
+                else "draft"
+            )
+        else:
+            status = "published"
+        items.append(
+            {
+                "name": name,
+                "slug_ok": bool(manifest.SLUG.fullmatch(name)),
+                "has_manifest": (draft / "manifest.toml").is_file() or kind is not None,
+                "draft": draft.is_dir(),
+                "kind": (draft_kind(draft) if draft.is_dir() else None) or kind,
+                "status": status,
+            }
+        )
+    return items
+
+
+def ensure_draft(slug: str) -> Path:
+    """The draft folder of slug; made from the published original if needed."""
+    draft = DRAFTS / check_slug(slug)
+    with LOCK:
+        if draft.is_dir():
+            return draft
+        if (INCOMING / slug).exists():
+            raise ValueError(f"{slug} is being published; wait a minute")
+        kind = published_kind(slug)
+        if kind is None:
+            raise FileNotFoundError(f"no item {slug}")
+        DRAFTS.mkdir(parents=True, exist_ok=True)
+        tmp = DRAFTS / f".new-{slug}"
+        shutil.rmtree(tmp, ignore_errors=True)
+        tmp.mkdir()
+        for path in (ORIGINALS / kind / slug).iterdir():
+            if not path.is_file() or path.name.startswith("."):
+                continue
+            if manifest.media_type(path):
+                os.link(
+                    path, tmp / path.name
+                )  # never written: the editor only adds or unlinks
+            else:
+                shutil.copy2(path, tmp / path.name)
+        tmp.rename(draft)
+        return draft
+
+
+class WebEditor(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def __init__(self) -> None:
+        super().__init__(("0.0.0.0", PORT), WebHandler)
+        self.root = DRAFTS
+        self.previews = PREVIEWS
+
+
+class WebHandler(Handler):
+    server: WebEditor
+
+    def log_message(self, format: str, *args) -> None:
+        sys.stderr.write("upload: " + (format % args) + "\n")
+
+    def send(
+        self, status: int, body: bytes, content_type: str, cache: str = "no-store"
     ) -> None:
-        data = body if isinstance(body, bytes) else json.dumps(body).encode()
-        self.send_response(code)
-        self.send_header("Content-Type", ctype)
-        self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store")
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", cache)
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "same-origin")
         self.end_headers()
-        self.wfile.write(data)
+        self.wfile.write(body)
+
+    def error(self, status: int, message: str) -> None:
+        self.send_json(status, {"error": message})
 
     def allowed(self, write: bool) -> bool:
         if self.headers.get("X-authentik-username") != USER:
-            self.reply(403, {"error": "forbidden"})
+            self.error(HTTPStatus.FORBIDDEN, "forbidden")
             return False
         if write and self.headers.get("Origin") != ORIGIN:
-            self.reply(403, {"error": "bad origin"})
+            self.error(HTTPStatus.FORBIDDEN, "bad origin")
             return False
         return True
 
-    def read_json(self) -> dict | None:
-        length = int(self.headers.get("Content-Length") or 0)
-        if length > 1024 * 1024:
+    def route(self) -> str | None:
+        path = unquote(urlparse(self.path).path)
+        if path == PREFIX:
+            self.send_response(HTTPStatus.MOVED_PERMANENTLY)
+            self.send_header("Location", PREFIX + "/")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
             return None
+        if not path.startswith(PREFIX + "/"):
+            self.not_found()
+            return None
+        return path.removeprefix(PREFIX)
+
+    def query(self, key: str) -> str:
+        return parse_qs(urlparse(self.path).query).get(key, [""])[0]
+
+    def folder(self) -> Path:
+        return manifest.child(DRAFTS, self.query("f"))
+
+    # ── GET ──────────────────────────────────────────────────────────
+    def do_GET(self) -> None:
+        if not self.allowed(write=False) or (path := self.route()) is None:
+            return
         try:
-            data = json.loads(self.rfile.read(length) or b"{}")
-        except ValueError:
-            return None
-        return data if isinstance(data, dict) else None
+            if path == "/":
+                self.send(HTTPStatus.OK, PAGE.read_bytes(), "text/html; charset=utf-8")
+            elif path == "/api/folders":
+                self.send_json(
+                    HTTPStatus.OK,
+                    {"root": "gallery", "web": True, "folders": list_items()},
+                )
+            elif path == "/api/state":
+                folder = self.folder()
+                state = manifest.load_state(folder)
+                error = folder / ".error"
+                state["folder"] = folder.name
+                state["web"] = {
+                    "published": published_kind(folder.name),
+                    "error": error.read_text().strip() if error.is_file() else "",
+                }
+                self.send_json(HTTPStatus.OK, state)
+            elif path.startswith("/media/"):
+                self.send_media(*path.removeprefix("/media/").split("/", 1))
+            else:
+                self.not_found()
+        except ValueError, TypeError, FileNotFoundError:
+            self.not_found()
 
-    def session(self, sid: str) -> dict | None:
-        with LOCK:
-            return SESSIONS.get(sid)
-
-    def do_GET(self):
-        if not self.allowed(write=False):
+    def send_media(self, slug: str, name: str = "") -> None:
+        folder = manifest.child(DRAFTS, slug)
+        source = {p.name: p for p in manifest.media_files(folder)}.get(name)
+        if source is None:
+            self.not_found()
             return
-        path = self.path.split("?", 1)[0]
-        if path in ("/upload", "/upload/"):
-            self.reply(200, PAGE.read_bytes(), "text/html; charset=utf-8")
-        elif path == "/upload/api/queue":
-            queued = sorted(
-                p.name
-                for p in INCOMING.iterdir()
-                if p.is_dir() and not p.name.startswith(".")
+        if manifest.media_type(source) == "image":
+            preview = self.preview(slug, source)
+            if preview is None:
+                self.not_found()
+                return
+            self.send(
+                HTTPStatus.OK,
+                preview.read_bytes(),
+                "image/jpeg",
+                cache="private, max-age=600",
             )
-            self.reply(200, {"queued": queued, "user": USER})
         else:
-            self.reply(404, {"error": "not found"})
+            self.stream(source)
 
-    def do_POST(self):
-        if not self.allowed(write=True):
-            return
-        parts = self.path.split("?", 1)[0].strip("/").split("/")
-        if parts == ["upload", "api", "start"]:
-            return self.start()
-        if len(parts) == 4 and parts[:2] == ["upload", "api"] and parts[3] == "finish":
-            return self.publish(parts[2])
-        if len(parts) == 4 and parts[:2] == ["upload", "api"] and parts[3] == "abort":
-            return self.abort(parts[2])
-        self.reply(404, {"error": "not found"})
+    def preview(self, slug: str, source: Path) -> Path | None:
+        """An upright JPEG, at most 1600 px: what the processor decodes, smaller.
 
-    def do_PUT(self):
-        if not self.allowed(write=True):
+        The editor crops and rotates on this picture, so it must be upright
+        like the processor's input (decode_upright). Cached by file identity.
+        """
+        stat = source.stat()
+        target = PREVIEWS / slug / f"{source.name}.{stat.st_ino}-{stat.st_mtime_ns}.jpg"
+        if target.is_file():
+            return target
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with PREVIEW_SLOTS:
+            if target.is_file():
+                return target
+            upright = target.with_name(f".{target.name}.png")
+            try:
+                decode_upright(source, upright)
+                subprocess.run(
+                    [
+                        "ffmpeg",
+                        "-hide_banner",
+                        "-loglevel",
+                        "error",
+                        "-y",
+                        "-i",
+                        str(upright),
+                        "-vf",
+                        "scale='min(1600,iw)':'min(1600,ih)':force_original_aspect_ratio=decrease",
+                        "-q:v",
+                        "4",
+                        "-frames:v",
+                        "1",
+                        str(target),
+                    ],
+                    check=True,
+                )
+            except subprocess.CalledProcessError, OSError:
+                return None
+            finally:
+                upright.unlink(missing_ok=True)
+        for old in target.parent.glob(source.name + ".*.jpg"):
+            if old != target:
+                old.unlink(missing_ok=True)
+        return target
+
+    def stream(self, source: Path) -> None:
+        """Videos as files, with byte ranges (Safari plays video only with ranges)."""
+        size = source.stat().st_size
+        start, end = 0, size - 1
+        ranged = self.headers.get("Range", "")
+        if ranged.startswith("bytes="):
+            first, _, last = ranged.removeprefix("bytes=").split(",")[0].partition("-")
+            try:
+                if first:
+                    start, end = int(first), int(last) if last else size - 1
+                else:
+                    start, end = max(0, size - int(last)), size - 1
+            except ValueError:
+                start, end = 0, size - 1
+            end = min(end, size - 1)
+            if start > end:
+                self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+        self.send_response(HTTPStatus.PARTIAL_CONTENT if ranged else HTTPStatus.OK)
+        self.send_header(
+            "Content-Type",
+            "video/quicktime"
+            if source.suffix.lower() == ".mov"
+            else "video/mp4"
+            if source.suffix.lower() in {".mp4", ".m4v"}
+            else "application/octet-stream",
+        )
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(end - start + 1))
+        if ranged:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Cache-Control", "private, max-age=600")
+        self.end_headers()
+        with source.open("rb") as f:
+            f.seek(start)
+            left = end - start + 1
+            while left > 0:
+                chunk = f.read(min(CHUNK, left))
+                if not chunk:
+                    break
+                try:
+                    self.wfile.write(chunk)
+                except BrokenPipeError, ConnectionResetError:
+                    return
+                left -= len(chunk)
+
+    # ── POST ─────────────────────────────────────────────────────────
+    def do_POST(self) -> None:
+        if not self.allowed(write=True) or (path := self.route()) is None:
             return
-        parts = self.path.split("?", 1)[0].strip("/").split("/")
-        if len(parts) != 5 or parts[:2] != ["upload", "api"] or parts[3] != "files":
-            return self.reply(404, {"error": "not found"})
-        sess = self.session(parts[2])
-        if sess is None:
-            return self.reply(404, {"error": "unknown upload"})
-        name = unquote(parts[4])
-        ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
-        if not SAFE_NAME.match(name) or ext not in MEDIA:
-            return self.reply(400, {"error": f"not a supported media file: {name}"})
+        actions = {
+            "/api/save": self.save,
+            "/api/open": self.open_draft,
+            "/api/new": self.new,
+            "/api/publish": self.publish,
+            "/api/discard": self.discard,
+            "/api/delete": self.delete,
+        }
+        action = actions.get(path)
+        if action is None:
+            self.not_found()
+            return
+        try:
+            action()
+        except FileNotFoundError as exc:
+            self.error(HTTPStatus.NOT_FOUND, str(exc))
+        except (ValueError, KeyError, TypeError) as exc:
+            self.error(HTTPStatus.BAD_REQUEST, str(exc))
+
+    def save(self) -> None:
+        length = int(self.headers.get("Content-Length", 0))
+        if length > 4 * 1024 * 1024:
+            raise ValueError("request too large")
+        folder = self.folder()
+        text = manifest.save(folder, json.loads(self.rfile.read(length)))
+        self.send_json(HTTPStatus.OK, {"manifest": text})
+
+    def open_draft(self) -> None:
+        ensure_draft(self.query("f"))
+        self.send_json(HTTPStatus.OK, {"ok": True})
+
+    def new(self) -> None:
+        slug = check_slug(self.query("f"))
+        with LOCK:
+            if (
+                (DRAFTS / slug).exists()
+                or (INCOMING / slug).exists()
+                or published_kind(slug)
+            ):
+                raise ValueError(f"{slug} exists already: open it instead")
+            (DRAFTS / slug).mkdir(parents=True)
+        self.send_json(HTTPStatus.CREATED, {"ok": True})
+
+    def publish(self) -> None:
+        folder = self.folder()
+        slug = folder.name
+        data = tomllib.loads((folder / "manifest.toml").read_text())  # save first
+        if data.get("kind") not in KINDS:
+            raise ValueError("manifest.toml has no valid kind")
+        if data["kind"] != "writing" and not manifest.media_files(folder):
+            raise ValueError("no media files")
+        with LOCK:
+            if (INCOMING / slug).exists():
+                raise ValueError(f"{slug} is being published already")
+            (folder / ".error").unlink(missing_ok=True)
+            old = published_kind(slug)
+            marker = folder / ".replace"
+            if old:
+                marker.write_text(old + "\n")
+            else:
+                marker.unlink(missing_ok=True)
+            INCOMING.mkdir(parents=True, exist_ok=True)
+            folder.rename(INCOMING / slug)
+        shutil.rmtree(PREVIEWS / slug, ignore_errors=True)
+        self.send_json(HTTPStatus.OK, {"ok": True, "queued": slug})
+
+    def discard(self) -> None:
+        folder = self.folder()
+        with LOCK:
+            shutil.rmtree(folder)
+        shutil.rmtree(PREVIEWS / folder.name, ignore_errors=True)
+        self.send_json(HTTPStatus.OK, {"ok": True})
+
+    def delete(self) -> None:
+        folder = self.folder()
+        name = self.query("name")
+        source = {p.name: p for p in manifest.media_files(folder)}.get(name)
+        if source is None:
+            raise FileNotFoundError(f"no file {name}")
+        source.unlink()
+        self.send_json(HTTPStatus.OK, {"ok": True})
+
+    # ── PUT: one file into a draft, streamed ─────────────────────────
+    def do_PUT(self) -> None:
+        if not self.allowed(write=True) or (path := self.route()) is None:
+            return
+        if path != "/api/file":
+            self.not_found()
+            return
+        try:
+            folder = self.folder()
+        except ValueError:
+            self.error(HTTPStatus.NOT_FOUND, "unknown draft")
+            return
+        name = self.query("name")
+        if (
+            not manifest.media_type(Path(name))
+            or "/" in name
+            or "\\" in name
+            or name.startswith(".")
+            or len(name) > 200
+        ):
+            self.error(HTTPStatus.BAD_REQUEST, f"not a supported media file: {name}")
+            return
         length = int(self.headers.get("Content-Length") or -1)
         if length < 0 or length > MAX_FILE:
-            return self.reply(413, {"error": "file too large or no length"})
-        target = sess["dir"] / name
+            self.error(
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "file too large or no length"
+            )
+            return
+        target = folder / name
         if target.exists():
-            return self.reply(409, {"error": f"{name} already uploaded"})
-        partial = sess["dir"] / f".{name}.part"
+            self.error(HTTPStatus.CONFLICT, f"{name} is already in this item")
+            return
+        partial = folder / f".{name}.part"
         with partial.open("wb") as out:
-            remaining = length
-            while remaining > 0:
-                chunk = self.rfile.read(min(CHUNK, remaining))
+            left = length
+            while left > 0:
+                chunk = self.rfile.read(min(CHUNK, left))
                 if not chunk:
                     break
                 out.write(chunk)
-                remaining -= len(chunk)
-        if remaining:
+                left -= len(chunk)
+        if left:
             partial.unlink(missing_ok=True)
-            return self.reply(400, {"error": "upload interrupted"})
+            self.error(HTTPStatus.BAD_REQUEST, "upload interrupted")
+            return
         partial.rename(target)
-        self.reply(201, {"ok": True, "file": name})
-
-    def start(self):
-        fields = self.read_json()
-        if fields is None:
-            return self.reply(400, {"error": "bad request"})
-        error = validate(fields)
-        if error:
-            return self.reply(400, {"error": error})
-        slug = fields["slug"]
-        if (INCOMING / slug).exists():
-            return self.reply(409, {"error": f"'{slug}' is already queued"})
-        sid = secrets.token_urlsafe(16)
-        staging = INCOMING / f"{STAGING_PREFIX}{slug}-{sid}"
-        staging.mkdir(parents=True)
-        with LOCK:
-            SESSIONS[sid] = {"dir": staging, "slug": slug, "fields": fields}
-        self.reply(201, {"id": sid})
-
-    def publish(self, sid: str):
-        sess = self.session(sid)
-        if sess is None:
-            return self.reply(404, {"error": "unknown upload"})
-        fields = sess["fields"]
-        media = [p for p in sess["dir"].iterdir() if not p.name.startswith(".")]
-        if fields["kind"] != "writing" and not media:
-            return self.reply(400, {"error": "no files uploaded"})
-        (sess["dir"] / "manifest.toml").write_text(manifest(fields))
-        if fields["kind"] == "writing":
-            (sess["dir"] / "body.md").write_text(fields["body"].rstrip() + "\n")
-        dest = INCOMING / sess["slug"]
-        if dest.exists():
-            return self.reply(409, {"error": f"'{sess['slug']}' is already queued"})
-        sess["dir"].rename(dest)
-        with LOCK:
-            SESSIONS.pop(sid, None)
-        self.reply(200, {"ok": True, "queued": sess["slug"], "files": len(media)})
-
-    def abort(self, sid: str):
-        with LOCK:
-            sess = SESSIONS.pop(sid, None)
-        if sess is not None:
-            shutil.rmtree(sess["dir"], ignore_errors=True)
-        self.reply(200, {"ok": True})
+        self.send_json(HTTPStatus.CREATED, {"ok": True, "file": name})
 
 
 def main() -> int:
-    clean_staging()
-    server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
-    server.daemon_threads = True
-    print(f"upload: listening on :{PORT} for {USER}", flush=True)
+    DRAFTS.mkdir(parents=True, exist_ok=True)
+    for stale in DRAFTS.glob(".new-*"):
+        shutil.rmtree(stale, ignore_errors=True)
+    for part in DRAFTS.glob("*/.*.part"):
+        part.unlink(missing_ok=True)
+    # Drafts of the old web uploader (.upload-web-*) are dropped.
+    for stale in INCOMING.glob(".upload-web-*"):
+        shutil.rmtree(stale, ignore_errors=True)
+    server = WebEditor()
+    print(f"upload: gallery editor on :{PORT} for {USER}", flush=True)
     server.serve_forever()
     return 0
 
