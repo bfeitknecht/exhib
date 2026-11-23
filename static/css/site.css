@@ -136,7 +136,7 @@ img.lq {
 }
 .site-header h1 {
   margin: 0;
-  font: 500 clamp(4.4rem, 13vw, 11rem)/.85 var(--sans);
+  font: 500 clamp(4rem, 12vw, 10rem)/.85 var(--sans);
   letter-spacing: -.095em;
 }
 .site-tagline {
