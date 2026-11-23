@@ -27,7 +27,7 @@ The library is the PVC `exhib-site`, mounted at `/data` in the pod. The image ho
 │   ├── collection/<slug>/
 │   ├── piece/<slug>/
 │   └── writing/<slug>/
-├── public/        Hugo output; SWS serves this at gallery.0xbf.ch
+├── public/        Hugo output; SWS serves this at glry.0xbf.ch
 └── .hugo-resources/  Hugo resized previews; cache, safe to delete
 ```
 
@@ -41,7 +41,7 @@ What lives where:
 
 Important: the repo `content/` directory seeds `/data/content` **only on first boot, when `/data/content` is empty**. After that, edits to repo `content/` do not reach production. The PVC is the source of truth for content.
 
-## 1.1 The gallery editor on the web (`gallery.0xbf.ch/upload`)
+## 1.1 The gallery editor on the web (`glry.0xbf.ch/upload`)
 
 The same editor as `just manifest` (section 2.1), in the browser, on the
 gallery's own data. Only the authentik user `bf` gets in.
@@ -273,7 +273,7 @@ just upload path/to/2026-11
 just logs
 ```
 
-Success prints `Published collection 2026-11` (or `piece`, `writing`). The page is live at `https://gallery.0xbf.ch/collections/2026-11/`. No commit, tag or image build is needed.
+Success prints `Published collection 2026-11` (or `piece`, `writing`). The page is live at `https://glry.0xbf.ch/collections/2026-11/`. No commit, tag or image build is needed.
 
 Video conversion is slow (lossless VP9 on the Pi). A minute of video can take many minutes. The site keeps serving the old build until the new build is complete.
 

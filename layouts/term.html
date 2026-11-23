@@ -1,11 +1,11 @@
 {{/* One tag: the tagged pieces, collections and writings, newest first,
-     as text cards (title, date, description; no preview).
+     as the same cards as the homepage (preview; writings stay text-only).
      Kind "term". Reached from any #tag link on the site. */}}
 {{ define "main" }}
 <main class="archive">
   <h1><a class="tag-heading" href="{{ "/tags/" | relURL }}">#{{ .LinkTitle }}</a></h1>
   <div class="timeline">
-    {{- range sort .Pages "Date" "desc" }}{{ partial "listing/item-card.html" (dict "page" . "preview" false) }}{{ end }}
+    {{- range sort .Pages "Date" "desc" }}{{ partial "listing/item-card.html" . }}{{ end }}
   </div>
 </main>
 {{ end }}
