@@ -46,7 +46,7 @@ from processor.paths import DATA, INCOMING, ORIGINALS  # noqa: E402
 
 PORT = int(os.environ.get("UPLOAD_PORT", "8081"))
 USER = os.environ.get("UPLOAD_USER", "bf")
-ORIGIN = os.environ.get("UPLOAD_ORIGIN", "https://glry.0xbf.ch")
+ORIGIN = os.environ.get("UPLOAD_ORIGIN", "https://gallery.0xbf.ch")
 MAX_FILE = int(os.environ.get("UPLOAD_MAX_FILE_BYTES", str(8 * 1024**3)))
 PREFIX = "/upload"
 DRAFTS = DATA / "drafts"
