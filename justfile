@@ -17,8 +17,8 @@ manifest folder="uploads" *flags:
     # Run from anywhere: fall back to uploads/ next to this justfile.
     [[ -d "$FOLDER" ]] || FOLDER="{{justfile_directory()}}/{{folder}}"
     [[ -d "$FOLDER" ]] || { echo "Not a folder: {{folder}}" >&2; exit 2; }
-    exec uv run --quiet --project "{{justfile_directory()}}/tools/manifest" \
-      exhib-manifest "$(cd "$FOLDER" && pwd)" {{flags}}
+    exec uv run --quiet --project "{{justfile_directory()}}" \
+      exhib edit "$(cd "$FOLDER" && pwd)" {{flags}}
 
 # Upload a slug folder (manifest.toml plus media, or plus one .md body for a writing). Needs kubectl for the cluster.
 upload folder:
@@ -56,16 +56,16 @@ logs:
 
 # Rebuild the live site from /data/content (after a manual edit on the PVC).
 rebuild:
-    kubectl -n exhib exec deploy/exhib -- uv run --frozen --no-sync python -m processor rebuild
+    kubectl -n exhib exec deploy/exhib -- exhib rebuild
 
 # Format Python sources. `just fmt --check` only reports (CI uses it).
 fmt *flags:
-    uvx ruff@0.15 format {{flags}} processor uploader entrypoint.py tools/manifest/src
+    uvx ruff@0.15 format {{flags}} src
 
 # Everything CI runs: format check, lint, Hugo build.
 check:
-    uvx ruff@0.15 format --check processor uploader entrypoint.py tools/manifest/src
-    uvx ruff@0.15 check processor uploader entrypoint.py tools/manifest/src
+    uvx ruff@0.15 format --check src
+    uvx ruff@0.15 check src
     hugo --quiet --destination "$(mktemp -d)"
 
 # Build the image for the local architecture (smoke test before a release).
@@ -91,7 +91,7 @@ release *flags:
 
 # Make the small lossy copies for every image that lacks them, then rebuild. Safe to re-run.
 variants:
-    kubectl -n exhib exec deploy/exhib -- uv run --frozen --no-sync python -m processor variants
+    kubectl -n exhib exec deploy/exhib -- exhib variants
 
 # Preview the site locally with the repo content.
 serve:

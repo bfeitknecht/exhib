@@ -1,10 +1,10 @@
 """Read a slug folder and write its manifest.toml.
 
-The rules mirror the processor (processor/bundle.py, processor/media.py).
-Keep the extension sets, the slug rule, natural_key and humanize_stem in
-step with it. The tool writes the smallest manifest that gives the
-result: [[media]] tables (file, title, position) only when the selection,
-the order or a caption differs from the processor defaults.
+The extension sets, the slug rule, natural_key and humanize_stem come from
+exhib.rules, the same code the processor uses. edit_of mirrors
+exhib.media.parse_edit. The tool writes the smallest manifest that gives
+the result: [[media]] tables (file, title, position) only when the
+selection, the order or a caption differs from the processor defaults.
 
 The editor works on one root folder (uploads/) and its direct child
 folders, one per slug. No other path is reachable.
@@ -21,45 +21,13 @@ import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
 
-IMAGE_EXTS = {
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".webp",
-    ".avif",
-    ".tif",
-    ".tiff",
-    ".heic",
-    ".heif",
-}
-VIDEO_EXTS = {".mov", ".mp4", ".m4v", ".3gp", ".mkv", ".webm"}
-KINDS = ("collection", "piece", "writing")
-SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+from ..rules import KINDS, SLUG, humanize_stem, media_type, natural_key, toml_string
+
+__all__ = ["KINDS", "SLUG", "media_type", "natural_key"]
+
 BODY_FILE = "body.md"
 # Default crop of the cover: centered. Not written to the manifest.
 CENTER = [50, 50]
-
-
-def natural_key(name: str) -> list:
-    return [
-        int(part) if part.isdigit() else part.lower()
-        for part in re.split(r"(\d+)", name)
-    ]
-
-
-def humanize_stem(stem: str) -> str:
-    text = re.sub(r"^\d+[-_ ]*", "", stem)
-    text = re.sub(r"[-_]+", " ", text).strip()
-    return (text[:1].upper() + text[1:]) if text else stem
-
-
-def media_type(path: Path) -> str | None:
-    ext = path.suffix.lower()
-    if ext in IMAGE_EXTS:
-        return "image"
-    if ext in VIDEO_EXTS:
-        return "video"
-    return None
 
 
 def media_files(folder: Path) -> list[Path]:
@@ -185,7 +153,7 @@ def list_folders(root: Path) -> list[dict]:
 
 def edit_of(entry: dict) -> tuple[float, list[float] | None]:
     """Read rotate and crop of a [[media]] entry. Same rules as the processor
-    (processor/media.py: parse_edit). Raises ValueError on a bad value."""
+    (exhib.media.parse_edit). Raises ValueError on a bad value."""
     rotate = entry.get("rotate", 0) or 0
     if isinstance(rotate, bool) or not isinstance(rotate, int | float):
         raise ValueError("rotate must be a number of degrees")
@@ -313,10 +281,6 @@ def load_state(folder: Path) -> dict:
         "body_file": body.name,
         "body": body.read_text(encoding="utf-8") if body.is_file() else "",
     }
-
-
-def toml_string(value: str) -> str:
-    return json.dumps(str(value), ensure_ascii=False)
 
 
 def parse_date(value: str) -> str:

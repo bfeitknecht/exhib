@@ -1,4 +1,4 @@
-"""Localhost HTTP server for the manifest editor. Standard library only.
+"""Localhost HTTP server for the manifest editor (``exhib edit``). Stdlib only.
 
 The server owns one root folder (uploads/). Requests name a slug folder
 with ?f=<name>; only direct, visible child folders of the root resolve.

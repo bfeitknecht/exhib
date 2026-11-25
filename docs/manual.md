@@ -366,24 +366,25 @@ Common reasons:
 
 There is no uploader sidecar. It was a busybox container that slept. Its only job was to be an `exec` target with a writable `/data`. It did no conversion. Conversion, Hugo and front matter are in the processor. The pod is now one container, and `just upload` execs into it.
 
-The container runs `uv run python entrypoint.py` (Python 3.15). The supervisor creates the `/data` directories, then starts two children:
+The container runs `exhib serve` (the `exhib` package, Python 3.15). The supervisor (`src/exhib/supervisor.py`) creates the `/data` directories, then starts three children:
 
 - `static-web-server`: serves `/data/public` on `8080`, `/health` for probes, `Cache-Control: no-cache` on all responses.
-- `python -m processor`: the ingest loop.
+- `exhib watch`: the ingest loop.
+- `exhib web`: the gallery editor on `8081` (`/upload`, §1.1).
 
-If one child exits, the supervisor stops the other and exits with its code (a signal N gives `128 + N`). Kubernetes then restarts the pod.
+If one child exits, the supervisor stops the others and exits with its code (a signal N gives `128 + N`). Kubernetes then restarts the pod.
 
 Upload path, step by step:
 
 1. **Transfer** (`just upload`, on your machine). Checks slug and `manifest.toml`. Refuses if `/data/incoming/<slug>` is already queued. Streams the folder as tar (no macOS xattrs, no `.DS_Store`) through `kubectl exec` into `/data/incoming/.upload-<slug>-<epoch>`. Then `mv` to `/data/incoming/<slug>`. The hidden name hides the partial copy from the processor. The `mv` is atomic, so the processor sees only complete folders.
-2. **Detect** (`processor/__main__.py`). Every 3 s, takes non-hidden folders in `/data/incoming`, sorted, one at a time.
-3. **Validate** (`processor/bundle.py: read_manifest`, `publish_bundle`). Slug format, `kind`, `title`, TOML datetime `date`, no existing `/data/originals/<kind>/<slug>`.
+2. **Detect** (`exhib/watch.py`). Every 3 s, takes non-hidden folders in `/data/incoming`, sorted, one at a time.
+3. **Validate** (`exhib/bundle.py: read_manifest`, `publish_bundle`). Slug format, `kind`, `title`, TOML datetime `date`, no existing `/data/originals/<kind>/<slug>`.
 4. **Write the bundle** in `/data/content/<section>/<slug>/`:
     - Writing (`write_writing`): checks the one `.md` body, then writes `index.md` = front matter from the manifest + body.
-    - Collection or piece (`write_media_bundle`): converts each file (`processor/media.py`) into a scratch dir `.converted/`, then writes `_index.md` (collection) or `index.md` (piece).
+    - Collection or piece (`write_media_bundle`): converts each file (`exhib/media.py`) into a scratch dir `.converted/`, then writes `_index.md` (collection) or `index.md` (piece).
         - Images: `cwebp -lossless -exact` to WebP. HEIC/HEIF decode first with `heif-convert`; AVIF via `ffmpeg`. Then `exiftool -TagsFromFile` copies all source metadata into the WebP, so Hugo can read EXIF.
         - Video: `ffmpeg` to WebM. Quality-targeted VP9 (`-crf 32 -b:v 0 -deadline good -cpu-used 4 -row-mt 1`): camera footage defeats lossless compression, and a 10 MB clip became 550 MB. The long side is capped at 1920 px (never upscaled; current phone clips are 1080p, so nothing is scaled). 10-bit HLG sources stay 10-bit VP9, so HDR clips keep their look; 8-bit sources become `yuv420p`. Only the first audio track is mapped: phone clips carry extra audio-typed streams with no decoder (Apple metadata). Opus 128k audio, metadata kept. Poster: frame at 1 s (falls back to frame 0), to lossless WebP, metadata copied.
-        - Small copies (`processor/variants.py`): after conversion, each image gets lossy WebP copies (480/960/1920/2880 px, q80) and a 24 px blur, named `<stem>.<hash>.w<width>.webp`. Templates link the copies; Hugo resizes nothing at build time. One image at a time, so memory stays low.
+        - Small copies (`exhib/variants.py`): after conversion, each image gets lossy WebP copies (480/960/1920/2880 px, q80) and a 24 px blur, named `<stem>.<hash>.w<width>.webp`. Templates link the copies; Hugo resizes nothing at build time. One image at a time, so memory stays low.
         - Video facts: `ffprobe` (JSON) for resolution, frame rate, duration, capture date (`com.apple.quicktime.creationdate`, else `creation_time`). Falls back to parsing the `ffmpeg -i` banner. Format is fixed `WebM · VP9`.
 5. **Front matter** (`build_front_matter`). TOML `+++` block: `title`, `date` (UTC offset), optional `description`, `tags`, `thumbnail` (mapped to the converted file; a video maps to its poster), `thumbnail_focus`. Media bundles get one `[[resources]]` per output file with `params.position` and `params.kind`. Videos also get `format`, `resolution`, `framerate`, `duration`, `poster`. Each poster is its own resource with `role = "poster"`, so templates hide it from the grid.
 6. **Keep original.** Copies the upload folder to `/data/originals/<kind>/.<slug>.pending`.
@@ -393,7 +394,7 @@ Upload path, step by step:
 
 Any error in steps 3 to 8 removes the bundle and pending original and parks the upload as `.failed-<slug>` (§8).
 
-`just rebuild` runs steps 7 and 8 only (`python -m processor rebuild`).
+`just rebuild` runs steps 7 and 8 only (`exhib rebuild`).
 
 Generated front matter for a collection with one image and one video. With `sort = "date"` the block also has `sort = "date"`; a video with a capture date gets `date = "…"` in its params:
 
@@ -451,21 +452,26 @@ A new stanza.
 
 ## 10. Develop and release
 
-Python is 3.15, managed by uv. Two uv projects:
+Python is 3.15, managed by uv. One uv project at the repo root: the package `exhib` in `src/exhib/`, no third-party dependencies, one command `exhib`:
 
-| Project        | Path              | Runs where     | Purpose                              |
-| -------------- | ----------------- | -------------- | ------------------------------------ |
-| `exhib`        | repo root         | image + local  | `entrypoint.py`, `processor/`        |
-| `exhib-manifest` | `tools/manifest/` | your machine | manifest editor (`just manifest`)    |
+| Command          | Runs where   | Does                                                   |
+| ---------------- | ------------ | ------------------------------------------------------ |
+| `exhib serve`    | image        | the supervisor (image `ENTRYPOINT`)                    |
+| `exhib watch`    | image        | the ingest loop                                        |
+| `exhib rebuild`  | image        | rebuild the site once (`just rebuild`)                 |
+| `exhib variants` | image        | missing small copies, then rebuild (`just variants`)   |
+| `exhib web`      | image        | the gallery editor on the PVC (`/upload`)              |
+| `exhib edit`     | your machine | the manifest editor on `uploads/` (`just manifest`)    |
 
-Both have no third-party dependencies. `tools/` and `docs/` are not in the image (`.dockerignore`).
+Modules: `rules` (extensions, kinds, slug rule, default titles: shared by the processor and the editor), `paths`, `media`, `variants`, `bundle`, `watch`, `supervisor`, `web`, and `editor/` (`index.html`, `manifest`, `server`, `local`). `docs/` is not in the image (`.dockerignore`).
 
 ```nu
-uv run python -m processor rebuild   # needs hugo; uses $env.EXHIB_DATA (default /data)
-uvx ruff format processor entrypoint.py tools/manifest/src
+just check                       # ruff format check, ruff lint, Hugo build
+just image                       # the image for this machine (smoke test)
+$env.EXHIB_DATA = (mktemp -d); uv run exhib rebuild   # needs hugo
 ```
 
-The image is `python:3.15-alpine3.24` plus uv, Hugo extended, SWS, FFmpeg, libwebp, libheif and exiftool. `uv sync --frozen` builds the venv at build time. At runtime `uv run --no-sync` only starts it.
+The image is `python:3.15-alpine3.24` plus uv, Hugo extended, SWS, FFmpeg, libwebp, libheif and exiftool. `uv sync --frozen` installs the package into `/app/.venv` at build time; `/app/.venv/bin` is on `PATH`, so `kubectl exec deploy/exhib -- exhib rebuild` works.
 
 Release: commit, then push a `v*` tag. CI publishes `ghcr.io/bfeitknecht/exhib:latest` and `:<tag>`. Keel sees the new digest and restarts the pod. On boot the processor rebuilds `/data/public` with the new templates. Content on the PVC is untouched.
 

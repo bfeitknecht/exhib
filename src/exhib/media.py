@@ -9,19 +9,6 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
-IMAGE_EXTS = {
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".webp",
-    ".avif",
-    ".tif",
-    ".tiff",
-    ".heic",
-    ".heif",
-}
-VIDEO_EXTS = {".mov", ".mp4", ".m4v", ".3gp", ".mkv", ".webm"}
-
 
 def run(args: list[str], env: dict[str, str] | None = None) -> None:
     subprocess.run(args, check=True, env=env)

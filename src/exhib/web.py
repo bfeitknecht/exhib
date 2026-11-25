@@ -1,6 +1,6 @@
-"""The gallery editor on the web: the `just manifest` editor, run in the cluster.
+"""The gallery editor on the web (``exhib web``): the `just manifest` editor, in the cluster.
 
-Same page and manifest code as the local tool (tools/manifest). Here it works
+Same page and manifest code as the local tool (exhib.editor). Here it works
 on the PVC instead of a folder on the Mac:
 
 - Every item is a slug. A published item lives in /data/originals/<kind>/<slug>
@@ -36,20 +36,16 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools/manifest/src"))
-
-from exhib_manifest import manifest  # noqa: E402
-from exhib_manifest.server import PAGE, Handler  # noqa: E402
-
-from processor.media import decode_upright  # noqa: E402
-from processor.paths import DATA, INCOMING, ORIGINALS  # noqa: E402
+from .editor import manifest
+from .editor.server import PAGE, Handler
+from .media import decode_upright
+from .paths import DATA, DRAFTS, INCOMING, ORIGINALS
 
 PORT = int(os.environ.get("UPLOAD_PORT", "8081"))
 USER = os.environ.get("UPLOAD_USER", "bf")
 ORIGIN = os.environ.get("UPLOAD_ORIGIN", "https://gallery.0xbf.ch")
 MAX_FILE = int(os.environ.get("UPLOAD_MAX_FILE_BYTES", str(8 * 1024**3)))
 PREFIX = "/upload"
-DRAFTS = DATA / "drafts"
 PREVIEWS = DATA / ".previews"
 CHUNK = 1024 * 1024
 KINDS = manifest.KINDS
@@ -496,7 +492,3 @@ def main() -> int:
     print(f"upload: gallery editor on :{PORT} for {USER}", flush=True)
     server.serve_forever()
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

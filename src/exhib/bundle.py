@@ -3,33 +3,31 @@
 from __future__ import annotations
 
 import gzip
-import json
 import os
-import re
 import shutil
 import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
 
 from .media import (
-    IMAGE_EXTS,
-    VIDEO_EXTS,
     convert_image,
     convert_video,
     parse_edit,
     probe_video,
     run,
 )
+from .paths import APP, CONTENT, DATA, DRAFTS, ORIGINALS, PUBLIC, RESOURCES, TRASH
+from .rules import (
+    IMAGE_EXTS,
+    SECTIONS,
+    SLUG,
+    VIDEO_EXTS,
+    humanize_stem,
+    media_type,
+    natural_key,
+    toml_string,
+)
 from .variants import make_variants
-from .paths import APP, CONTENT, DATA, ORIGINALS, PUBLIC, RESOURCES
-
-# Upload kind -> Hugo section directory.
-SECTIONS = {"piece": "pieces", "collection": "collections", "writing": "writings"}
-SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
-
-
-def toml_string(value: str) -> str:
-    return json.dumps(str(value), ensure_ascii=False)
 
 
 def safe_relative(root: Path, value: str) -> Path:
@@ -42,30 +40,11 @@ def safe_relative(root: Path, value: str) -> Path:
     return resolved
 
 
-def natural_key(name: str) -> list:
-    # Numeric-aware sort so "2-a.jpg" comes before "10-b.jpg".
-    return [
-        int(part) if part.isdigit() else part.lower()
-        for part in re.split(r"(\d+)", name)
-    ]
-
-
-def humanize_stem(stem: str) -> str:
-    # "01-evening-walk.jpg" -> "Evening walk"
-    text = re.sub(r"^\d+[-_ ]*", "", stem)
-    text = re.sub(r"[-_]+", " ", text).strip()
-    return (text[:1].upper() + text[1:]) if text else stem
-
-
 def visible_files(package: Path) -> list[Path]:
     return sorted(
         (p for p in package.iterdir() if p.is_file() and not p.name.startswith(".")),
         key=lambda p: natural_key(p.name),
     )
-
-
-def is_media(path: Path) -> bool:
-    return path.suffix.lower() in IMAGE_EXTS | VIDEO_EXTS
 
 
 def collect_media(package: Path) -> list[dict]:
@@ -75,7 +54,7 @@ def collect_media(package: Path) -> list[dict]:
     entries = [
         {"file": p.name, "title": humanize_stem(p.stem)}
         for p in visible_files(package)
-        if is_media(p)
+        if media_type(p)
     ]
     if not entries:
         raise ValueError("no supported media files in the folder")
@@ -326,8 +305,6 @@ def write_media_bundle(package: Path, manifest: dict, bundle_dir: Path) -> None:
     )
 
 
-TRASH = DATA / "trash"
-DRAFTS = DATA / "drafts"
 # Marker from the web editor: the package replaces the published item of
 # this kind (the text of the file) and slug.
 REPLACE = ".replace"

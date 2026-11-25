@@ -2,7 +2,8 @@
 # and static-web-server. One image is the whole app, like the other tier-2
 # apps: the infra repo references this image and nothing else. The PVC at
 # /data holds the gallery media. This image does not contain media.
-# Python comes from the base image; uv runs it from the project venv.
+# Python comes from the base image; uv installs the exhib package (src/exhib)
+# into the project venv.
 FROM python:3.15-alpine3.24
 COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /usr/local/bin/uv
 
@@ -36,13 +37,15 @@ ENV UV_PYTHON_DOWNLOADS=never \
     UV_NO_CACHE=1
 WORKDIR /app
 COPY pyproject.toml uv.lock .python-version ./
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --no-install-project
 COPY sws.toml /etc/sws/sws.toml
 COPY . /app
-RUN chown -R 1000:1000 /app
+RUN uv sync --frozen --no-dev && chown -R 1000:1000 /app
+# `exhib` is on PATH: `kubectl exec deploy/exhib -- exhib rebuild` works.
 ENV EXHIB_APP=/app \
     EXHIB_DATA=/data \
-    SERVER_CONFIG_FILE=/etc/sws/sws.toml
+    SERVER_CONFIG_FILE=/etc/sws/sws.toml \
+    PATH=/app/.venv/bin:$PATH
 USER 1000:1000
-# --no-sync: the venv is complete at build time. Runtime writes nothing.
-ENTRYPOINT ["uv", "run", "--frozen", "--no-sync", "python", "entrypoint.py"]
+# The venv is complete at build time. Runtime writes nothing to it.
+ENTRYPOINT ["exhib", "serve"]

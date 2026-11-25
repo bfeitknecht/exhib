@@ -1,4 +1,4 @@
-"""CLI: ``exhib-manifest [folder] [--port N] [--no-browser]``.
+"""``exhib edit [folder] [--port N] [--no-browser]`` (``just manifest``).
 
 folder is the uploads root, or one slug folder in it. The editor can
 switch between all slug folders of the root.
@@ -24,14 +24,14 @@ def is_slug_folder(folder: Path) -> bool:
     )
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="exhib-manifest", description="Edit exhib upload manifests."
+        prog="exhib edit", description="Edit exhib upload manifests."
     )
     parser.add_argument("folder", type=Path, nargs="?", default=Path("uploads"))
     parser.add_argument("--port", type=int, default=0, help="default: any free port")
     parser.add_argument("--no-browser", action="store_true")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     folder = args.folder.expanduser().resolve()
     if not folder.is_dir():
@@ -53,7 +53,4 @@ def main() -> None:
         pass
     finally:
         server.server_close()
-
-
-if __name__ == "__main__":
-    main()
+    return 0

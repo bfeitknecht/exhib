@@ -1,8 +1,7 @@
-"""Entrypoint.
+"""The processor loop: watch the inbox and publish uploads.
 
-``python -m processor``         watch the incoming queue and publish uploads.
-``python -m processor rebuild`` rebuild the public site once and exit.
-``python -m processor variants`` create missing small copies of every image, rebuild, exit.
+``exhib watch`` runs it forever. ``exhib rebuild`` and ``exhib variants``
+are the one-shot jobs (``just rebuild``, ``just variants``).
 """
 
 from __future__ import annotations
@@ -12,8 +11,8 @@ import sys
 import time
 
 from .bundle import build_and_publish, fail_package, publish_bundle
-from .variants import make_all
 from .paths import APP, CONTENT, INCOMING, ORIGINALS, POLL_SECONDS, PUBLIC
+from .variants import make_all
 
 
 def main() -> None:
@@ -45,14 +44,11 @@ def main() -> None:
         time.sleep(POLL_SECONDS)
 
 
-if __name__ == "__main__":
-    if sys.argv[1:] == ["rebuild"]:
-        build_and_publish()
-    elif sys.argv[1:] == ["variants"]:
-        made = make_all(CONTENT)
-        print(f"{made} copies made", flush=True)
-        build_and_publish()
-    elif sys.argv[1:]:
-        sys.exit("usage: python -m processor [rebuild|variants]")
-    else:
-        main()
+def rebuild() -> None:
+    build_and_publish()
+
+
+def variants() -> None:
+    made = make_all(CONTENT)
+    print(f"{made} copies made", flush=True)
+    build_and_publish()

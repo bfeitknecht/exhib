@@ -1,11 +1,16 @@
 [project]
 name = "exhib"
-version = "0.6.2"
-description = "Gallery ingest processor and serving supervisor."
+version = "0.7.0"
+description = "Gallery processor, serving supervisor and manifest editor."
 requires-python = ">=3.15"
 dependencies = []
 
-[tool.uv]
-# Not an installable package. `uv run` runs entrypoint.py and the
-# processor module from the project root.
-package = false
+[project.scripts]
+exhib = "exhib.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[tool.ruff]
+src = ["src"]

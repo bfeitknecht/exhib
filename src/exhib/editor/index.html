@@ -108,7 +108,7 @@
   .fine { display: grid; grid-template-columns: minmax(0, 1fr) 5.5rem; gap: .6rem; align-items: center; }
   #editTools { margin-top: 1rem; padding-top: .2rem; border-top: 1px solid var(--line); }
   /* Crop and rotate. The stage is the bounding box of the rotated picture; the crop is a
-     fraction of it, as the processor reads it (processor/media.py: edit_filters). */
+     fraction of it, as the processor reads it (exhib/media.py: edit_filters). */
   .cropstage { position: relative; line-height: 0; overflow: hidden; touch-action: none; user-select: none;
                background: repeating-conic-gradient(var(--line) 0 25%, var(--field) 0 50%) 0 0 / 16px 16px; }
   .cropstage img { position: absolute; max-width: none; max-height: none; pointer-events: none; transform-origin: 50% 50%; }
@@ -344,7 +344,7 @@ function nowMinute() { const d = new Date(); d.setSeconds(0, 0); return d; }
 // ── Crop and rotate ──────────────────────────────────────────────
 // item.rotate: degrees clockwise, 0 to 360. item.crop: [x, y, w, h] as fractions of the
 // bounding box of the rotated picture, or null. The processor makes the same picture
-// from the original (processor/media.py: edit_filters). Keep the two in step.
+// from the original (exhib/media.py: edit_filters). Keep the two in step.
 const RAD = Math.PI / 180;
 const isEdited = (i) => i.type === "image" && (!!i.rotate || !!i.crop);
 const editSig = (i) => (isEdited(i) ? JSON.stringify([i.rotate, i.crop]) : "");

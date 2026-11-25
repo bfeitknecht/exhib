@@ -1,9 +1,10 @@
-"""Run the gallery's serving stack in one container: media processor,
-static-web-server (SWS) and the web uploader, supervised from here.
+"""Run the gallery's serving stack in one container: the processor
+(``exhib watch``), static-web-server (SWS) and the web editor
+(``exhib web``), supervised from here (``exhib serve``).
 
-If either process exits, the other is stopped and this supervisor exits
+If one process exits, the others are stopped and this supervisor exits
 with the same code, so Kubernetes restarts the pod instead of leaving a
-half-dead gallery. SIGTERM and SIGINT are forwarded to both children.
+half-dead gallery. SIGTERM and SIGINT are forwarded to all children.
 """
 
 import signal
@@ -11,13 +12,13 @@ import subprocess
 import sys
 import time
 
-from processor.paths import CONTENT, INCOMING, ORIGINALS, PUBLIC
+from .paths import CONTENT, INCOMING, ORIGINALS, PUBLIC
 
 CHILDREN = [
-    ["python", "-m", "processor"],
+    [sys.executable, "-m", "exhib", "watch"],
     ["static-web-server"],
-    # The web uploader (/upload, behind authentik): writes into the inbox only.
-    ["python", "-m", "uploader"],
+    # The web editor (/upload, behind authentik): drafts and the inbox only.
+    [sys.executable, "-m", "exhib", "web"],
 ]
 
 
@@ -61,7 +62,3 @@ def main() -> int:
                 # A negative code is a signal. Report it as 128 + N, like a shell.
                 return 128 - code if code < 0 else code
         signal.pause()
-
-
-if __name__ == "__main__":
-    sys.exit(main())
