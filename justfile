@@ -93,6 +93,10 @@ release *flags:
 variants:
     kubectl -n exhib exec deploy/exhib -- exhib variants
 
+# Reduce every published image to the kept metadata, add place names, then rebuild. Safe to re-run.
+metadata:
+    kubectl -n exhib exec deploy/exhib -- exhib metadata
+
 # Preview the site locally with the repo content.
 serve:
     hugo server --bind 0.0.0.0 --port 4173

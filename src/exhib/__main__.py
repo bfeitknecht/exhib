@@ -6,6 +6,7 @@ In the image (the container runs ``exhib serve``):
 - ``exhib watch``     watch the inbox and publish uploads (forever).
 - ``exhib rebuild``   rebuild the public site once.
 - ``exhib variants``  make the missing small copies of every image, then rebuild.
+- ``exhib metadata``  bring published images to the kept metadata, then rebuild.
 - ``exhib web``       the gallery editor on the PVC (``/upload``).
 
 On the owner's machine:
@@ -18,7 +19,7 @@ from __future__ import annotations
 
 import sys
 
-USAGE = "usage: exhib {serve|watch|rebuild|variants|web|edit} [args]"
+USAGE = "usage: exhib {serve|watch|rebuild|variants|metadata|web|edit} [args]"
 
 
 def main() -> int:
@@ -32,6 +33,8 @@ def main() -> int:
         from .watch import rebuild as run
     elif command == "variants" and not args:
         from .watch import variants as run
+    elif command == "metadata" and not args:
+        from .watch import metadata as run
     elif command == "web" and not args:
         from .web import main as run
     elif command == "edit":

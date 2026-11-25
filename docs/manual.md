@@ -263,7 +263,7 @@ The editor (`just manifest`) has a body text area for writings. You can write th
 
 ## 6. Make it go live
 
-Before upload, strip metadata you do not want public. **All EXIF/IPTC/XMP is published, including GPS.** The processor copies all metadata into the served WebP.
+The processor keeps only camera, lens, exposure, flash, capture time, **GPS** and the colour profile, and adds the nearest town and country (offline). **The position is published**: the detail panel shows the place and the coordinates. Remove the GPS from a photo before upload if it must stay private (Photos: Info > Location > Remove Location, or Options > Location off in the share sheet).
 
 ```nu
 exiftool -G1 -a -s path/to/2026-11/IMG_4001.HEIC          # inspect
@@ -338,6 +338,8 @@ A bundle with no upload original (seeded from the repo or added by hand) is repl
 
 The small image copies (`<stem>.<hash>.w480.webp` and so on) are made when an upload is processed. An item that has none (uploaded before they existed, or added by hand) is served with Hugo resizes, which is slow to build and large for big sources. Run `just variants` to create the missing copies for every image and rebuild. It handles one image at a time and is safe to re-run.
 
+Items published before 2026-11-25 still carry all source metadata (Apple MakerNote and so on) and no place name. Run `just metadata` once: it reduces every published image to the kept set, takes the colour profile from the original, adds the place, renames the small copies to the new hash (no re-encode) and rebuilds. Safe to re-run.
+
 For a text-only fix (title, description, tags), you can also edit the front matter of `/data/content/<section>/<slug>/_index.md` (or `index.md`) in place, then `just rebuild`. Keep the `[[resources]]` blocks. They are generated.
 
 A pod restart also rebuilds (the processor builds on boot), but the `Recreate` strategy gives a short outage. Prefer `just rebuild`.
@@ -386,7 +388,7 @@ Upload path, step by step:
 4. **Write the bundle** in `/data/content/<section>/<slug>/`:
     - Writing (`write_writing`): checks the one `.md` body, then writes `index.md` = front matter from the manifest + body.
     - Collection or piece (`write_media_bundle`): converts each file (`exhib/media.py`) into a scratch dir `.converted/`, then writes `_index.md` (collection) or `index.md` (piece).
-        - Images: `cwebp -lossless -exact` to WebP. HEIC/HEIF decode first with `heif-convert`; AVIF via `ffmpeg`. Then `exiftool -TagsFromFile` copies all source metadata into the WebP, so Hugo can read EXIF.
+        - Images: `cwebp -lossless -exact` to WebP. HEIC/HEIF decode first with `heif-convert`; AVIF via `ffmpeg`. Then `exhib/metadata.py` replaces all metadata with the kept set from the source (camera, lens, exposure, flash, dates, GPS, orientation, ICC profile) and adds XMP City and Country from the GPS (`exhib/places.py`, offline GeoNames table).
         - Video: `ffmpeg` to WebM. Quality-targeted VP9 (`-crf 32 -b:v 0 -deadline good -cpu-used 4 -row-mt 1`): camera footage defeats lossless compression, and a 10 MB clip became 550 MB. The long side is capped at 1920 px (never upscaled; current phone clips are 1080p, so nothing is scaled). 10-bit HLG sources stay 10-bit VP9, so HDR clips keep their look; 8-bit sources become `yuv420p`. Only the first audio track is mapped: phone clips carry extra audio-typed streams with no decoder (Apple metadata). Opus 128k audio, metadata kept. Poster: frame at 1 s (falls back to frame 0), to lossless WebP, metadata copied.
         - Small copies (`exhib/variants.py`): after conversion, each image gets lossy WebP copies (480/960/1920/2880 px, q80) and a 24 px blur, named `<stem>.<hash>.w<width>.webp`. Templates link the copies; Hugo resizes nothing at build time. One image at a time, so memory stays low.
         - Video facts: `ffprobe` (JSON) for resolution, frame rate, duration, capture date (`com.apple.quicktime.creationdate`, else `creation_time`). Falls back to parsing the `ffmpeg -i` banner. Format is fixed `WebM · VP9`.
@@ -464,6 +466,7 @@ Python is 3.15, managed by uv. One uv project at the repo root: the package `exh
 | `exhib watch`    | image        | the ingest loop                                        |
 | `exhib rebuild`  | image        | rebuild the site once (`just rebuild`)                 |
 | `exhib variants` | image        | missing small copies, then rebuild (`just variants`)   |
+| `exhib metadata` | image        | published images to the kept metadata (`just metadata`) |
 | `exhib web`      | image        | the gallery editor on the PVC (`/upload`)              |
 | `exhib edit`     | your machine | the manifest editor on `uploads/` (`just manifest`)    |
 

@@ -1,0 +1,10 @@
+{{- /* An EXIF number as a float. Rationals print as "11/5" (imagemeta.rat). */ -}}
+{{- $parts := split (printf "%v" .) "/" -}}
+{{- $n := 0.0 -}}
+{{- if eq (len $parts) 2 -}}
+  {{- $den := float (index $parts 1) -}}
+  {{- if ne $den 0.0 }}{{ $n = div (float (index $parts 0)) $den }}{{ end -}}
+{{- else -}}
+  {{- $n = float (index $parts 0) -}}
+{{- end -}}
+{{- return $n -}}

@@ -9,23 +9,16 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .metadata import keep
+
 
 def run(args: list[str], env: dict[str, str] | None = None) -> None:
     subprocess.run(args, check=True, env=env)
 
 
 def copy_metadata(source: Path, output: Path) -> None:
-    # Preserve embedded EXIF/IPTC/XMP when a still image is converted.
-    run(
-        [
-            "exiftool",
-            "-overwrite_original",
-            "-TagsFromFile",
-            str(source),
-            "-all:all",
-            str(output),
-        ]
-    )
+    # Only the tags the site shows, plus the place name (exhib.metadata).
+    keep(source, output)
     keep_creation_date(source, output)
 
 
@@ -288,20 +281,11 @@ def convert_image(
         decoded.unlink(missing_ok=True)
     copy_metadata(source, output)
     if rotated:
-        # The pixels are already upright (HEIC decode, or an edit). The copied Orientation tag would
-        # turn them again in a viewer that honours it, and the copied EXIF
-        # size would describe the unrotated frame.
+        # The pixels are already upright (HEIC decode, or an edit). The copied
+        # Orientation tag would turn them again in a viewer that honours it.
         run(
-            [
-                "exiftool",
-                "-q",
-                "-m",
-                "-overwrite_original",
-                "-Orientation#=1",
-                "-ExifIFD:ExifImageWidth<RIFF:ImageWidth",
-                "-ExifIFD:ExifImageHeight<RIFF:ImageHeight",
-                str(output),
-            ]
+            ["exiftool", "-q", "-m", "-overwrite_original", "-Orientation#=1"]
+            + [str(output)]
         )
     return output
 
