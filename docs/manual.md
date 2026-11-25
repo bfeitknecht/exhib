@@ -46,20 +46,24 @@ Important: the repo `content/` directory seeds `/data/content` **only on first b
 The same editor as `just manifest` (section 2.1), in the browser, on the
 gallery's own data. Only the authentik user `bf` gets in.
 
-- **The list** shows every item: published ones, drafts (dashed) and items
-  being published. Click one to edit it, or type a slug and press **new**.
+- **The list** shows every item as a card with a small picture: drafts and
+  items being published first (dashed), then the published ones. **find**
+  filters by slug or kind. Click a card to edit it, or type a slug under
+  **new item** and press **create**.
 - **Editing** works exactly as in section 2.1: title, date (`DD/MM/YYYY`),
   description, tags, kind, sort, the media grid with order, titles, captions,
-  cover, crop and rotate. Below the grid: drop photos and videos (or tap to
-  choose from Photos) to add them. **delete file** in the item editor removes
-  one file.
+  cover, crop and rotate. Click a tile to open it in a dialog: **‹ ›** (or the
+  arrow keys) step to the next item, **done** or Esc closes it (Esc leaves
+  crop / rotate first). Drop photos and videos anywhere on the page (or tap the
+  box under the grid to choose from Photos) to add them. **delete file** in the
+  dialog removes one file. The gallery name at the top goes back to the list.
 - **save** writes the draft. Nothing on the site changes yet. A draft lives in
   `/data/drafts/<slug>` and keeps until you publish or discard it, so you can
   edit in several sittings.
 - **publish** sends the draft to the processor. The site shows the new version
   a few minutes later. Files you deleted move to `/data/trash/<time>-<kind>-<slug>`
   (with the old `manifest.toml`), never straight to nothing. If publishing
-  fails, the item comes back as a draft with the error at the bottom.
+  fails, the item comes back as a draft with the error at the top.
 - **discard draft** throws the draft away. A published item stays as it is; a
   new item is gone with its uploaded files.
 

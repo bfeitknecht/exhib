@@ -38,7 +38,7 @@
   .menu li .muted { margin-left: .5rem; }
   .menu li[aria-selected=true] .muted { color: inherit; }
   .top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 2rem; }
-  @media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
+  @media (max-width: 860px) { .top { grid-template-columns: 1fr; } .top aside { max-width: 260px; } }
   label { display: block; margin: 1rem 0 .3rem; color: var(--muted); text-transform: lowercase; }
   input[type=text], input[type=number], textarea {
     width: 100%; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: 3px;
@@ -61,11 +61,26 @@
   .chip { display: inline-flex; gap: .3rem; align-items: center; padding: .1rem .5rem;
           border: 1px solid var(--line); border-radius: 999px; }
   .chip button { padding: 0 .2rem; border: 0; background: none; color: inherit; line-height: 1; }
-  /* Folder list */
-  .folders { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .5rem; }
+  /* Folder list: one card per item, drafts first */
+  .path .root a { color: inherit; text-decoration: none; }
+  .path .root a:hover { color: var(--fg); }
+  .listhead { display: flex; flex-wrap: wrap; gap: .8rem 1.5rem; align-items: end; justify-content: space-between; margin-bottom: 1.2rem; }
+  .listhead label { margin: 0 0 .3rem; }
+  #filter { max-width: 22ch; font-family: var(--mono); }
+  .group { margin: 1.4rem 0 .5rem; color: var(--muted); font: .8rem var(--mono); }
+  .group:first-child { margin-top: 0; }
+  .folders { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .8rem; }
   .folders a { display: block; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 3px;
                color: var(--fg); text-decoration: none; font-family: var(--mono); }
   .folders a:hover { border-color: var(--fg); }
+  .folders a.card-link { padding: 0; overflow: hidden; }
+  .folders .thumb { display: block; aspect-ratio: var(--card) / 1; background: var(--line); }
+  .folders .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .folders .thumb.none { display: grid; place-items: center; color: var(--muted); font-size: .75rem; }
+  .folders .name { display: block; padding: .5rem .7rem 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .folders a.card-link .st { padding: 0 .7rem .55rem; }
+  .folders a.failed .st { color: var(--bad); }
+  .flash { margin: 0 0 1rem; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 3px; font: .8rem var(--mono); }
   /* Homepage card preview */
   .card { border-top: 1px solid var(--line); padding-top: 1rem; }
   .card .art { aspect-ratio: var(--card) / 1; background: var(--line); overflow: hidden; }
@@ -91,10 +106,20 @@
   .badges { position: absolute; top: .3rem; left: .3rem; display: flex; gap: .25rem; }
   .badge { padding: 0 .35rem; background: var(--fg); color: var(--bg); border-radius: 2px; }
   .fallback { padding: .5rem; font: .75rem var(--mono); color: var(--muted); word-break: break-all; }
-  /* Item editor */
-  .detail { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.5rem; margin-top: 1.5rem;
-            padding-top: 1rem; border-top: 1px solid var(--line); }
-  @media (max-width: 860px) { .detail { grid-template-columns: 1fr; } }
+  /* Item editor: a dialog over the page. Arrows step through the items. */
+  dialog.detail { width: min(1200px, calc(100vw - 2rem)); max-width: none; max-height: calc(100dvh - 2rem); padding: 0;
+                  border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--fg); }
+  dialog.detail::backdrop { background: oklch(0% 0 0 / .6); }
+  .dhead { position: sticky; top: 0; z-index: 2; display: flex; gap: .5rem; align-items: center; padding: .6rem 1rem;
+           background: var(--bg); border-bottom: 1px solid var(--line); }
+  .dhead #detailName { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dbody { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.5rem; padding: 1rem; }
+  @media (max-width: 860px) { .dbody { grid-template-columns: 1fr; } dialog.detail { width: 100vw; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; } }
+  .dbody label:first-child { margin-top: 0; }
+  .empty { padding: 1.5rem 0 .5rem; color: var(--muted); font: .85rem var(--mono); }
+  body.dropping::after { content: "drop to add to this item"; position: fixed; inset: .8rem; z-index: 50; display: grid; place-items: center;
+                         border: 2px dashed var(--fg); border-radius: 6px; background: color-mix(in oklch, var(--bg) 85%, transparent);
+                         font: 1rem var(--mono); pointer-events: none; }
   .detail .big { display: grid; place-items: center; min-height: 8rem; }
   .stage { position: relative; display: inline-block; line-height: 0; overflow: hidden; touch-action: none; }
   .stage img, .stage video, .stage canvas { max-width: 100%; max-height: 60vh; display: block; user-select: none; -webkit-user-drag: none; }
@@ -127,8 +152,9 @@
   .cropbox i[data-h=s] { left: 50%; top: 100%; cursor: ns-resize; }
   .cropbox i[data-h=sw] { left: 0; top: 100%; cursor: nesw-resize; }
   .cropbox i[data-h=w] { left: 0; top: 50%; cursor: ew-resize; }
-  footer { position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); }
-  footer .bar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+  footer { position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); padding-top: .7rem; padding-bottom: .7rem; }
+  footer .bar { display: flex; gap: .6rem; align-items: center; }
+  footer #status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .when { display: grid; grid-template-columns: 9.5rem 5.5rem auto; gap: .5rem; justify-content: start; }
   .when input { font-family: var(--mono); }
   .when input.invalid { border-color: var(--bad); }
@@ -144,7 +170,7 @@
   #uploads li { display: grid; grid-template-columns: 1fr auto; gap: .5rem; padding: .2rem 0; }
   #uploads .bar { grid-column: 1 / -1; height: 2px; background: var(--line); }
   #uploads .bar i { display: block; height: 100%; width: 0; background: var(--fg); }
-  #notice { flex-basis: 100%; }
+  #notice { margin: 0 0 .5rem; font: .8rem var(--mono); }
   footer .spacer { flex: 1; }
   [hidden] { display: none !important; }
 </style>
@@ -153,7 +179,7 @@
 <header>
   <div>
     <div class="path">
-      <span class="root" id="rootName"></span>/<span class="pathbox"><input id="slugInput" spellcheck="false" autocomplete="off" aria-label="folder" role="combobox" aria-controls="folderMenu" aria-expanded="false"><ul class="menu" id="folderMenu" role="listbox" hidden></ul></span>
+      <span class="root"><a href="./" id="rootName" title="all items"></a></span>/<span class="pathbox"><input id="slugInput" spellcheck="false" autocomplete="off" aria-label="folder" role="combobox" aria-controls="folderMenu" aria-expanded="false"><ul class="menu" id="folderMenu" role="listbox" hidden></ul></span>
     </div>
     <div class="mono bad" id="pathWarn" hidden></div>
   </div>
@@ -165,15 +191,26 @@
 </header>
 
 <main id="picker" hidden>
-  <form class="newform" id="newForm" hidden>
-    <input type="text" id="newSlug" placeholder="new-slug" spellcheck="false" autocomplete="off" aria-label="new item slug" pattern="[a-z0-9]+(-[a-z0-9]+)*">
-    <button type="submit">new</button>
-    <span class="mono bad" id="newWarn"></span>
-  </form>
-  <ul class="folders" id="folders"></ul>
+  <p class="flash" id="flash" hidden></p>
+  <div class="listhead">
+    <form id="newForm" hidden>
+      <label for="newSlug">new item</label>
+      <div class="newform">
+        <input type="text" id="newSlug" placeholder="evening-walk" spellcheck="false" autocomplete="off" pattern="[a-z0-9]+(-[a-z0-9]+)*" title="lowercase letters, digits and hyphens">
+        <button type="submit">create</button>
+      </div>
+      <p class="hint">the slug is the address: gallery.0xbf.ch/…/<i>slug</i>. <span class="bad" id="newWarn"></span></p>
+    </form>
+    <div>
+      <label for="filter">find</label>
+      <input type="text" id="filter" spellcheck="false" autocomplete="off" placeholder="slug or kind">
+    </div>
+  </div>
+  <div id="lists"></div>
 </main>
 
 <main id="editor" hidden>
+  <p class="mono muted" id="notice" hidden></p>
   <section class="top">
     <div>
       <label for="title">title</label>
@@ -211,12 +248,19 @@
       </div>
     </div>
     <div class="grid" id="grid"></div>
-    <div id="drop" hidden>add photos and videos: drop them here, or tap to choose<input id="files" type="file" multiple accept="image/*,video/*,.heic,.heif" hidden></div>
+    <p class="empty" id="emptyGrid" hidden>no media files yet.</p>
+    <div id="drop" hidden>add photos and videos: drop them anywhere on the page, or tap here to choose<input id="files" type="file" multiple accept="image/*,video/*,.heic,.heif" hidden></div>
     <ul id="uploads"></ul>
-    <div class="detail" id="detail" hidden>
+    <dialog class="detail" id="detail">
+      <div class="dhead">
+        <button type="button" id="prevItem" title="previous item (←)">‹</button>
+        <button type="button" id="nextItem" title="next item (→)">›</button>
+        <span class="mono muted" id="detailName"></span>
+        <button type="button" id="closeDetail" title="close (Esc)">done</button>
+      </div>
+      <div class="dbody">
       <div class="big" id="bigArt"></div>
       <div>
-        <div class="mono muted" id="detailName"></div>
         <label for="itemTitle">title</label>
         <input type="text" id="itemTitle">
         <label for="itemCaption">caption</label>
@@ -225,8 +269,8 @@
         <input type="number" id="itemPosition" min="1" step="1">
         <label><input type="checkbox" id="itemIncluded"> include</label>
         <div class="row">
-          <button type="button" id="moveLeft">←</button>
-          <button type="button" id="moveRight">→</button>
+          <button type="button" id="moveLeft" title="move one place earlier">move ←</button>
+          <button type="button" id="moveRight" title="move one place later">move →</button>
           <button type="button" id="coverToggle" aria-pressed="false">cover</button>
           <button type="button" id="centerCrop" hidden>center</button>
           <button type="button" id="editToggle" aria-pressed="false" hidden>crop / rotate</button>
@@ -262,7 +306,8 @@
           <p class="hint" id="cropInfo"></p>
         </div>
       </div>
-    </div>
+      </div>
+    </dialog>
   </section>
 
   <section id="bodySection" hidden>
@@ -278,7 +323,6 @@
     <span class="spacer"></span>
     <button type="button" id="discard" hidden>discard draft</button>
     <button type="button" id="publish" hidden>publish</button>
-    <span class="mono muted" id="notice" hidden></span>
   </div>
 </footer>
 
@@ -562,6 +606,7 @@ function renderGrid() {
     };
     grid.append(tile);
   });
+  $("emptyGrid").hidden = state.items.length > 0;
 }
 
 // Crop frame over the big preview of the cover. object-fit: cover crops one
@@ -618,8 +663,9 @@ function bindFrame(stage, frame) {
 }
 
 function renderDetail() {
-  $("detail").hidden = !selected;
-  if (!selected) return;
+  const dialog = $("detail");
+  if (!selected) { if (dialog.open) dialog.close(); return; }
+  if (!dialog.open) dialog.showModal();
   const isCover = selected === coverItem();
   if (selected.type === "video" || selected !== editTarget) editing = false;
   const key = editing ? `${slug}/${selected.name}/edit` : `${slug}/${selected.name}/${isCover}/${editSig(selected)}`;
@@ -654,6 +700,9 @@ function renderDetail() {
   $("editToggle").setAttribute("aria-pressed", editing);
   $("editTools").hidden = !editing;
   $("detailName").textContent = selected.name;
+  const list = ordered(), at = list.indexOf(selected);
+  $("prevItem").disabled = at <= 0;
+  $("nextItem").disabled = at >= list.length - 1;
   $("itemTitle").placeholder = selected.default_title;
   $("itemIncluded").checked = selected.included;
   const rank = included().indexOf(selected);
@@ -864,7 +913,23 @@ $("editToggle").onclick = () => {
   editRatio = null;
   render();
 };
-addEventListener("keydown", (e) => { if (e.key === "Escape" && editing) { editing = false; editTarget = null; render(); } });
+// Esc leaves crop / rotate first, then closes the dialog.
+$("detail").addEventListener("cancel", (e) => { if (editing) { e.preventDefault(); editing = false; editTarget = null; render(); } });
+$("detail").addEventListener("close", () => { if (selected) { selected = null; editing = false; editTarget = null; detailKey = null; render(); } });
+$("detail").addEventListener("click", (e) => { if (e.target === $("detail")) $("detail").close(); });
+$("closeDetail").onclick = () => $("detail").close();
+function stepItem(delta) {
+  const list = ordered();
+  const next = list[list.indexOf(selected) + delta];
+  if (next) { selected = next; render(); }
+}
+$("prevItem").onclick = () => stepItem(-1);
+$("nextItem").onclick = () => stepItem(1);
+// On document: a disabled arrow button drops the focus out of the dialog.
+document.addEventListener("keydown", (e) => {
+  if (!$("detail").open || editing || e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); stepItem(e.key === "ArrowLeft" ? -1 : 1); }
+});
 addEventListener("resize", layoutEdit);
 
 function render() { renderKind(); renderTags(); renderCardText(); renderCardArt(); renderGrid(); renderDetail(); }
@@ -913,18 +978,56 @@ async function loadFolders() {
   web = !!data.web;
   $("newForm").hidden = !web;
   $("rootName").textContent = data.root;
-  $("folders").replaceChildren(...folders.map((f) => {
-    const li = document.createElement("li");
-    const a = Object.assign(document.createElement("a"), { href: `?f=${encodeURIComponent(f.name)}`, textContent: f.name });
-    if (web) {
-      a.className = f.draft ? "draft" : "";
-      a.append(Object.assign(document.createElement("span"), { className: "st", textContent: [f.kind, f.status].filter(Boolean).join(" · ") }));
-    } else if (f.has_manifest) a.append(Object.assign(document.createElement("span"), { className: "muted", textContent: " ✓" }));
-    a.onclick = (e) => { e.preventDefault(); open(f.name); };
-    li.append(a);
-    return li;
-  }));
+  renderFolders();
 }
+
+// The item list. Web: drafts (work in progress) above published items, each a
+// card with a small picture. Local: one list of folders, ✓ when a manifest exists.
+const thumbs = new Map(); // url -> <img>, so the 5 s refresh does not reload pictures
+function folderCard(f) {
+  const li = document.createElement("li");
+  const a = Object.assign(document.createElement("a"), { href: `?f=${encodeURIComponent(f.name)}` });
+  a.onclick = (e) => { e.preventDefault(); open(f.name); };
+  if (!web) {
+    a.textContent = f.name;
+    if (f.has_manifest) a.append(Object.assign(document.createElement("span"), { className: "muted", textContent: " ✓" }));
+  } else {
+    a.className = "card-link" + (f.draft ? " draft" : "") + (f.status.includes("failed") ? " failed" : "");
+    const art = Object.assign(document.createElement("span"), { className: "thumb" });
+    if (f.thumb) {
+      if (!thumbs.has(f.thumb)) thumbs.set(f.thumb, Object.assign(document.createElement("img"), { src: f.thumb, alt: "", loading: "lazy", decoding: "async" }));
+      art.append(thumbs.get(f.thumb));
+    } else {
+      art.classList.add("none");
+      art.textContent = f.kind === "writing" ? "writing" : "no picture";
+    }
+    a.append(art,
+      Object.assign(document.createElement("span"), { className: "name", textContent: f.name }),
+      Object.assign(document.createElement("span"), { className: "st", textContent: [f.kind, f.status].filter(Boolean).join(" · ") }));
+  }
+  li.append(a);
+  return li;
+}
+function renderFolders() {
+  const q = $("filter").value.trim().toLowerCase();
+  const hit = (f) => !q || [f.name, f.kind, f.status].some((v) => (v || "").toLowerCase().includes(q));
+  const list = folders.filter(hit);
+  const groups = web
+    ? [["drafts and publishing", list.filter((f) => f.status !== "published")], ["published", list.filter((f) => f.status === "published")]]
+    : [["", list]];
+  const out = [];
+  for (const [title, items] of groups) {
+    if (!items.length) continue;
+    if (title) out.push(Object.assign(document.createElement("h2"), { className: "group", textContent: `${title} (${items.length})` }));
+    const ul = Object.assign(document.createElement("ul"), { className: "folders" });
+    ul.append(...items.map(folderCard));
+    out.push(ul);
+  }
+  if (!out.length) out.push(Object.assign(document.createElement("p"), { className: "empty", textContent: q ? "nothing matches." : "no items yet." }));
+  $("lists").replaceChildren(...out);
+}
+$("filter").addEventListener("input", renderFolders);
+$("rootName").addEventListener("click", (e) => { e.preventDefault(); open(""); });
 
 async function open(name, push = true) {
   if (name === slug && state) return;
@@ -932,7 +1035,9 @@ async function open(name, push = true) {
   const entry = folders.find((f) => f.name === name);
   if (name && !entry) { $("pathWarn").textContent = `no folder ${name}`; $("pathWarn").hidden = false; return; }
   $("pathWarn").hidden = true;
-  slug = name; state = null; selected = null; dirty = false;
+  if (name) $("flash").hidden = true;
+  slug = name; state = null; selected = null; dirty = false; editing = false;
+  if ($("detail").open) $("detail").close();
   detailKey = null; cardKey = null;
   $("slugInput").value = name;
   $("status").textContent = "";
@@ -968,6 +1073,9 @@ function renderWeb() {
   lines.push(w.published ? `published as ${w.published}. publish replaces it; deleted files go to the trash.` : "new item: not published yet.");
   $("notice").textContent = lines.join(" ");
   $("notice").classList.toggle("bad", !!w.error);
+  // In the cluster, publish is the goal; save is the step before it.
+  $("publish").classList.add("primary");
+  $("save").classList.remove("primary");
 }
 async function reloadState() {
   const keep = selected && selected.name;
@@ -1007,9 +1115,15 @@ async function addFiles(list) {
 }
 $("drop").addEventListener("click", () => $("files").click());
 $("files").addEventListener("change", (e) => { addFiles(e.target.files); e.target.value = ""; });
-["dragenter", "dragover"].forEach((t) => $("drop").addEventListener(t, (e) => { e.preventDefault(); $("drop").classList.add("over"); }));
-["dragleave", "drop"].forEach((t) => $("drop").addEventListener(t, (e) => { e.preventDefault(); $("drop").classList.remove("over"); }));
-$("drop").addEventListener("drop", (e) => addFiles(e.dataTransfer.files));
+// Files dropped anywhere on the page go into the open item. Tile drags carry
+// text, not files, so reordering is not affected.
+const canDrop = (e) => web && state && state.kind !== "writing" && [...(e.dataTransfer?.types || [])].includes("Files");
+let dragDepth = 0;
+const dropping = (on) => { document.body.classList.toggle("dropping", on); $("drop").classList.toggle("over", on); };
+addEventListener("dragenter", (e) => { if (canDrop(e)) { e.preventDefault(); dragDepth++; dropping(true); } });
+addEventListener("dragover", (e) => { if (canDrop(e)) e.preventDefault(); });
+addEventListener("dragleave", (e) => { if (canDrop(e) && --dragDepth <= 0) { dragDepth = 0; dropping(false); } });
+addEventListener("drop", (e) => { if (!canDrop(e)) return; e.preventDefault(); dragDepth = 0; dropping(false); addFiles(e.dataTransfer.files); });
 $("removeFile").onclick = async () => {
   if (!selected || !confirm(`Delete ${selected.name} from this draft?`)) return;
   const r = await fetch(`api/delete?f=${encodeURIComponent(slug)}&name=${encodeURIComponent(selected.name)}`, { method: "POST" });
@@ -1029,6 +1143,8 @@ $("publish").onclick = async () => {
   await loadFolders();
   open("");
   $("status").textContent = "";
+  $("flash").textContent = `${data.queued} is publishing. The site shows it in about a minute; the list below follows.`;
+  $("flash").hidden = false;
 };
 $("discard").onclick = async () => {
   const w = state.web || {};

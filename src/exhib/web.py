@@ -24,6 +24,7 @@ Traefik reach the port. Stdlib only, plus ffmpeg/exiftool from the image.
 
 from __future__ import annotations
 
+import glob
 import json
 import os
 import shutil
@@ -34,12 +35,13 @@ import tomllib
 from http import HTTPStatus
 from http.server import ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from .editor import manifest
 from .editor.server import PAGE, Handler
 from .media import decode_upright
-from .paths import DATA, DRAFTS, INCOMING, ORIGINALS
+from .paths import CONTENT, DATA, DRAFTS, INCOMING, ORIGINALS
+from .rules import SECTIONS
 
 PORT = int(os.environ.get("UPLOAD_PORT", "8081"))
 USER = os.environ.get("UPLOAD_USER", "bf")
@@ -82,6 +84,50 @@ def visible_dirs(root: Path) -> list[Path]:
     )
 
 
+def published_thumb(slug: str, kind: str) -> str | None:
+    """Site URL of a small copy of the item's cover (or first image), or None.
+
+    The list shows it. It comes from the public site (same origin), so the
+    list costs no ffmpeg run.
+    """
+    if kind == "writing":
+        return None
+    bundle = CONTENT / SECTIONS[kind] / slug
+    page = bundle / ("_index.md" if kind == "collection" else "index.md")
+    try:
+        front = tomllib.loads(page.read_text(encoding="utf-8").split("+++")[1])
+    except OSError, IndexError, ValueError:
+        return None
+    images = sorted(
+        (
+            r
+            for r in front.get("resources", [])
+            if r.get("params", {}).get("kind") == "image"
+        ),
+        key=lambda r: r.get("params", {}).get("position", 0),
+    )
+    src = front.get("thumbnail") or (images[0]["src"] if images else None)
+    if not src:
+        return None
+    stem = Path(src).stem
+    small = sorted(bundle.glob(f"{glob.escape(stem)}.*.w480.webp"))
+    name = small[0].name if small else src
+    return f"/{SECTIONS[kind]}/{slug}/{quote(name)}"
+
+
+def draft_thumb(folder: Path) -> str | None:
+    """Editor URL of the draft's cover (or first image), as the grid shows it."""
+    files = [
+        p for p in manifest.media_files(folder) if manifest.media_type(p) == "image"
+    ]
+    try:
+        cover = tomllib.loads((folder / "manifest.toml").read_text()).get("thumbnail")
+    except OSError, ValueError:
+        cover = None
+    pick = next((p for p in files if p.name == cover), files[0] if files else None)
+    return f"media/{folder.name}/{quote(pick.name)}" if pick else None
+
+
 def list_items() -> list[dict]:
     names: set[str] = {p.name for p in visible_dirs(DRAFTS)}
     for kind in KINDS:
@@ -110,6 +156,11 @@ def list_items() -> list[dict]:
                 "draft": draft.is_dir(),
                 "kind": (draft_kind(draft) if draft.is_dir() else None) or kind,
                 "status": status,
+                "thumb": draft_thumb(draft)
+                if draft.is_dir()
+                else published_thumb(name, kind)
+                if kind
+                else None,
             }
         )
     return items
