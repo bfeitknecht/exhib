@@ -6,6 +6,9 @@ locale = "en"
 enableRobotsTXT = true
 # Tag names stay as written (lowercase). Hugo title-cases list titles by default.
 capitalizeListTitles = false
+# The image keeps /app read-only for the runtime user: no .hugo_build.lock
+# in the source dir (the app runs one build at a time).
+noBuildLock = true
 
 # Keep the default RSS media type. Pin baseName so the feed stays at /rss.xml.
 [outputFormats.RSS]

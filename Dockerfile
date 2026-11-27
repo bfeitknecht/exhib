@@ -7,6 +7,7 @@
 FROM python:3.15-alpine3.24
 COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /usr/local/bin/uv
 
+# A Hugo bump needs new HUGO_SHA256 values (hugo_X_checksums.txt).
 ARG HUGO_VERSION=0.169.0
 ARG SWS_VERSION=2.44.1
 # BuildKit sets TARGETARCH per platform. A default here overrides it.
@@ -14,11 +15,12 @@ ARG TARGETARCH
 # Hugo extended is glibc-linked. gcompat and libstdc++ let it run on musl.
 RUN apk add --no-cache ca-certificates gcompat libstdc++ ffmpeg libheif-tools libwebp-tools exiftool wget tar \
  && case "${TARGETARCH}" in \
-      amd64) HUGO_ARCH=amd64 SWS_ARCH=x86_64-unknown-linux-musl SWS_SHA256=8f94abd9bc9c6d11240301d7271b95f9ec05b1b3e8509087c86ca8fd0b56fb4e ;; \
-      arm64) HUGO_ARCH=arm64 SWS_ARCH=aarch64-unknown-linux-musl SWS_SHA256=28e53e5979735309ec3de685330719a11a0ef339aa06d0f0cd8eff5d973b9dfc ;; \
+      amd64) HUGO_ARCH=amd64 HUGO_SHA256=c41672a0725d307758a132bc94a962e59760eb33f9ba08c991b81f9881d6fa7d SWS_ARCH=x86_64-unknown-linux-musl SWS_SHA256=8f94abd9bc9c6d11240301d7271b95f9ec05b1b3e8509087c86ca8fd0b56fb4e ;; \
+      arm64) HUGO_ARCH=arm64 HUGO_SHA256=5b190e5d2836c09efe25cc6249f70bde8a6c5331ef412a4c9137e9d5de89a515 SWS_ARCH=aarch64-unknown-linux-musl SWS_SHA256=28e53e5979735309ec3de685330719a11a0ef339aa06d0f0cd8eff5d973b9dfc ;; \
       *) echo "Unsupported TARGETARCH=${TARGETARCH}" >&2; exit 1 ;; \
     esac \
  && wget -q "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-${HUGO_ARCH}.tar.gz" -O /tmp/hugo.tar.gz \
+ && echo "${HUGO_SHA256}  /tmp/hugo.tar.gz" | sha256sum -c - \
  && tar -xzf /tmp/hugo.tar.gz -C /usr/local/bin hugo \
  && wget -q "https://github.com/static-web-server/static-web-server/releases/download/v${SWS_VERSION}/static-web-server-v${SWS_VERSION}-${SWS_ARCH}.tar.gz" -O /tmp/sws.tar.gz \
  && echo "${SWS_SHA256}  /tmp/sws.tar.gz" | sha256sum -c - \
@@ -40,7 +42,9 @@ COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY sws.toml /etc/sws/sws.toml
 COPY . /app
-RUN uv sync --frozen --no-dev && chown -R 1000:1000 /app
+# /app stays root-owned: the runtime user (1000) reads it and writes only to
+# /data, so a compromised process cannot rewrite its own code.
+RUN uv sync --frozen --no-dev
 # `exhib` is on PATH: `kubectl exec deploy/exhib -- exhib rebuild` works.
 ENV EXHIB_APP=/app \
     EXHIB_DATA=/data \

@@ -146,6 +146,8 @@ def build_front_matter(
 # memory limit keep the build inside the limit. Override from the pod env.
 HUGO_ENV = {
     "HUGO_RESOURCEDIR": str(RESOURCES),
+    # /app is read-only at runtime; the module and file cache goes to the PVC
+    "HUGO_CACHEDIR": str(DATA / ".hugo-cache"),
     "GOMAXPROCS": os.environ.get("EXHIB_HUGO_THREADS", "2"),
     "GOMEMLIMIT": os.environ.get("EXHIB_HUGO_MEMLIMIT", "1GiB"),
 }
