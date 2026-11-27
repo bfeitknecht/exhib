@@ -8,7 +8,10 @@ FROM python:3.15-alpine3.24
 COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /usr/local/bin/uv
 
 # A Hugo bump needs new HUGO_SHA256 values (hugo_X_checksums.txt).
+# renovate: datasource=github-releases depName=gohugoio/hugo extractVersion=^v(?<version>.*)$
 ARG HUGO_VERSION=0.169.0
+# A bump also needs new SWS_SHA256 values.
+# renovate: datasource=github-releases depName=static-web-server/static-web-server extractVersion=^v(?<version>.*)$
 ARG SWS_VERSION=2.44.1
 # BuildKit sets TARGETARCH per platform. A default here overrides it.
 ARG TARGETARCH

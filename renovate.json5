@@ -1,0 +1,5 @@
+{
+  // Shared preset: github.com/bfeitknecht/infra renovate/default.json5.
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["github>bfeitknecht/infra//renovate/default.json5"],
+}
