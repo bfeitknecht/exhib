@@ -1,6 +1,6 @@
 [project]
 name = "exhib"
-version = "0.7.0"
+version = "0.7.1"
 description = "Gallery processor, serving supervisor and manifest editor."
 requires-python = ">=3.15"
 dependencies = []
