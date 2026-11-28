@@ -5,21 +5,21 @@
 # Python comes from the base image; uv installs the exhib package (src/exhib)
 # into the project venv.
 FROM python:3.15-alpine3.24
-COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.10 /uv /usr/local/bin/uv
 
 # A Hugo bump needs new HUGO_SHA256 values (hugo_X_checksums.txt).
 # renovate: datasource=github-releases depName=gohugoio/hugo extractVersion=^v(?<version>.*)$
-ARG HUGO_VERSION=0.169.0
+ARG HUGO_VERSION=0.170.1
 # A bump also needs new SWS_SHA256 values.
 # renovate: datasource=github-releases depName=static-web-server/static-web-server extractVersion=^v(?<version>.*)$
-ARG SWS_VERSION=2.44.1
+ARG SWS_VERSION=2.44.3
 # BuildKit sets TARGETARCH per platform. A default here overrides it.
 ARG TARGETARCH
 # Hugo extended is glibc-linked. gcompat and libstdc++ let it run on musl.
 RUN apk add --no-cache ca-certificates gcompat libstdc++ ffmpeg libheif-tools libwebp-tools exiftool wget tar \
  && case "${TARGETARCH}" in \
-      amd64) HUGO_ARCH=amd64 HUGO_SHA256=c41672a0725d307758a132bc94a962e59760eb33f9ba08c991b81f9881d6fa7d SWS_ARCH=x86_64-unknown-linux-musl SWS_SHA256=8f94abd9bc9c6d11240301d7271b95f9ec05b1b3e8509087c86ca8fd0b56fb4e ;; \
-      arm64) HUGO_ARCH=arm64 HUGO_SHA256=5b190e5d2836c09efe25cc6249f70bde8a6c5331ef412a4c9137e9d5de89a515 SWS_ARCH=aarch64-unknown-linux-musl SWS_SHA256=28e53e5979735309ec3de685330719a11a0ef339aa06d0f0cd8eff5d973b9dfc ;; \
+      amd64) HUGO_ARCH=amd64 HUGO_SHA256=841a5462853aefc9942e4de1e8a5d75584b6a5181941e6ad3f1d745190e03cd8 SWS_ARCH=x86_64-unknown-linux-musl SWS_SHA256=d97a9c74be2e547c80669bcf797c1254fb3d4bac92600967081dc60f594ce30a ;; \
+      arm64) HUGO_ARCH=arm64 HUGO_SHA256=6f57f13bc47c000c0d36c7f5a446d6c06f7956d8e102cc2a13735e0c0225b2d2 SWS_ARCH=aarch64-unknown-linux-musl SWS_SHA256=92122a4006e2d7c8dfd6525809fe266e220c7a047c98739566506614f0f16edd ;; \
       *) echo "Unsupported TARGETARCH=${TARGETARCH}" >&2; exit 1 ;; \
     esac \
  && wget -q "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-${HUGO_ARCH}.tar.gz" -O /tmp/hugo.tar.gz \
